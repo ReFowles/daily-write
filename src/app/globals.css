@@ -9,9 +9,9 @@
 
 @variant dark (&:is(.dark *));
 @variant strawberry (&:is(.strawberry *));
-@variant dark-strawberry (&:is(.dark-strawberry *));
+@variant cherry (&:is(.cherry *));
+@variant seafoam (&:is(.seafoam *));
 @variant ocean (&:is(.ocean *));
-@variant dark-ocean (&:is(.dark-ocean *));
 
 :root {
   --background: #ffffff;

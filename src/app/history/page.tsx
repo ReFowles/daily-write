@@ -43,13 +43,13 @@ export default function HistoryPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 dark-strawberry:bg-linear-to-br dark-strawberry:from-zinc-950 dark-strawberry:via-rose-950 dark-strawberry:to-zinc-950 ocean:bg-linear-to-br ocean:from-cyan-50 ocean:via-blue-50 ocean:to-cyan-100 dark-ocean:bg-linear-to-br dark-ocean:from-zinc-950 dark-ocean:via-cyan-950 dark-ocean:to-zinc-950">
+    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 dark-strawberry:text-rose-300 ocean:text-cyan-900 dark-ocean:text-cyan-300">
+          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
             Writing History
           </h1>
-          <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 dark-strawberry:text-rose-400 ocean:text-cyan-700 dark-ocean:text-cyan-400">
+          <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
             Review your past writing sessions
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function HistoryPage() {
         <div className="space-y-4">
           {sessions.length === 0 ? (
             <Card className="p-12 text-center">
-              <p className="text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 dark-strawberry:text-rose-400 ocean:text-cyan-700 dark-ocean:text-cyan-400">
+              <p className="text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
                 No writing sessions yet. Start writing to see your history!
               </p>
             </Card>
@@ -88,10 +88,10 @@ export default function HistoryPage() {
         {sessions.length > 0 && (
           <div className="mt-8 flex justify-center">
             <div className="flex gap-2">
-              <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 strawberry:border-rose-300 strawberry:text-rose-700 strawberry:hover:bg-rose-50 dark-strawberry:border-rose-800 dark-strawberry:text-rose-300 dark-strawberry:hover:bg-rose-900 ocean:border-cyan-300 ocean:text-cyan-700 ocean:hover:bg-cyan-50 dark-ocean:border-cyan-800 dark-ocean:text-cyan-300 dark-ocean:hover:bg-cyan-900" disabled>
+              <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 strawberry:border-rose-300 strawberry:text-rose-700 strawberry:hover:bg-rose-50 cherry:border-rose-800 cherry:text-rose-300 cherry:hover:bg-rose-900 seafoam:border-cyan-300 seafoam:text-cyan-700 seafoam:hover:bg-cyan-50 ocean:border-cyan-800 ocean:text-cyan-300 ocean:hover:bg-cyan-900" disabled>
                 Previous
               </button>
-              <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 strawberry:border-rose-300 strawberry:text-rose-700 strawberry:hover:bg-rose-50 dark-strawberry:border-rose-800 dark-strawberry:text-rose-300 dark-strawberry:hover:bg-rose-900 ocean:border-cyan-300 ocean:text-cyan-700 ocean:hover:bg-cyan-50 dark-ocean:border-cyan-800 dark-ocean:text-cyan-300 dark-ocean:hover:bg-cyan-900" disabled>
+              <button className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 strawberry:border-rose-300 strawberry:text-rose-700 strawberry:hover:bg-rose-50 cherry:border-rose-800 cherry:text-rose-300 cherry:hover:bg-rose-900 seafoam:border-cyan-300 seafoam:text-cyan-700 seafoam:hover:bg-cyan-50 ocean:border-cyan-800 ocean:text-cyan-300 ocean:hover:bg-cyan-900" disabled>
                 Next
               </button>
             </div>
