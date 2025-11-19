@@ -1,14 +1,27 @@
 import Link from "next/link";
 import { StatsCard } from "@/components/stats-card";
 import { ProgressCard } from "@/components/progress-card";
+import { WeeklyCalendar } from "@/components/weekly-calendar";
 import { Card } from "@/components/ui/card";
 
 export default function Dashboard() {
   // Mock data - will be replaced with real data later
   const todayGoal = 500;
-  const todayProgress = 0;
+  const todayProgress = 200;
   const streak = 0;
   const totalWords = 0;
+
+  // Mock data for the calendar - format: YYYY-MM-DD -> word count
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const wordsByDate: Record<string, number> = {
+    // Example: 2 days ago had 450 words (didn't meet goal)
+    [new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]]: 450,
+    // Yesterday had 650 words (exceeded goal)
+    [new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]]: 650,
+    // Today has todayProgress
+    [today.toISOString().split('T')[0]]: todayProgress,
+  };
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
@@ -20,6 +33,11 @@ export default function Dashboard() {
           <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
             Track your daily writing progress
           </p>
+        </div>
+
+        {/* Weekly Calendar */}
+        <div className="mb-8">
+          <WeeklyCalendar dailyGoal={todayGoal} wordsByDate={wordsByDate} />
         </div>
 
         {/* Stats Grid */}
