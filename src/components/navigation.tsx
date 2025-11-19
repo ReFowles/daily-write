@@ -11,6 +11,7 @@ export default function Navigation() {
     { name: "Dashboard", href: "/" },
     { name: "Write", href: "/write" },
     { name: "History", href: "/history" },
+    { name: "Goals", href: "/goals" },
   ];
 
   return (

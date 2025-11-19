@@ -46,3 +46,15 @@ export function isFuture(date: Date): boolean {
   today.setHours(0, 0, 0, 0);
   return date > today;
 }
+
+/**
+ * Format a date string (YYYY-MM-DD) to a readable format
+ */
+export function formatDate(dateString: string): string {
+  const date = new Date(dateString + "T00:00:00");
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
