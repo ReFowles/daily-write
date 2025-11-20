@@ -18,18 +18,34 @@
 
 ```
 src/
-├── app/                    # Next.js App Router pages
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   ├── page.tsx           # Home page
-│   ├── theme-init.tsx     # Theme initialization
-│   ├── history/           # Writing history page
-│   └── write/             # Writing session page
-├── components/            # React components
-│   ├── ui/               # UI primitives (cards, etc.)
-│   └── [feature components]
-└── lib/                  # Utility functions and helpers
-    └── date-utils.ts     # Date formatting utilities
+├── app/                           # Next.js App Router pages
+│   ├── globals.css               # Global styles
+│   ├── icon.svg                  # App icon
+│   ├── layout.tsx                # Root layout
+│   ├── page.tsx                  # Home page (dashboard)
+│   ├── theme-init.tsx            # Theme initialization
+│   ├── goals/                    # Goals page
+│   │   └── page.tsx
+│   ├── history/                  # Writing history page
+│   │   └── page.tsx
+│   └── write/                    # Writing session page
+│       └── page.tsx
+├── components/                    # React components
+│   ├── create-goal-form.tsx      # Goal creation form
+│   ├── day-card.tsx              # Day display card
+│   ├── goal-card.tsx             # Goal display card
+│   ├── navigation.tsx            # Main navigation component
+│   ├── progress-card.tsx         # Progress display card
+│   ├── session-card.tsx          # Writing session card
+│   ├── stats-card.tsx            # Statistics display card
+│   ├── theme-toggle.tsx          # Theme switcher component
+│   ├── weekly-calendar.tsx       # Weekly calendar view
+│   ├── writing-stats-header.tsx  # Stats header component
+│   └── ui/                       # UI primitives
+│       └── card.tsx              # Base card component
+└── lib/                          # Utility functions and helpers
+    ├── date-utils.ts             # Date formatting utilities
+    └── dummy-data.json           # Sample data for development
 ```
 
 ## Development Workflow
@@ -104,6 +120,15 @@ pnpm lint
 - Follow mobile-first responsive design
 - Use semantic HTML elements
 - Maintain consistent spacing and sizing scale
+
+### Theming
+
+The application supports six themes divided into two categories:
+
+- **Light themes**: "Light", "Strawberry", "Seafoam"
+- **Dark themes**: "Dark", "Cherry", "Ocean"
+
+Users can toggle between themes using the theme selector in the navigation.
 
 ## Best Practices for AI Agents
 
