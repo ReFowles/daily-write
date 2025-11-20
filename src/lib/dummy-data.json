@@ -1,0 +1,114 @@
+{
+  "goals": [
+    {
+      "id": "1",
+      "startDate": "2025-11-02",
+      "endDate": "2025-11-02",
+      "dailyWordTarget": 400
+    },
+    {
+      "id": "2",
+      "startDate": "2025-11-03",
+      "endDate": "2025-11-03",
+      "dailyWordTarget": 450
+    },
+    {
+      "id": "3",
+      "startDate": "2025-11-04",
+      "endDate": "2025-11-04",
+      "dailyWordTarget": 500
+    },
+    {
+      "id": "4",
+      "startDate": "2025-11-05",
+      "endDate": "2025-11-05",
+      "dailyWordTarget": 600
+    },
+    {
+      "id": "5",
+      "startDate": "2025-11-06",
+      "endDate": "2025-11-06",
+      "dailyWordTarget": 750
+    },
+    {
+      "id": "6",
+      "startDate": "2025-11-07",
+      "endDate": "2025-11-07",
+      "dailyWordTarget": 800
+    },
+    {
+      "id": "7",
+      "startDate": "2025-11-08",
+      "endDate": "2025-11-08",
+      "dailyWordTarget": 900
+    },
+    {
+      "id": "8",
+      "startDate": "2025-11-09",
+      "endDate": "2025-11-09",
+      "dailyWordTarget": 1000
+    }
+  ],
+  "writingSessions": [
+    { "date": "2025-09-15", "wordCount": 420 },
+    { "date": "2025-09-16", "wordCount": 380 },
+    { "date": "2025-09-17", "wordCount": 410 },
+    { "date": "2025-09-18", "wordCount": 390 },
+    { "date": "2025-09-19", "wordCount": 450 },
+    { "date": "2025-09-20", "wordCount": 370 },
+    { "date": "2025-09-21", "wordCount": 430 },
+    { "date": "2025-09-22", "wordCount": 405 },
+    { "date": "2025-09-25", "wordCount": 460 },
+    { "date": "2025-09-26", "wordCount": 440 },
+    { "date": "2025-09-27", "wordCount": 425 },
+    { "date": "2025-09-28", "wordCount": 470 },
+    { "date": "2025-09-29", "wordCount": 435 },
+    { "date": "2025-09-30", "wordCount": 455 },
+    { "date": "2025-10-01", "wordCount": 465 },
+    { "date": "2025-10-02", "wordCount": 440 },
+    { "date": "2025-10-03", "wordCount": 450 },
+    { "date": "2025-10-04", "wordCount": 430 },
+    { "date": "2025-10-05", "wordCount": 470 },
+    { "date": "2025-10-08", "wordCount": 520 },
+    { "date": "2025-10-09", "wordCount": 480 },
+    { "date": "2025-10-10", "wordCount": 510 },
+    { "date": "2025-10-11", "wordCount": 490 },
+    { "date": "2025-10-12", "wordCount": 530 },
+    { "date": "2025-10-13", "wordCount": 470 },
+    { "date": "2025-10-14", "wordCount": 505 },
+    { "date": "2025-10-15", "wordCount": 495 },
+    { "date": "2025-10-16", "wordCount": 485 },
+    { "date": "2025-10-17", "wordCount": 515 },
+    { "date": "2025-10-18", "wordCount": 500 },
+    { "date": "2025-10-20", "wordCount": 620 },
+    { "date": "2025-10-21", "wordCount": 590 },
+    { "date": "2025-10-22", "wordCount": 610 },
+    { "date": "2025-10-23", "wordCount": 580 },
+    { "date": "2025-10-24", "wordCount": 605 },
+    { "date": "2025-10-25", "wordCount": 595 },
+    { "date": "2025-10-26", "wordCount": 615 },
+    { "date": "2025-10-27", "wordCount": 585 },
+    { "date": "2025-10-28", "wordCount": 600 },
+    { "date": "2025-10-29", "wordCount": 610 },
+    { "date": "2025-10-30", "wordCount": 590 },
+    { "date": "2025-10-31", "wordCount": 605 },
+    { "date": "2025-11-01", "wordCount": 620 },
+    { "date": "2025-11-02", "wordCount": 595 },
+    { "date": "2025-11-04", "wordCount": 780 },
+    { "date": "2025-11-05", "wordCount": 740 },
+    { "date": "2025-11-06", "wordCount": 760 },
+    { "date": "2025-11-07", "wordCount": 770 },
+    { "date": "2025-11-08", "wordCount": 730 },
+    { "date": "2025-11-09", "wordCount": 755 },
+    { "date": "2025-11-10", "wordCount": 745 },
+    { "date": "2025-11-11", "wordCount": 765 },
+    { "date": "2025-11-13", "wordCount": 820 },
+    { "date": "2025-11-14", "wordCount": 790 },
+    { "date": "2025-11-15", "wordCount": 810 },
+    { "date": "2025-11-16", "wordCount": 785 },
+    { "date": "2025-11-17", "wordCount": 805 },
+    { "date": "2025-11-18", "wordCount": 795 },
+    { "date": "2025-11-19", "wordCount": 815 },
+    { "date": "2025-11-20", "wordCount": 2000 }
+  ]
+}

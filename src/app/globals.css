@@ -1,15 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@variant dark (&:is(.dark *));
+@variant strawberry (&:is(.strawberry *));
+@variant cherry (&:is(.cherry *));
+@variant seafoam (&:is(.seafoam *));
+@variant ocean (&:is(.ocean *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {

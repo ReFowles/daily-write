@@ -1,65 +1,112 @@
-import Image from "next/image";
+import { StatsCard } from "@/components/StatsCard";
+import { ProgressCard } from "@/components/ProgressCard";
+import { WeeklyCalendar } from "@/components/WeeklyCalendar";
+import { PageHeader } from "@/components/PageHeader";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
+import type { WritingSession } from "@/lib/types";
+import { useCurrentGoal } from "@/lib/use-current-goal";
+import dummyData from "@/lib/dummy-data.json";
 
-export default function Home() {
+export default function Dashboard() {
+  const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+
+  // Get today's date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Calculate total words
+  const totalWords = dummyData.writingSessions.reduce(
+    (sum, session) => sum + session.wordCount,
+    0
+  );
+
+  // Calculate total days written (sessions with word count > 0)
+  const totalDaysWritten = dummyData.writingSessions.filter(
+    (session) => session.wordCount > 0
+  ).length;
+
+  // Calculate average words per day
+  const averageWordsPerDay =
+    totalDaysWritten > 0 ? Math.round(totalWords / totalDaysWritten) : 0;
+
+  // Calculate current streak (consecutive days with writing, going backwards from today)
+  let streak = 0;
+  const checkDate = new Date(today);
+  while (true) {
+    const dateString = checkDate.toISOString().split("T")[0];
+    const session = dummyData.writingSessions.find(
+      (s) => s.date === dateString
+    );
+
+    if (session && session.wordCount > 0) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  // Use all writing sessions from dummy data for the calendar
+  const writingSessions: WritingSession[] = dummyData.writingSessions;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className={cn("min-h-screen", themeClasses.background.page)}>
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <PageHeader
+          title="DailyWrite"
+          description="Make goals and track your daily writing progress"
+          dailyGoal={todayGoal}
+          daysLeft={daysLeft}
+          writtenToday={todayProgress}
+          goalStartDate={currentGoal?.startDate}
+          goalEndDate={currentGoal?.endDate}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        {/* Weekly Calendar */}
+        <div className="mb-8">
+          <WeeklyCalendar
+            goals={dummyData.goals}
+            writingSessions={writingSessions}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <ProgressCard
+            title="Today's Progress"
+            current={todayProgress}
+            goal={todayGoal}
+            message={
+              todayGoal - todayProgress > 0
+                ? `${
+                    todayGoal - todayProgress
+                  } words remaining to reach your goal`
+                : "Goal achieved! 🎉"
+            }
+          />
         </div>
-      </main>
-    </div>
+
+        {/* Stats Grid */}
+        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatsCard label="Current Streak" value={streak} subtitle="days" />
+          <StatsCard
+            label="Total Days Written"
+            value={totalDaysWritten}
+            subtitle="days"
+          />
+          <StatsCard
+            label="Avg Words/Session"
+            value={averageWordsPerDay}
+            subtitle="words"
+          />
+          <StatsCard
+            label="Total Words"
+            value={totalWords}
+            subtitle="all time"
+          />
+        </div>
+      </div>
+    </main>
   );
 }
