@@ -3,12 +3,7 @@
 import { Card } from "./ui/Card";
 import { DayCard } from "./DayCard";
 import { CalendarHeader } from "./CalendarHeader";
-import { GoalLegend } from "./GoalLegend";
 import type { Goal, WritingSession } from "@/lib/types";
-import {
-  GOAL_BACKGROUND_CLASSES,
-  GOAL_BORDER_CLASSES,
-} from "@/lib/constants";
 import {
   generateMonthGrid,
   getMonthName,
@@ -18,7 +13,6 @@ import {
 import { cn } from "@/lib/class-utils";
 import { useCalendarNavigation } from "@/lib/use-calendar-navigation";
 import { useToggle } from "@/lib/use-toggle";
-import { createGoalColorMap } from "@/lib/goal-utils";
 import { themeClasses } from "@/lib/theme-utils";
 
 interface MonthlyCalendarProps {
@@ -29,9 +23,6 @@ interface MonthlyCalendarProps {
 export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps) {
   const { year: currentYear, month: currentMonth, goToPreviousMonth, goToNextMonth, goToToday } = useCalendarNavigation();
   const { isOpen: isExpanded, toggle: toggleExpanded } = useToggle(true);
-
-  // Assign colors to goals based on their index
-  const goalColorMap = createGoalColorMap(goals);
 
   // Find which goal (if any) applies to a given date
   const getGoalForDate = (date: Date | null): Goal | null => {
@@ -59,14 +50,7 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
         onPreviousMonth={goToPreviousMonth}
         onNextMonth={goToNextMonth}
         onToday={goToToday}
-      >
-        <GoalLegend
-          goals={goals}
-          goalColorMap={goalColorMap}
-          currentYear={currentYear}
-          currentMonth={currentMonth}
-        />
-      </CalendarHeader>
+      />
 
       {isExpanded && (
         <>
@@ -92,7 +76,6 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                 <div className="absolute inset-0 flex pointer-events-none">
                   {week.map((day, dayIndex) => {
                     const goal = getGoalForDate(day.date);
-                    const goalColor = goal ? goalColorMap.get(goal.id) || "blue" : "blue";
                     const isGoalStart = goal && day.date ? isSameDate(day.date, goal.startDate) : false;
                     const isGoalEnd = goal && day.date ? isSameDate(day.date, goal.endDate) : false;
                     
@@ -102,34 +85,36 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                     const hasSamePrevGoal = prevGoal?.id === goal?.id;
                     const hasSameNextGoal = nextGoal?.id === goal?.id;
                     
-                    const isStartOfSpan = isGoalStart || !hasSamePrevGoal;
-                    const isEndOfSpan = isGoalEnd || !hasSameNextGoal;
+                    // Only cap borders if this is truly the start/end of the goal period
+                    const shouldCapLeft = isGoalStart && !hasSamePrevGoal;
+                    const shouldCapRight = isGoalEnd && !hasSameNextGoal;
+                    
+                    // Add spacing when a goal ends and another begins on adjacent days
+                    const prevGoalEnds = prevGoal && !hasSamePrevGoal && prevGoal !== goal;
+                    const nextGoalStarts = nextGoal && !hasSameNextGoal && nextGoal !== goal;
 
                     if (!goal) {
                       return <div key={dayIndex} className="flex-1" />;
                     }
-
-                    // For Sunday (0) and Saturday (6), we need special handling
-                    const needsLeftPadding = isStartOfSpan && dayIndex === 6;
-                    const needsRightPadding = isEndOfSpan && dayIndex === 0;
 
                     return (
                       <div key={dayIndex} className="flex-1 h-full relative">
                         <div
                           className={cn(
                             "absolute inset-0",
-                            GOAL_BACKGROUND_CLASSES[goalColor],
-                            // Rounded corners only at start/end of continuous spans
-                            isStartOfSpan && "rounded-l-lg",
-                            isEndOfSpan && "rounded-r-lg",
-                            // Border styling
-                            "border-y",
-                            isStartOfSpan && "border-l-2",
-                            isEndOfSpan && "border-r-2",
-                            GOAL_BORDER_CLASSES[goalColor],
-                            // Inset the background slightly on Sat/Sun edges
-                            needsLeftPadding && "left-2",
-                            needsRightPadding && "right-2"
+                            // Neutral header color at lower opacity
+                            "bg-zinc-200/30 dark:bg-zinc-800/30 strawberry:bg-rose-200/30 cherry:bg-rose-900/30 seafoam:bg-cyan-200/30 ocean:bg-cyan-900/30",
+                            // Rounded corners only if truly at goal start/end
+                            shouldCapLeft && "rounded-l-lg",
+                            shouldCapRight && "rounded-r-lg",
+                            // Thick dashed border styling
+                            "border-y-4 border-dashed",
+                            themeClasses.border.default,
+                            shouldCapLeft && "border-l-4",
+                            shouldCapRight && "border-r-4",
+                            // Add horizontal spacing when goals transition
+                            prevGoalEnds && shouldCapLeft && "ml-2",
+                            nextGoalStarts && shouldCapRight && "mr-2"
                           )}
                         />
                       </div>
@@ -138,12 +123,12 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                 </div>
 
                 {/* Calendar days layer */}
-                <div className="relative grid grid-cols-7 gap-x-4">
+                <div className="relative flex">
                   {week.map((day, dayIndex) => {
                     const goal = getGoalForDate(day.date);
 
                     return (
-                      <div key={dayIndex} className="my-1">
+                      <div key={dayIndex} className="flex-1 px-4 py-3">
                         <DayCard
                           variant="compact"
                           date={day.date}
