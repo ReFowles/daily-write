@@ -109,7 +109,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               className={cn("mb-2 flex w-full items-center justify-between text-sm font-medium transition-colors", themeClasses.text.primary, "hover:opacity-70")}
             >
               <span>Logged Days ({daysLogged})</span>
-              <ChevronDown className={`transition-transform ${showLoggedDays ? "rotate-180" : ""}`} />
+              <ChevronDown className={`h-3 w-3 transition-transform ${showLoggedDays ? "rotate-180" : ""}`} />
             </button>
             {showLoggedDays && (
               <div className="flex flex-wrap gap-2">
