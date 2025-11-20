@@ -1,11 +1,12 @@
-import { calculateDaysLeft } from "./date-utils";
+import { calculateDaysLeft, parseLocalDate } from "./date-utils";
+import type { Goal } from "./types";
 import dummyData from "./dummy-data.json";
 
 export interface CurrentGoalData {
   todayGoal: number;
   todayProgress: number;
   daysLeft: number;
-  currentGoal: typeof dummyData.goals[0] | undefined;
+  currentGoal: Goal | undefined;
 }
 
 export function useCurrentGoal(): CurrentGoalData {
@@ -15,9 +16,9 @@ export function useCurrentGoal(): CurrentGoalData {
   const todayString = today.toISOString().split('T')[0];
 
   // Find the current goal (the goal that covers today's date)
-  const currentGoal = dummyData.goals.find(goal => {
-    const startDate = new Date(goal.startDate + 'T00:00:00');
-    const endDate = new Date(goal.endDate + 'T00:00:00');
+  const currentGoal = (dummyData.goals as Goal[]).find(goal => {
+    const startDate = parseLocalDate(goal.startDate);
+    const endDate = parseLocalDate(goal.endDate);
     return today >= startDate && today <= endDate;
   });
 

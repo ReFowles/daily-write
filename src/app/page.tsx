@@ -2,7 +2,7 @@ import { StatsCard } from "@/components/StatsCard";
 import { ProgressCard } from "@/components/ProgressCard";
 import { WeeklyCalendar } from "@/components/WeeklyCalendar";
 import { PageHeader } from "@/components/PageHeader";
-import { WritingSession } from "@/lib/date-utils";
+import type { WritingSession } from "@/lib/types";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import dummyData from "@/lib/dummy-data.json";
 

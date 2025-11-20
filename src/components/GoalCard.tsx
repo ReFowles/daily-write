@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { Goal, WritingSession } from "@/app/goals/page";
-import { formatDate } from "@/lib/date-utils";
+import type { Goal, WritingSession } from "@/lib/types";
+import { formatDate, parseLocalDate } from "@/lib/date-utils";
 
 interface GoalCardProps {
   goal: Goal;
@@ -18,8 +18,8 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
   // Calculate stats
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const startDate = new Date(goal.startDate + "T00:00:00");
-  const endDate = new Date(goal.endDate + "T00:00:00");
+  const startDate = parseLocalDate(goal.startDate);
+  const endDate = parseLocalDate(goal.endDate);
   const isCompleted = endDate < now;
   
   const totalDays = Math.ceil(
@@ -28,7 +28,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
 
   // Filter writing sessions that fall within this goal's date range
   const goalSessions = writingSessions.filter((session) => {
-    const sessionDate = new Date(session.date + "T00:00:00");
+    const sessionDate = parseLocalDate(session.date);
     return sessionDate >= startDate && sessionDate <= endDate;
   });
 

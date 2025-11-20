@@ -1,6 +1,7 @@
 import { Card } from "./ui/Card";
 import { DayCard } from "./DayCard";
-import { generateWeekWindow, isToday, isFuture, WritingSession } from "@/lib/date-utils";
+import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
+import type { WritingSession } from "@/lib/types";
 
 interface WeeklyCalendarProps {
   dailyGoal: number;

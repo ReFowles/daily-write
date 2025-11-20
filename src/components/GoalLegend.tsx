@@ -1,0 +1,55 @@
+import type { Goal } from "@/lib/types";
+import type { GoalColor } from "@/lib/constants";
+import { GOAL_LEGEND_CLASSES, GOAL_COLOR_VALUES } from "@/lib/constants";
+import { parseLocalDate } from "@/lib/date-utils";
+
+interface GoalLegendProps {
+  goals: Goal[];
+  goalColorMap: Map<string, GoalColor>;
+  currentYear: number;
+  currentMonth: number;
+}
+
+export function GoalLegend({ goals, goalColorMap, currentYear, currentMonth }: GoalLegendProps) {
+  if (goals.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {goals.map((goal) => {
+        const color = goalColorMap.get(goal.id) || "blue";
+        const colorClasses = GOAL_LEGEND_CLASSES[color];
+
+        const startDate = parseLocalDate(goal.startDate);
+        const endDate = parseLocalDate(goal.endDate);
+        const isInCurrentMonth =
+          (startDate.getFullYear() === currentYear && startDate.getMonth() === currentMonth) ||
+          (endDate.getFullYear() === currentYear && endDate.getMonth() === currentMonth) ||
+          (startDate < new Date(currentYear, currentMonth, 1) && endDate > new Date(currentYear, currentMonth + 1, 0));
+
+        if (!isInCurrentMonth) return null;
+
+        return (
+          <div
+            key={goal.id}
+            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${colorClasses}`}
+          >
+            <div
+              className="h-3 w-3 rounded-full"
+              style={{
+                backgroundColor: GOAL_COLOR_VALUES[color],
+              }}
+            />
+            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-300 seafoam:text-cyan-800 ocean:text-cyan-300">
+              {goal.dailyWordTarget} words/day
+            </span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-500">
+              ({startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

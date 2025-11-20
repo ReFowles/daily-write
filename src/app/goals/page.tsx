@@ -8,19 +8,9 @@ import { CreateGoalForm } from "@/components/CreateGoalForm";
 import { PageHeader } from "@/components/PageHeader";
 import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { useCurrentGoal } from "@/lib/use-current-goal";
+import { parseLocalDate } from "@/lib/date-utils";
+import type { Goal, WritingSession } from "@/lib/types";
 import dummyData from "@/lib/dummy-data.json";
-
-export interface Goal {
-  id: string;
-  startDate: string;
-  endDate: string;
-  dailyWordTarget: number;
-}
-
-export interface WritingSession {
-  date: string;
-  wordCount: number;
-}
 
 export default function GoalsPage() {
   const searchParams = useSearchParams();
@@ -34,26 +24,26 @@ export default function GoalsPage() {
   today.setHours(0, 0, 0, 0);
   
   const currentGoals = goals.filter((goal) => {
-    const startDate = new Date(goal.startDate + "T00:00:00");
-    const endDate = new Date(goal.endDate + "T00:00:00");
+    const startDate = parseLocalDate(goal.startDate);
+    const endDate = parseLocalDate(goal.endDate);
     return startDate <= today && endDate >= today;
   });
   
   const upcomingGoals = goals.filter((goal) => {
-    const startDate = new Date(goal.startDate + "T00:00:00");
+    const startDate = parseLocalDate(goal.startDate);
     return startDate > today;
   });
   
-  const completedGoals = goals.filter((goal) => new Date(goal.endDate + "T00:00:00") < today);
+  const completedGoals = goals.filter((goal) => parseLocalDate(goal.endDate) < today);
 
   const handleCreateGoal = (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
-    const newStart = new Date(goalData.startDate + "T00:00:00");
-    const newEnd = new Date(goalData.endDate + "T00:00:00");
+    const newStart = parseLocalDate(goalData.startDate);
+    const newEnd = parseLocalDate(goalData.endDate);
 
     // Check for overlapping goals
     const hasOverlap = goals.some((goal) => {
-      const existingStart = new Date(goal.startDate + "T00:00:00");
-      const existingEnd = new Date(goal.endDate + "T00:00:00");
+      const existingStart = parseLocalDate(goal.startDate);
+      const existingEnd = parseLocalDate(goal.endDate);
       
       // Two date ranges overlap if:
       // start1 <= end2 AND start2 <= end1

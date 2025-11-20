@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { Goal } from "@/app/goals/page";
+import type { Goal } from "@/lib/types";
 
 interface CreateGoalFormProps {
   onSubmit: (goal: Omit<Goal, "id">, onError: (message: string) => void) => void;

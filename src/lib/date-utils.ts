@@ -1,12 +1,11 @@
-export interface DayData {
-  date: Date;
-  wordsWritten: number;
-  goal: number;
-}
+import type { DayData, WritingSession, CalendarDay } from "./types";
 
-export interface WritingSession {
-  date: string;
-  wordCount: number;
+/**
+ * Parse a date string (YYYY-MM-DD) into a Date object at local midnight
+ * This avoids timezone issues by always treating dates as local
+ */
+export function parseLocalDate(dateString: string): Date {
+  return new Date(dateString + "T00:00:00");
 }
 
 /**
@@ -62,7 +61,7 @@ export function isFuture(date: Date): boolean {
  * Format a date string (YYYY-MM-DD) to a readable format
  */
 export function formatDate(dateString: string): string {
-  const date = new Date(dateString + "T00:00:00");
+  const date = parseLocalDate(dateString);
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -76,7 +75,7 @@ export function formatDate(dateString: string): string {
 export function calculateDaysLeft(endDateString: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const endDate = new Date(endDateString + 'T00:00:00');
+  const endDate = parseLocalDate(endDateString);
   return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
@@ -115,8 +114,8 @@ export function isDateInRange(date: Date, startDateString: string, endDateString
   const checkDate = new Date(date);
   checkDate.setHours(0, 0, 0, 0);
   
-  const startDate = new Date(startDateString + "T00:00:00");
-  const endDate = new Date(endDateString + "T00:00:00");
+  const startDate = parseLocalDate(startDateString);
+  const endDate = parseLocalDate(endDateString);
   
   return checkDate >= startDate && checkDate <= endDate;
 }
@@ -127,7 +126,7 @@ export function isDateInRange(date: Date, startDateString: string, endDateString
 export function isSameDate(date: Date, dateString: string): boolean {
   const checkDate = new Date(date);
   checkDate.setHours(0, 0, 0, 0);
-  const compareDate = new Date(dateString + "T00:00:00");
+  const compareDate = parseLocalDate(dateString);
   return checkDate.getTime() === compareDate.getTime();
 }
 
@@ -139,14 +138,6 @@ export function toDateString(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-export interface CalendarDay {
-  date: Date | null;
-  wordsWritten: number;
-  goal: number | null;
-  isToday: boolean;
-  isFuture: boolean;
 }
 
 /**
