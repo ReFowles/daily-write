@@ -64,7 +64,9 @@ export function DayCard({
     isToday && "font-bold",
     isToday && meetsGoal && "text-white",
     isToday && !meetsGoal && "text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300",
-    !isToday && !isFuture && "text-white"
+    !isToday && !isFuture && meetsGoal && "text-white dark:text-white cherry:text-white ocean:text-white",
+    !isToday && !isFuture && !meetsGoal && hasGoal && "text-white dark:text-white cherry:text-white ocean:text-white",
+    !isToday && !isFuture && !hasGoal && "text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
   );
 
   // Secondary header text styling
@@ -74,7 +76,9 @@ export function DayCard({
     isToday && "font-bold",
     isToday && meetsGoal && "text-white",
     isToday && !meetsGoal && "text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300",
-    !isToday && !isFuture && "text-white"
+    !isToday && !isFuture && meetsGoal && "text-white dark:text-white cherry:text-white ocean:text-white",
+    !isToday && !isFuture && !meetsGoal && hasGoal && "text-white dark:text-white cherry:text-white ocean:text-white",
+    !isToday && !isFuture && !hasGoal && "text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
   );
 
   // Body background styling - unified (from expanded)

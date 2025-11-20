@@ -48,7 +48,9 @@ export function GoalsPageClient() {
     return startDate > today;
   });
   
-  const completedGoals = goals.filter((goal) => parseLocalDate(goal.endDate) < today);
+  const completedGoals = goals
+    .filter((goal) => parseLocalDate(goal.endDate) < today)
+    .sort((a, b) => parseLocalDate(b.endDate).getTime() - parseLocalDate(a.endDate).getTime());
 
   const handleCreateGoal = (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
     const newStart = parseLocalDate(goalData.startDate);
@@ -102,6 +104,8 @@ export function GoalsPageClient() {
             <CreateGoalForm
               onSubmit={handleCreateGoal}
               onCancel={() => setShowCreateForm(false)}
+              goals={goals}
+              writingSessions={writingSessions}
             />
           </div>
         )}

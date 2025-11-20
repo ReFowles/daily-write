@@ -31,21 +31,42 @@ src/
 │   └── write/                    # Writing session page
 │       └── page.tsx
 ├── components/                    # React components
-│   ├── create-goal-form.tsx      # Goal creation form
-│   ├── day-card.tsx              # Day display card
-│   ├── goal-card.tsx             # Goal display card
-│   ├── navigation.tsx            # Main navigation component
-│   ├── progress-card.tsx         # Progress display card
-│   ├── session-card.tsx          # Writing session card
-│   ├── stats-card.tsx            # Statistics display card
-│   ├── theme-toggle.tsx          # Theme switcher component
-│   ├── weekly-calendar.tsx       # Weekly calendar view
-│   ├── writing-stats-header.tsx  # Stats header component
+│   ├── CalendarHeader.tsx        # Calendar header with month navigation
+│   ├── CreateGoalForm.tsx        # Goal creation form
+│   ├── DayCard.tsx               # Day display card
+│   ├── GoalCard.tsx              # Goal display card
+│   ├── GoalsPageClient.tsx       # Client-side goals page logic
+│   ├── MonthlyCalendar.tsx       # Monthly calendar view
+│   ├── Navigation.tsx            # Main navigation component
+│   ├── PageHeader.tsx            # Reusable page header component
+│   ├── ProgressCard.tsx          # Progress display card
+│   ├── SessionCard.tsx           # Writing session card
+│   ├── StatsCard.tsx             # Statistics display card
+│   ├── ThemeToggle.tsx           # Theme switcher component
+│   ├── WeeklyCalendar.tsx        # Weekly calendar view
+│   ├── WritingStatsHeader.tsx    # Stats header component
+│   ├── icons/                    # Icon components
+│   │   ├── ChevronDown.tsx       # Chevron down icon
+│   │   ├── ChevronLeft.tsx       # Chevron left icon
+│   │   ├── ChevronRight.tsx      # Chevron right icon
+│   │   ├── Moon.tsx              # Moon icon for dark theme
+│   │   ├── Sun.tsx               # Sun icon for light theme
+│   │   ├── Trash.tsx             # Trash/delete icon
+│   │   └── index.ts              # Icon exports
 │   └── ui/                       # UI primitives
-│       └── card.tsx              # Base card component
+│       ├── Button.tsx            # Button component
+│       ├── Card.tsx              # Base card component
+│       ├── Input.tsx             # Input component
+│       └── ProgressBar.tsx       # Progress bar component
 └── lib/                          # Utility functions and helpers
+    ├── class-utils.ts            # CSS class utility functions
     ├── date-utils.ts             # Date formatting utilities
-    └── dummy-data.json           # Sample data for development
+    ├── dummy-data.json           # Sample data for development
+    ├── theme-utils.ts            # Theme management utilities
+    ├── types.ts                  # TypeScript type definitions
+    ├── use-calendar-navigation.ts # Custom hook for calendar navigation
+    ├── use-current-goal.ts       # Custom hook for goal management
+    └── use-toggle.ts             # Custom hook for toggle state
 ```
 
 ## Development Workflow
@@ -91,12 +112,36 @@ pnpm lint
 
 **Important: All linting errors must be addressed, not silenced.** Do not use `eslint-disable` comments or suppress warnings unless there is a documented, exceptional reason. Fix the underlying issues instead.
 
+## Architecture & Data Model
+
+### Type System
+
+The application uses a centralized type system defined in `src/lib/types.ts`:
+
+- **Goal**: Represents a writing goal with start/end dates and daily word target
+- **WritingSession**: Tracks words written on a specific date
+- **DayData**: Combines date, words written, and goal for a single day
+- **CalendarDay**: Extended day data with UI state (isToday, isFuture)
+
+All date strings follow `YYYY-MM-DD` format for consistency.
+
+### Custom Hooks
+
+The project uses custom React hooks for reusable logic:
+
+- **use-calendar-navigation.ts**: Handles month/week navigation in calendar views
+- **use-current-goal.ts**: Manages current goal state and filtering
+- **use-toggle.ts**: Generic toggle state management
+
+These hooks encapsulate business logic and make components cleaner and more focused.
+
 ## Code Style Guidelines
 
 ### TypeScript
 
 - Use TypeScript for all new files
-- Define proper types and interfaces; avoid `any`
+- Define proper types and interfaces in `src/lib/types.ts`; avoid `any`
+- Import types from the central types file for consistency
 - Leverage type inference where appropriate
 - Use strict mode settings
 
@@ -107,6 +152,19 @@ pnpm lint
 - Utilize the React Compiler for automatic optimizations
 - Keep components focused and single-purpose
 - Use proper prop typing with TypeScript interfaces
+
+#### Component Organization
+
+Components are organized into three categories:
+
+1. **Feature Components** (`src/components/`): Domain-specific components like `GoalCard`, `WeeklyCalendar`, `CreateGoalForm`
+2. **UI Primitives** (`src/components/ui/`): Reusable base components like `Button`, `Card`, `Input`, `ProgressBar`
+3. **Icons** (`src/components/icons/`): SVG icon components with consistent sizing and theming
+
+When creating new components:
+- Place domain-specific components in the root components folder
+- Place reusable UI primitives in the `ui/` folder
+- Place icon components in the `icons/` folder and export from `icons/index.ts`
 
 ### File Naming
 
