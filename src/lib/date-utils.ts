@@ -69,3 +69,13 @@ export function formatDate(dateString: string): string {
     day: "numeric",
   });
 }
+
+/**
+ * Calculate the number of days remaining until a goal end date
+ */
+export function calculateDaysLeft(endDateString: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(endDateString + 'T00:00:00');
+  return Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}

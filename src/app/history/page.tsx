@@ -3,8 +3,12 @@
 import { StatsCard } from "@/components/stats-card";
 import { SessionCard } from "@/components/session-card";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
+import { useCurrentGoal } from "@/lib/use-current-goal";
 
 export default function HistoryPage() {
+  const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+
   // Mock data - will be replaced with real data later
   const sessions = [
     {
@@ -45,14 +49,15 @@ export default function HistoryPage() {
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
-            Writing History
-          </h1>
-          <p className="mt-2 text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
-            Review your past writing sessions
-          </p>
-        </div>
+        <PageHeader
+          title="Writing History"
+          description="Review your past writing sessions"
+          dailyGoal={todayGoal}
+          daysLeft={daysLeft}
+          writtenToday={todayProgress}
+          goalStartDate={currentGoal?.startDate}
+          goalEndDate={currentGoal?.endDate}
+        />
 
         {/* Summary Stats */}
         <div className="mb-8 grid gap-6 sm:grid-cols-3">
