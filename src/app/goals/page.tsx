@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card } from "@/components/ui/card";
-import { GoalCard } from "@/components/goal-card";
-import { CreateGoalForm } from "@/components/create-goal-form";
-import { PageHeader } from "@/components/page-header";
-import { MonthlyCalendar } from "@/components/monthly-calendar";
+import { Card } from "@/components/ui/Card";
+import { GoalCard } from "@/components/GoalCard";
+import { CreateGoalForm } from "@/components/CreateGoalForm";
+import { PageHeader } from "@/components/PageHeader";
+import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import dummyData from "@/lib/dummy-data.json";
 

@@ -1,7 +1,7 @@
-import { StatsCard } from "@/components/stats-card";
-import { ProgressCard } from "@/components/progress-card";
-import { WeeklyCalendar } from "@/components/weekly-calendar";
-import { PageHeader } from "@/components/page-header";
+import { StatsCard } from "@/components/StatsCard";
+import { ProgressCard } from "@/components/ProgressCard";
+import { WeeklyCalendar } from "@/components/WeeklyCalendar";
+import { PageHeader } from "@/components/PageHeader";
 import { WritingSession } from "@/lib/date-utils";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import dummyData from "@/lib/dummy-data.json";

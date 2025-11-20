@@ -1,9 +1,9 @@
 "use client";
 
-import { StatsCard } from "@/components/stats-card";
-import { SessionCard } from "@/components/session-card";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
+import { StatsCard } from "@/components/StatsCard";
+import { SessionCard } from "@/components/SessionCard";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 
 export default function HistoryPage() {

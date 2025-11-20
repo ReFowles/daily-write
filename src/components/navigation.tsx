@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import ThemeToggle from "./theme-toggle";
+import ThemeToggle from "./ThemeToggle";
 import iconSvg from "../app/icon.svg";
 
 export default function Navigation() {

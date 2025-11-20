@@ -110,9 +110,9 @@ pnpm lint
 
 ### File Naming
 
-- Components: PascalCase (e.g., `ThemeToggle.tsx`)
-- Utilities: kebab-case (e.g., `date-utils.ts`)
-- Pages: kebab-case with Next.js conventions (e.g., `page.tsx`, `layout.tsx`)
+- **Components**: CapitalCamelCase matching the component name (e.g., `ThemeToggle.tsx`, `MonthlyCalendar.tsx`, `CreateGoalForm.tsx`)
+- **Actions, hooks, utilities**: kebab-case (e.g., `date-utils.ts`, `use-current-goal.ts`, `dummy-data.json`)
+- **Pages**: kebab-case with Next.js conventions (e.g., `page.tsx`, `layout.tsx`)
 
 ### Styling
 

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 
 export default function WritePage() {

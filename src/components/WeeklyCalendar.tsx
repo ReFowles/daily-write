@@ -1,5 +1,5 @@
-import { Card } from "./ui/card";
-import { DayCard } from "./day-card";
+import { Card } from "./ui/Card";
+import { DayCard } from "./DayCard";
 import { generateWeekWindow, isToday, isFuture, WritingSession } from "@/lib/date-utils";
 
 interface WeeklyCalendarProps {

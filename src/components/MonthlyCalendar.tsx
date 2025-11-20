@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "./ui/card";
-import { CalendarDay } from "./calendar-day";
+import { Card } from "./ui/Card";
+import { CalendarDay } from "./CalendarDay";
 import { Goal, WritingSession } from "@/app/goals/page";
 import {
   generateMonthGrid,

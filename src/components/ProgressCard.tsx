@@ -1,5 +1,5 @@
-import { Card } from "./ui/card";
-import { ProgressBar } from "./ui/progress-bar";
+import { Card } from "./ui/Card";
+import { ProgressBar } from "./ui/ProgressBar";
 
 interface ProgressCardProps {
   title: string;

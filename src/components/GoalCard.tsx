@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { ProgressBar } from "@/components/ui/progress-bar";
+import { Card } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Goal, WritingSession } from "@/app/goals/page";
 import { formatDate } from "@/lib/date-utils";
 
