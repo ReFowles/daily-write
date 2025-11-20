@@ -4,34 +4,52 @@ import { ProgressCard } from "@/components/progress-card";
 import { WeeklyCalendar } from "@/components/weekly-calendar";
 import { Card } from "@/components/ui/card";
 import { WritingSession } from "@/lib/date-utils";
+import dummyData from "@/lib/dummy-data.json";
 
 export default function Dashboard() {
-  // Mock data - will be replaced with real data later
-  const todayGoal = 500;
-  const todayProgress = 200;
-  const streak = 0;
-  const totalWords = 0;
-
-  // Mock data for the calendar - array of writing sessions
+  // Get today's date
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const writingSessions: WritingSession[] = [
-    // Example: 2 days ago had 450 words (didn't meet goal)
-    { 
-      date: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      wordCount: 450
-    },
-    // Yesterday had 650 words (exceeded goal)
-    { 
-      date: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      wordCount: 650
-    },
-    // Today has todayProgress
-    { 
-      date: today.toISOString().split('T')[0],
-      wordCount: todayProgress
-    },
-  ];
+  const todayString = today.toISOString().split('T')[0];
+
+  // Find the current goal (the goal that covers today's date)
+  const currentGoal = dummyData.goals.find(goal => {
+    const startDate = new Date(goal.startDate + 'T00:00:00');
+    const endDate = new Date(goal.endDate + 'T00:00:00');
+    return today >= startDate && today <= endDate;
+  });
+
+  const todayGoal = currentGoal?.dailyWordTarget || 500;
+
+  // Find today's writing session
+  const todaySession = dummyData.writingSessions.find(
+    session => session.date === todayString
+  );
+  const todayProgress = todaySession?.wordCount || 0;
+
+  // Calculate total words
+  const totalWords = dummyData.writingSessions.reduce(
+    (sum, session) => sum + session.wordCount,
+    0
+  );
+
+  // Calculate current streak (consecutive days with writing, going backwards from today)
+  let streak = 0;
+  const checkDate = new Date(today);
+  while (true) {
+    const dateString = checkDate.toISOString().split('T')[0];
+    const session = dummyData.writingSessions.find(s => s.date === dateString);
+    
+    if (session && session.wordCount > 0) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  // Use all writing sessions from dummy data for the calendar
+  const writingSessions: WritingSession[] = dummyData.writingSessions;
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
