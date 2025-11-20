@@ -1,6 +1,8 @@
 import { Card } from "./ui/Card";
 import { DayCard } from "./DayCard";
 import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 import type { WritingSession, Goal } from "@/lib/types";
 
 interface WeeklyCalendarProps {
@@ -13,7 +15,7 @@ export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) 
 
   return (
     <Card className="p-6">
-      <h2 className="mb-6 text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+      <h2 className={cn("mb-6 text-xl font-semibold", themeClasses.text.primary)}>
         This Week
       </h2>
       <div className="grid grid-cols-5 gap-3">

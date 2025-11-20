@@ -1,4 +1,7 @@
 import { Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 
 interface SessionCardProps {
   title: string;
@@ -11,11 +14,11 @@ interface SessionCardProps {
 
 export function SessionCard({ title, date, wordCount, goalMet, preview, onView }: SessionCardProps) {
   return (
-    <Card className="p-6 transition-shadow hover:shadow-md strawberry:hover:shadow-pink-200 cherry:hover:shadow-rose-900 seafoam:hover:shadow-cyan-200 ocean:hover:shadow-cyan-900">
+    <Card className={cn("p-6 transition-shadow", themeClasses.shadow.hover)}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+            <h3 className={cn("text-xl font-semibold", themeClasses.text.primary)}>
               {title}
             </h3>
             {goalMet && (
@@ -24,7 +27,7 @@ export function SessionCard({ title, date, wordCount, goalMet, preview, onView }
               </span>
             )}
           </div>
-          <div className="mt-1 flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+          <div className={cn("mt-1 flex items-center gap-4 text-sm", themeClasses.text.secondary)}>
             <span>{new Date(date).toLocaleDateString("en-US", { 
               weekday: "long",
               year: "numeric",
@@ -34,16 +37,13 @@ export function SessionCard({ title, date, wordCount, goalMet, preview, onView }
             <span>•</span>
             <span className="font-medium">{wordCount} words</span>
           </div>
-          <p className="mt-3 text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-400 seafoam:text-cyan-800 ocean:text-cyan-400">
+          <p className={cn("mt-3", themeClasses.text.body)}>
             {preview}
           </p>
         </div>
-        <button 
-          onClick={onView}
-          className="ml-4 rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 strawberry:border-rose-300 strawberry:text-rose-700 strawberry:hover:bg-rose-50 cherry:border-rose-800 cherry:text-rose-300 cherry:hover:bg-rose-900 seafoam:border-cyan-300 seafoam:text-cyan-700 seafoam:hover:bg-cyan-50 ocean:border-cyan-800 ocean:text-cyan-300 ocean:hover:bg-cyan-900"
-        >
+        <Button variant="secondary" onClick={onView} className="ml-4">
           View
-        </button>
+        </Button>
       </div>
     </Card>
   );

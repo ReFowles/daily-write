@@ -2,6 +2,8 @@ import type { Goal } from "@/lib/types";
 import type { GoalColor } from "@/lib/constants";
 import { GOAL_LEGEND_CLASSES, GOAL_COLOR_VALUES } from "@/lib/constants";
 import { parseLocalDate } from "@/lib/date-utils";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 
 interface GoalLegendProps {
   goals: Goal[];
@@ -41,9 +43,11 @@ export function GoalLegend({ goals, goalColorMap, currentYear, currentMonth }: G
       {visibleGoals.map((goal) => {
         const color = goalColorMap.get(goal.id) || "blue";
         const colorClasses = GOAL_LEGEND_CLASSES[color];
-
         const startDate = parseLocalDate(goal.startDate);
         const endDate = parseLocalDate(goal.endDate);
+        const dateRangeText = startDate.getTime() === endDate.getTime()
+          ? `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
+          : `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`;
 
         return (
           <div
@@ -56,15 +60,11 @@ export function GoalLegend({ goals, goalColorMap, currentYear, currentMonth }: G
                 backgroundColor: GOAL_COLOR_VALUES[color],
               }}
             />
-            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-300 seafoam:text-cyan-800 ocean:text-cyan-300">
+            <span className={cn("text-xs font-medium", themeClasses.text.link)}>
               {goal.dailyWordTarget} words/day
             </span>
-            <span className="text-xs text-zinc-500 dark:text-zinc-500">
-              {startDate.getTime() === endDate.getTime() ? (
-                `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
-              ) : (
-                `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
-              )}
+            <span className={cn("text-xs", themeClasses.text.tertiary)}>
+              {dateRangeText}
             </span>
           </div>
         );

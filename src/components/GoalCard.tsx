@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Button } from "@/components/ui/Button";
+import { Trash, ChevronDown } from "@/components/icons";
+import { useToggle } from "@/lib/use-toggle";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 
@@ -13,7 +17,7 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
-  const [showLoggedDays, setShowLoggedDays] = useState(false);
+  const { isOpen: showLoggedDays, toggle: toggleLoggedDays } = useToggle(false);
 
   // Calculate stats
   const now = new Date();
@@ -56,8 +60,8 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+          <div className="flex items-center gap-3">
+            <h3 className={cn("text-xl font-semibold", themeClasses.text.primary)}>
                 {formatDate(goal.startDate)} - {formatDate(goal.endDate)}
               </h3>
               {isCompleted && (
@@ -70,33 +74,27 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
                 </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+            <p className={cn("mt-1 text-sm", themeClasses.text.secondary)}>
               {goal.dailyWordTarget} words/day for {totalDays} days
             </p>
           </div>
-          <button
+          <Button
+            variant="icon"
             onClick={() => onDelete(goal.id)}
             className="text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
             aria-label="Delete goal"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+            <Trash />
+          </Button>
         </div>
 
         {/* Progress Bar */}
         <div>
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+            <span className={cn("font-medium", themeClasses.text.primary)}>
               {totalWordsWritten.toLocaleString()} / {targetTotalWords.toLocaleString()} words • Avg: {averageWordsPerDay} words/day
             </span>
-            <span className="text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+            <span className={themeClasses.text.secondary}>
               {Math.round(progress)}%
             </span>
           </div>
@@ -105,20 +103,13 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
 
         {/* Logged Days */}
         {daysLogged > 0 && (
-          <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+          <div className={cn("border-t pt-4", themeClasses.border.divider)}>
             <button
-              onClick={() => setShowLoggedDays(!showLoggedDays)}
-              className="mb-2 flex w-full items-center justify-between text-sm font-medium text-zinc-900 transition-colors hover:text-zinc-700 dark:text-zinc-50 dark:hover:text-zinc-300 strawberry:text-rose-900 strawberry:hover:text-rose-700 cherry:text-rose-300 cherry:hover:text-rose-400 seafoam:text-cyan-900 seafoam:hover:text-cyan-700 ocean:text-cyan-300 ocean:hover:text-cyan-400"
+              onClick={toggleLoggedDays}
+              className={cn("mb-2 flex w-full items-center justify-between text-sm font-medium transition-colors", themeClasses.text.primary, "hover:opacity-70")}
             >
               <span>Logged Days ({daysLogged})</span>
-              <svg
-                className={`h-4 w-4 transition-transform ${showLoggedDays ? "rotate-180" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className={`transition-transform ${showLoggedDays ? "rotate-180" : ""}`} />
             </button>
             {showLoggedDays && (
               <div className="flex flex-wrap gap-2">

@@ -230,3 +230,36 @@ export function getMonthName(month: number): string {
   ];
   return monthNames[month];
 }
+
+/**
+ * Format a date to show the day of week (e.g., "Mon", "Tue")
+ */
+export function formatDayOfWeek(date: Date): string {
+  return date.toLocaleDateString("en-US", { weekday: "short" });
+}
+
+/**
+ * Format a date to show month/day (e.g., "1/15")
+ */
+export function formatMonthDay(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+/**
+ * Format a date range from two date strings (YYYY-MM-DD format)
+ * Returns a readable range like "1/15 – 1/20" or just "1/15" if same date
+ */
+export function formatDateRange(startDateString: string, endDateString: string): string {
+  const start = parseLocalDate(startDateString);
+  const end = parseLocalDate(endDateString);
+  
+  const startFormatted = formatMonthDay(start);
+  const endFormatted = formatMonthDay(end);
+  
+  // If start and end are the same, only show one date
+  if (startFormatted === endFormatted) {
+    return startFormatted;
+  }
+  
+  return `${startFormatted} – ${endFormatted}`;
+}

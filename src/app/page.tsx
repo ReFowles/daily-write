@@ -2,6 +2,8 @@ import { StatsCard } from "@/components/StatsCard";
 import { ProgressCard } from "@/components/ProgressCard";
 import { WeeklyCalendar } from "@/components/WeeklyCalendar";
 import { PageHeader } from "@/components/PageHeader";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 import type { WritingSession } from "@/lib/types";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import dummyData from "@/lib/dummy-data.json";
@@ -49,7 +51,7 @@ export default function Dashboard() {
   const writingSessions: WritingSession[] = dummyData.writingSessions;
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
+    <main className={cn("min-h-screen", themeClasses.background.page)}>
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <PageHeader
           title="DailyWrite"

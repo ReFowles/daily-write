@@ -1,3 +1,8 @@
+import { ChevronRight, ChevronLeft } from "./icons";
+import { Button } from "./ui/Button";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
+
 interface CalendarHeaderProps {
   monthName: string;
   year: number;
@@ -35,22 +40,8 @@ export function CalendarHeader({
       aria-label={isExpanded ? "Collapse calendar" : "Expand calendar"}
     >
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
-            aria-hidden="true"
-          >
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
+        <div className={cn("flex items-center gap-2 text-xl font-semibold", themeClasses.text.primary)}>
+          <ChevronRight className={`transition-transform ${isExpanded ? "rotate-90" : ""}`} />
           {monthName} {year}
         </div>
         
@@ -65,55 +56,15 @@ export function CalendarHeader({
         aria-label="Calendar navigation"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onPreviousMonth}
-          className="rounded-md p-2 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 strawberry:hover:bg-rose-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900"
-          aria-label="Previous month"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-300 seafoam:text-cyan-800 ocean:text-cyan-300"
-            aria-hidden="true"
-          >
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
-        </button>
-        <button
-          onClick={onToday}
-          className="rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 strawberry:hover:bg-rose-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900 text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-300 seafoam:text-cyan-800 ocean:text-cyan-300"
-          aria-label="Go to today"
-        >
-          Today
-        </button>
-        <button
-          onClick={onNextMonth}
-          className="rounded-md p-2 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 strawberry:hover:bg-rose-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900"
-          aria-label="Next month"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-300 seafoam:text-cyan-800 ocean:text-cyan-300"
-            aria-hidden="true"
-          >
-            <polyline points="9 18 15 12 9 6"></polyline>
-          </svg>
-        </button>
+        <Button variant="icon" onClick={onPreviousMonth} aria-label="Previous month">
+          <ChevronLeft className={themeClasses.text.link} />
+        </Button>
+        <Button variant="icon" onClick={onToday} aria-label="Go to today" className="px-3">
+          <span className={cn("text-sm", themeClasses.text.link)}>Today</span>
+        </Button>
+        <Button variant="icon" onClick={onNextMonth} aria-label="Next month">
+          <ChevronRight className={themeClasses.text.link} />
+        </Button>
       </div>
     </div>
   );

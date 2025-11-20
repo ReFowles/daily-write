@@ -1,5 +1,7 @@
 import { Card } from "./ui/Card";
 import { ProgressBar } from "./ui/ProgressBar";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 
 interface ProgressCardProps {
   title: string;
@@ -14,16 +16,16 @@ export function ProgressCard({ title, current, goal, message }: ProgressCardProp
   return (
     <Card className="p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+        <h2 className={cn("text-xl font-semibold", themeClasses.text.primary)}>
           {title}
         </h2>
-        <span className="text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+        <span className={cn("text-sm", themeClasses.text.secondary)}>
           {Math.round(percentage)}%
         </span>
       </div>
       <ProgressBar value={percentage} size="lg" className="w-full" />
       {message && (
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+        <p className={cn("mt-2 text-sm", themeClasses.text.secondary)}>
           {message}
         </p>
       )}

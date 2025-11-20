@@ -1,4 +1,5 @@
 import { cn } from "@/lib/class-utils";
+import { formatDayOfWeek, formatMonthDay } from "@/lib/date-utils";
 
 interface DayCardProps {
   variant?: "compact" | "expanded";
@@ -104,14 +105,6 @@ export function DayCard({
     !meetsGoal && isToday && "text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300",
     !meetsGoal && !isToday && "text-red-700/70 dark:text-red-400/70 cherry:text-red-400/70 ocean:text-red-400/70"
   );
-
-  const formatDayOfWeek = (date: Date) => {
-    return date.toLocaleDateString("en-US", { weekday: "short" });
-  };
-
-  const formatMonthDay = (date: Date) => {
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  };
 
   return (
     <div

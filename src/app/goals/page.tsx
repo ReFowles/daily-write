@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useToggle } from "@/lib/use-toggle";
+import { ChevronRight } from "@/components/icons";
+import { Button } from "@/components/ui/Button";
+import { themeClasses } from "@/lib/theme-utils";
+import { cn } from "@/lib/class-utils";
 import { Card } from "@/components/ui/Card";
 import { GoalCard } from "@/components/GoalCard";
 import { CreateGoalForm } from "@/components/CreateGoalForm";
@@ -15,11 +20,11 @@ import dummyData from "@/lib/dummy-data.json";
 export default function GoalsPage() {
   const searchParams = useSearchParams();
   const shouldShowForm = searchParams.get('new') === 'true';
-  const [showCreateForm, setShowCreateForm] = useState(shouldShowForm);
+  const { isOpen: showCreateForm, setIsOpen: setShowCreateForm } = useToggle(shouldShowForm);
   const [goals, setGoals] = useState<Goal[]>(dummyData.goals as unknown as Goal[]);
   const [writingSessions] = useState<WritingSession[]>(dummyData.writingSessions as unknown as WritingSession[]);
-  const [showCompletedGoals, setShowCompletedGoals] = useState(true);
-  const [showUpcomingGoals, setShowUpcomingGoals] = useState(true);
+  const { isOpen: showCompletedGoals, toggle: toggleCompletedGoals } = useToggle(true);
+  const { isOpen: showUpcomingGoals, toggle: toggleUpcomingGoals } = useToggle(true);
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
 
   const today = new Date();
@@ -70,7 +75,7 @@ export default function GoalsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
+    <main className={cn("min-h-screen", themeClasses.background.page)}>
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <PageHeader
           title="Writing Goals"
@@ -104,7 +109,7 @@ export default function GoalsPage() {
         {/* Current Goal */}
         {currentGoals.length > 0 && (
           <div className="mb-8">
-            <h2 className="mb-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+            <h2 className={cn("mb-4 text-2xl font-semibold", themeClasses.text.primary)}>
               Current Goal
             </h2>
             <div className="space-y-4">
@@ -128,26 +133,12 @@ export default function GoalsPage() {
               {completedGoals.length > 0 && (
                 <>
                   <button
-                    onClick={() => setShowCompletedGoals(!showCompletedGoals)}
-                    className="mb-4 flex w-full items-center gap-2 text-2xl font-semibold text-zinc-900 transition-opacity hover:opacity-70 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
+                    onClick={toggleCompletedGoals}
+                    className={cn("mb-4 flex w-full items-center gap-2 text-2xl font-semibold transition-opacity hover:opacity-70", themeClasses.text.primary)}
                     aria-expanded={showCompletedGoals}
                     aria-label={showCompletedGoals ? "Collapse completed goals" : "Expand completed goals"}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`transition-transform ${showCompletedGoals ? "rotate-90" : ""}`}
-                      aria-hidden="true"
-                    >
-                      <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                    <ChevronRight className={`transition-transform ${showCompletedGoals ? "rotate-90" : ""}`} />
                     Completed Goals ({completedGoals.length})
                   </button>
                   {showCompletedGoals && (
@@ -171,26 +162,12 @@ export default function GoalsPage() {
               {upcomingGoals.length > 0 && (
                 <>
                   <button
-                    onClick={() => setShowUpcomingGoals(!showUpcomingGoals)}
-                    className="mb-4 flex w-full items-center gap-2 text-2xl font-semibold text-zinc-900 transition-opacity hover:opacity-70 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
+                    onClick={toggleUpcomingGoals}
+                    className={cn("mb-4 flex w-full items-center gap-2 text-2xl font-semibold transition-opacity hover:opacity-70", themeClasses.text.primary)}
                     aria-expanded={showUpcomingGoals}
                     aria-label={showUpcomingGoals ? "Collapse upcoming goals" : "Expand upcoming goals"}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`transition-transform ${showUpcomingGoals ? "rotate-90" : ""}`}
-                      aria-hidden="true"
-                    >
-                      <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
+                    <ChevronRight className={`transition-transform ${showUpcomingGoals ? "rotate-90" : ""}`} />
                     Upcoming Goals ({upcomingGoals.length})
                   </button>
                   {showUpcomingGoals && (
@@ -214,18 +191,19 @@ export default function GoalsPage() {
         {/* Empty State */}
         {goals.length === 0 && (
           <Card className="p-12 text-center">
-            <h3 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+            <h3 className={cn("mb-2 text-xl font-semibold", themeClasses.text.primary)}>
               No goals yet
             </h3>
-            <p className="mb-6 text-lg text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+            <p className={cn("mb-6 text-lg", themeClasses.text.secondary)}>
               Create your first writing goal to start tracking your progress
             </p>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               onClick={() => setShowCreateForm(true)}
-              className="inline-flex items-center justify-center rounded-md bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 strawberry:bg-linear-to-r strawberry:from-rose-500 strawberry:to-pink-500 strawberry:hover:from-rose-600 strawberry:hover:to-pink-600 cherry:bg-linear-to-r cherry:from-rose-700 cherry:to-pink-700 cherry:hover:from-rose-600 cherry:hover:to-pink-600 seafoam:bg-linear-to-r seafoam:from-cyan-500 seafoam:to-blue-500 seafoam:hover:from-cyan-600 seafoam:hover:to-blue-600 ocean:bg-linear-to-r ocean:from-cyan-700 ocean:to-blue-700 ocean:hover:from-cyan-600 ocean:hover:to-blue-600"
             >
               Create Your First Goal
-            </button>
+            </Button>
           </Card>
         )}
       </div>
