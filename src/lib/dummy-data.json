@@ -2,50 +2,56 @@
   "goals": [
     {
       "id": "1",
-      "startDate": "2025-09-15",
-      "endDate": "2025-09-22",
+      "startDate": "2025-11-02",
+      "endDate": "2025-11-02",
       "dailyWordTarget": 400
     },
     {
       "id": "2",
-      "startDate": "2025-09-25",
-      "endDate": "2025-10-05",
+      "startDate": "2025-11-03",
+      "endDate": "2025-11-03",
       "dailyWordTarget": 450
     },
     {
       "id": "3",
-      "startDate": "2025-10-08",
-      "endDate": "2025-10-18",
+      "startDate": "2025-11-04",
+      "endDate": "2025-11-04",
       "dailyWordTarget": 500
     },
     {
       "id": "4",
-      "startDate": "2025-10-20",
-      "endDate": "2025-11-02",
+      "startDate": "2025-11-05",
+      "endDate": "2025-11-05",
       "dailyWordTarget": 600
     },
     {
       "id": "5",
-      "startDate": "2025-11-04",
-      "endDate": "2025-11-11",
+      "startDate": "2025-11-06",
+      "endDate": "2025-11-06",
       "dailyWordTarget": 750
     },
     {
       "id": "6",
-      "startDate": "2025-11-13",
-      "endDate": "2025-11-25",
+      "startDate": "2025-11-07",
+      "endDate": "2025-11-07",
       "dailyWordTarget": 800
     },
     {
       "id": "7",
-      "startDate": "2025-11-27",
-      "endDate": "2025-12-10",
+      "startDate": "2025-11-08",
+      "endDate": "2025-11-08",
       "dailyWordTarget": 900
     },
     {
       "id": "8",
-      "startDate": "2025-12-15",
-      "endDate": "2025-12-31",
+      "startDate": "2025-11-09",
+      "endDate": "2025-11-09",
+      "dailyWordTarget": 1000
+    },
+    {
+      "id": "9",
+      "startDate": "2025-11-20",
+      "endDate": "2025-11-20",
       "dailyWordTarget": 1000
     }
   ],
@@ -108,6 +114,7 @@
     { "date": "2025-11-16", "wordCount": 785 },
     { "date": "2025-11-17", "wordCount": 805 },
     { "date": "2025-11-18", "wordCount": 795 },
-    { "date": "2025-11-19", "wordCount": 815 }
+    { "date": "2025-11-19", "wordCount": 815 },
+    { "date": "2025-11-20", "wordCount": 2000 }
   ]
 }

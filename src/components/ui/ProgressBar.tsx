@@ -5,7 +5,7 @@ interface ProgressBarProps {
   size?: "sm" | "md" | "lg";
   /** Optional CSS class name */
   className?: string;
-  /** Whether the goal is completed (uses green color) */
+  /** Whether the goal is completed (uses green color if goal was met, red if not) */
   isCompleted?: boolean;
 }
 
@@ -24,7 +24,9 @@ export function ProgressBar({
   };
 
   const fillColorClasses = isCompleted
-    ? "bg-green-500 dark:bg-green-600"
+    ? percentage >= 100
+      ? "bg-green-500 dark:bg-green-600"
+      : "bg-red-500 dark:bg-red-600"
     : "bg-blue-600 strawberry:bg-linear-to-r strawberry:from-rose-500 strawberry:to-pink-500 cherry:bg-linear-to-r cherry:from-rose-600 cherry:to-pink-600 seafoam:bg-linear-to-r seafoam:from-cyan-500 seafoam:to-blue-500 ocean:bg-linear-to-r ocean:from-cyan-600 ocean:to-blue-600";
 
   return (

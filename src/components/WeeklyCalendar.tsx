@@ -1,15 +1,15 @@
 import { Card } from "./ui/Card";
 import { DayCard } from "./DayCard";
 import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
-import type { WritingSession } from "@/lib/types";
+import type { WritingSession, Goal } from "@/lib/types";
 
 interface WeeklyCalendarProps {
-  dailyGoal: number;
+  goals: Goal[];
   writingSessions: WritingSession[];
 }
 
-export function WeeklyCalendar({ dailyGoal, writingSessions }: WeeklyCalendarProps) {
-  const days = generateWeekWindow(dailyGoal, writingSessions);
+export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) {
+  const days = generateWeekWindow(goals, writingSessions);
 
   return (
     <Card className="p-6">
@@ -20,6 +20,7 @@ export function WeeklyCalendar({ dailyGoal, writingSessions }: WeeklyCalendarPro
         {days.map((day, index) => (
           <DayCard
             key={index}
+            variant="expanded"
             date={day.date}
             wordsWritten={day.wordsWritten}
             goal={day.goal}

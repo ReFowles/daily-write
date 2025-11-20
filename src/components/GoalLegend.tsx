@@ -15,20 +15,35 @@ export function GoalLegend({ goals, goalColorMap, currentYear, currentMonth }: G
     return null;
   }
 
+  // Filter and sort goals by start date (earliest to latest)
+  const visibleGoals = goals
+    .filter((goal) => {
+      const startDate = parseLocalDate(goal.startDate);
+      const endDate = parseLocalDate(goal.endDate);
+      const isInCurrentMonth =
+        (startDate.getFullYear() === currentYear && startDate.getMonth() === currentMonth) ||
+        (endDate.getFullYear() === currentYear && endDate.getMonth() === currentMonth) ||
+        (startDate < new Date(currentYear, currentMonth, 1) && endDate > new Date(currentYear, currentMonth + 1, 0));
+      return isInCurrentMonth;
+    })
+    .sort((a, b) => {
+      const dateA = parseLocalDate(a.startDate);
+      const dateB = parseLocalDate(b.startDate);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+  if (visibleGoals.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
-      {goals.map((goal) => {
+      {visibleGoals.map((goal) => {
         const color = goalColorMap.get(goal.id) || "blue";
         const colorClasses = GOAL_LEGEND_CLASSES[color];
 
         const startDate = parseLocalDate(goal.startDate);
         const endDate = parseLocalDate(goal.endDate);
-        const isInCurrentMonth =
-          (startDate.getFullYear() === currentYear && startDate.getMonth() === currentMonth) ||
-          (endDate.getFullYear() === currentYear && endDate.getMonth() === currentMonth) ||
-          (startDate < new Date(currentYear, currentMonth, 1) && endDate > new Date(currentYear, currentMonth + 1, 0));
-
-        if (!isInCurrentMonth) return null;
 
         return (
           <div
@@ -45,7 +60,11 @@ export function GoalLegend({ goals, goalColorMap, currentYear, currentMonth }: G
               {goal.dailyWordTarget} words/day
             </span>
             <span className="text-xs text-zinc-500 dark:text-zinc-500">
-              ({startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})
+              {startDate.getTime() === endDate.getTime() ? (
+                `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
+              ) : (
+                `(${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`
+              )}
             </span>
           </div>
         );

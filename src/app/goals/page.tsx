@@ -18,6 +18,8 @@ export default function GoalsPage() {
   const [showCreateForm, setShowCreateForm] = useState(shouldShowForm);
   const [goals, setGoals] = useState<Goal[]>(dummyData.goals as unknown as Goal[]);
   const [writingSessions] = useState<WritingSession[]>(dummyData.writingSessions as unknown as WritingSession[]);
+  const [showCompletedGoals, setShowCompletedGoals] = useState(true);
+  const [showUpcomingGoals, setShowUpcomingGoals] = useState(true);
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
 
   const today = new Date();
@@ -125,19 +127,41 @@ export default function GoalsPage() {
             <div>
               {completedGoals.length > 0 && (
                 <>
-                  <h2 className="mb-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+                  <button
+                    onClick={() => setShowCompletedGoals(!showCompletedGoals)}
+                    className="mb-4 flex w-full items-center gap-2 text-2xl font-semibold text-zinc-900 transition-opacity hover:opacity-70 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
+                    aria-expanded={showCompletedGoals}
+                    aria-label={showCompletedGoals ? "Collapse completed goals" : "Expand completed goals"}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`transition-transform ${showCompletedGoals ? "rotate-90" : ""}`}
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
                     Completed Goals ({completedGoals.length})
-                  </h2>
-                  <div className="space-y-4">
-                    {completedGoals.map((goal) => (
-                      <GoalCard
-                        key={goal.id}
-                        goal={goal}
-                        writingSessions={writingSessions}
-                        onDelete={handleDeleteGoal}
-                      />
-                    ))}
-                  </div>
+                  </button>
+                  {showCompletedGoals && (
+                    <div className="space-y-4">
+                      {completedGoals.map((goal) => (
+                        <GoalCard
+                          key={goal.id}
+                          goal={goal}
+                          writingSessions={writingSessions}
+                          onDelete={handleDeleteGoal}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -146,19 +170,41 @@ export default function GoalsPage() {
             <div>
               {upcomingGoals.length > 0 && (
                 <>
-                  <h2 className="mb-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
+                  <button
+                    onClick={() => setShowUpcomingGoals(!showUpcomingGoals)}
+                    className="mb-4 flex w-full items-center gap-2 text-2xl font-semibold text-zinc-900 transition-opacity hover:opacity-70 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300"
+                    aria-expanded={showUpcomingGoals}
+                    aria-label={showUpcomingGoals ? "Collapse upcoming goals" : "Expand upcoming goals"}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className={`transition-transform ${showUpcomingGoals ? "rotate-90" : ""}`}
+                      aria-hidden="true"
+                    >
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
                     Upcoming Goals ({upcomingGoals.length})
-                  </h2>
-                  <div className="space-y-4">
-                    {upcomingGoals.map((goal) => (
-                      <GoalCard
-                        key={goal.id}
-                        goal={goal}
-                        writingSessions={writingSessions}
-                        onDelete={handleDeleteGoal}
-                      />
-                    ))}
-                  </div>
+                  </button>
+                  {showUpcomingGoals && (
+                    <div className="space-y-4">
+                      {upcomingGoals.map((goal) => (
+                        <GoalCard
+                          key={goal.id}
+                          goal={goal}
+                          writingSessions={writingSessions}
+                          onDelete={handleDeleteGoal}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>

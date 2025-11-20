@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "./ui/Card";
-import { CalendarDay } from "./CalendarDay";
+import { DayCard } from "./DayCard";
 import { CalendarHeader } from "./CalendarHeader";
 import { GoalLegend } from "./GoalLegend";
 import type { Goal, WritingSession } from "@/lib/types";
@@ -116,33 +116,75 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
           {/* Calendar grid */}
           <div className="space-y-2" role="grid" aria-label="Monthly calendar view">
             {monthGrid.map((week, weekIndex) => (
-              <div key={weekIndex} className="grid grid-cols-7 gap-x-4 gap-y-2" role="row">
-                {week.map((day, dayIndex) => {
-                  const goal = getGoalForDate(day.date);
-                  const isInGoalRange = goal !== null;
-                  const goalColor = goal ? goalColorMap.get(goal.id) || "blue" : "blue";
-                  const isGoalStart = goal && day.date ? isSameDate(day.date, goal.startDate) : false;
-                  const isGoalEnd = goal && day.date ? isSameDate(day.date, goal.endDate) : false;
+              <div key={weekIndex} className="relative" role="row">
+                {/* Background layer for goal highlighting - no gaps so colors flow continuously */}
+                <div className="absolute inset-0 flex pointer-events-none">
+                  {week.map((day, dayIndex) => {
+                    const goal = getGoalForDate(day.date);
+                    const goalColor = goal ? goalColorMap.get(goal.id) || "blue" : "blue";
+                    const isGoalStart = goal && day.date ? isSameDate(day.date, goal.startDate) : false;
+                    const isGoalEnd = goal && day.date ? isSameDate(day.date, goal.endDate) : false;
+                    
+                    // Check if previous/next day has the same goal
+                    const prevGoal = dayIndex > 0 ? getGoalForDate(week[dayIndex - 1].date) : null;
+                    const nextGoal = dayIndex < 6 ? getGoalForDate(week[dayIndex + 1].date) : null;
+                    const hasSamePrevGoal = prevGoal?.id === goal?.id;
+                    const hasSameNextGoal = nextGoal?.id === goal?.id;
+                    
+                    const isStartOfSpan = isGoalStart || !hasSamePrevGoal;
+                    const isEndOfSpan = isGoalEnd || !hasSameNextGoal;
 
-                  const wrapperClasses = cn(
-                    "rounded-md p-1",
-                    isInGoalRange && GOAL_BACKGROUND_CLASSES[goalColor],
-                    isInGoalRange && (isGoalStart || isGoalEnd ? "border-2" : "border"),
-                    isInGoalRange && GOAL_BORDER_CLASSES[goalColor]
-                  );
+                    if (!goal) {
+                      return <div key={dayIndex} className="flex-1" />;
+                    }
 
-                  return (
-                    <div key={dayIndex} className={wrapperClasses}>
-                      <CalendarDay
-                        date={day.date}
-                        wordsWritten={day.wordsWritten}
-                        goal={goal?.dailyWordTarget ?? null}
-                        isToday={day.isToday}
-                        isFuture={day.isFuture}
-                      />
-                    </div>
-                  );
-                })}
+                    // For Sunday (0) and Saturday (6), we need special handling
+                    const needsLeftPadding = isStartOfSpan && dayIndex === 6;
+                    const needsRightPadding = isEndOfSpan && dayIndex === 0;
+
+                    return (
+                      <div key={dayIndex} className="flex-1 h-full relative">
+                        <div
+                          className={cn(
+                            "absolute inset-0",
+                            GOAL_BACKGROUND_CLASSES[goalColor],
+                            // Rounded corners only at start/end of continuous spans
+                            isStartOfSpan && "rounded-l-lg",
+                            isEndOfSpan && "rounded-r-lg",
+                            // Border styling
+                            "border-y",
+                            isStartOfSpan && "border-l-2",
+                            isEndOfSpan && "border-r-2",
+                            GOAL_BORDER_CLASSES[goalColor],
+                            // Inset the background slightly on Sat/Sun edges
+                            needsLeftPadding && "left-2",
+                            needsRightPadding && "right-2"
+                          )}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Calendar days layer */}
+                <div className="relative grid grid-cols-7 gap-x-4">
+                  {week.map((day, dayIndex) => {
+                    const goal = getGoalForDate(day.date);
+
+                    return (
+                      <div key={dayIndex} className="my-1">
+                        <DayCard
+                          variant="compact"
+                          date={day.date}
+                          wordsWritten={day.wordsWritten}
+                          goal={goal?.dailyWordTarget ?? null}
+                          isToday={day.isToday}
+                          isFuture={day.isFuture}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>

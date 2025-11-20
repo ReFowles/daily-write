@@ -1,4 +1,4 @@
-import type { DayData, WritingSession, CalendarDay } from "./types";
+import type { DayData, WritingSession, CalendarDay, Goal } from "./types";
 
 /**
  * Parse a date string (YYYY-MM-DD) into a Date object at local midnight
@@ -12,7 +12,7 @@ export function parseLocalDate(dateString: string): Date {
  * Generate a 5-day window of day data (2 days before, today, 2 days after)
  */
 export function generateWeekWindow(
-  dailyGoal: number,
+  goals: Goal[],
   writingSessions: WritingSession[]
 ): DayData[] {
   const today = new Date();
@@ -29,10 +29,14 @@ export function generateWeekWindow(
     const date = new Date(today);
     date.setDate(today.getDate() + i);
     const dateString = date.toISOString().split('T')[0];
+    
+    // Find goal for this specific date
+    const goal = goals.find(g => isDateInRange(date, g.startDate, g.endDate));
+    
     days.push({
       date,
       wordsWritten: sessionMap.get(dateString) || 0,
-      goal: dailyGoal,
+      goal: goal?.dailyWordTarget ?? null,
     });
   }
   

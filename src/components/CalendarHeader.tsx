@@ -20,14 +20,22 @@ export function CalendarHeader({
   children,
 }: CalendarHeaderProps) {
   return (
-    <div className={`flex items-center justify-between gap-4 ${isExpanded ? "mb-4" : ""}`}>
+    <div 
+      className={`flex items-center justify-between gap-4 cursor-pointer ${isExpanded ? "mb-4" : ""}`}
+      onClick={onToggleExpand}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onToggleExpand();
+        }
+      }}
+      aria-expanded={isExpanded}
+      aria-label={isExpanded ? "Collapse calendar" : "Expand calendar"}
+    >
       <div className="flex items-center gap-4">
-        <button
-          onClick={onToggleExpand}
-          className="flex items-center gap-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300 hover:opacity-70 transition-opacity"
-          aria-expanded={isExpanded}
-          aria-label={isExpanded ? "Collapse calendar" : "Expand calendar"}
-        >
+        <div className="flex items-center gap-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -44,14 +52,19 @@ export function CalendarHeader({
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
           {monthName} {year}
-        </button>
+        </div>
         
         {/* Goal Legend */}
         {children}
       </div>
 
       {/* Navigation buttons */}
-      <div className="flex items-center gap-2" role="group" aria-label="Calendar navigation">
+      <div 
+        className="flex items-center gap-2" 
+        role="group" 
+        aria-label="Calendar navigation"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onPreviousMonth}
           className="rounded-md p-2 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 strawberry:hover:bg-rose-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900"

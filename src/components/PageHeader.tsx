@@ -37,6 +37,11 @@ export function PageHeader({
     const startFormatted = `${start.getMonth() + 1}/${start.getDate()}`;
     const endFormatted = `${end.getMonth() + 1}/${end.getDate()}`;
     
+    // If start and end are the same, only show one date
+    if (startFormatted === endFormatted) {
+      return startFormatted;
+    }
+    
     return `${startFormatted} – ${endFormatted}`;
   };
 

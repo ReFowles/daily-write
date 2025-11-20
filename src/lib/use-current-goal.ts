@@ -22,7 +22,7 @@ export function useCurrentGoal(): CurrentGoalData {
     return today >= startDate && today <= endDate;
   });
 
-  const todayGoal = currentGoal?.dailyWordTarget || 500;
+  const todayGoal = currentGoal?.dailyWordTarget || 0;
 
   // Find today's writing session
   const todaySession = dummyData.writingSessions.find(

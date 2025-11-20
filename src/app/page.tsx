@@ -64,7 +64,7 @@ export default function Dashboard() {
         {/* Weekly Calendar */}
         <div className="mb-8">
           <WeeklyCalendar
-            dailyGoal={todayGoal}
+            goals={dummyData.goals}
             writingSessions={writingSessions}
           />
         </div>

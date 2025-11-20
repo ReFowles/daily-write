@@ -17,7 +17,7 @@ export interface WritingSession {
 export interface DayData {
   date: Date;
   wordsWritten: number;
-  goal: number;
+  goal: number | null;
 }
 
 export interface CalendarDay {
