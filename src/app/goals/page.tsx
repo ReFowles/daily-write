@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { GoalCard } from "@/components/goal-card";
 import { CreateGoalForm } from "@/components/create-goal-form";
 import { PageHeader } from "@/components/page-header";
+import { MonthlyCalendar } from "@/components/monthly-calendar";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import dummyData from "@/lib/dummy-data.json";
 
@@ -98,6 +99,13 @@ export default function GoalsPage() {
               onSubmit={handleCreateGoal}
               onCancel={() => setShowCreateForm(false)}
             />
+          </div>
+        )}
+
+        {/* Monthly Calendar */}
+        {goals.length > 0 && (
+          <div className="mb-8">
+            <MonthlyCalendar goals={goals} writingSessions={writingSessions} />
           </div>
         )}
 
