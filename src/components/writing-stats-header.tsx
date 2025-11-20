@@ -1,4 +1,5 @@
 import { Card } from "./ui/card";
+import { ProgressBar } from "./ui/progress-bar";
 
 interface WritingStatsHeaderProps {
   wordCount: number;
@@ -41,12 +42,7 @@ export function WritingStatsHeader({
             <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-1 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
               Progress
             </div>
-            <div className="h-2 w-48 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800 strawberry:bg-pink-200 cherry:bg-rose-900 seafoam:bg-cyan-200 ocean:bg-cyan-900">
-              <div
-                className="h-full bg-blue-600 transition-all duration-300 strawberry:bg-linear-to-r strawberry:from-rose-500 strawberry:to-pink-500 cherry:bg-linear-to-r cherry:from-rose-600 cherry:to-pink-600 seafoam:bg-linear-to-r seafoam:from-cyan-500 seafoam:to-blue-500 ocean:bg-linear-to-r ocean:from-cyan-600 ocean:to-blue-600"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            <ProgressBar value={progress} size="sm" className="w-48" />
           </div>
         </div>
         <button

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { Goal, WritingSession } from "@/app/goals/page";
 import { formatDate } from "@/lib/date-utils";
 
@@ -99,16 +100,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               {Math.round(progress)}%
             </span>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800 strawberry:bg-rose-200 cherry:bg-rose-900 seafoam:bg-cyan-200 ocean:bg-cyan-900">
-            <div
-              className={`h-full transition-all duration-300 ${
-                isCompleted
-                  ? "bg-green-500 dark:bg-green-600"
-                  : "bg-blue-500 dark:bg-blue-600 strawberry:bg-linear-to-r strawberry:from-rose-500 strawberry:to-pink-500 cherry:bg-linear-to-r cherry:from-rose-600 cherry:to-pink-600 seafoam:bg-linear-to-r seafoam:from-cyan-500 seafoam:to-blue-500 ocean:bg-linear-to-r ocean:from-cyan-600 ocean:to-blue-600"
-              }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <ProgressBar value={progress} size="md" isCompleted={isCompleted} />
         </div>
 
         {/* Logged Days */}
