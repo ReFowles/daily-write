@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { Goal } from "@/app/goals/page";
+import { Goal, WritingSession } from "@/app/goals/page";
 import { formatDate } from "@/lib/date-utils";
 
 interface GoalCardProps {
   goal: Goal;
+  writingSessions: WritingSession[];
   onDelete: (goalId: string) => void;
 }
 
-export function GoalCard({ goal, onDelete }: GoalCardProps) {
+export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
   const [showLoggedDays, setShowLoggedDays] = useState(false);
 
   // Calculate stats
@@ -23,8 +24,21 @@ export function GoalCard({ goal, onDelete }: GoalCardProps) {
   const totalDays = Math.ceil(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   ) + 1;
-  const daysLogged = Object.keys(goal.wordsByDate).length;
-  const totalWordsWritten = Object.values(goal.wordsByDate).reduce((sum, words) => sum + words, 0);
+
+  // Filter writing sessions that fall within this goal's date range
+  const goalSessions = writingSessions.filter((session) => {
+    const sessionDate = new Date(session.date + "T00:00:00");
+    return sessionDate >= startDate && sessionDate <= endDate;
+  });
+
+  // Create a map of date -> wordCount for logged days display
+  const wordsByDate: Record<string, number> = {};
+  goalSessions.forEach((session) => {
+    wordsByDate[session.date] = session.wordCount;
+  });
+
+  const daysLogged = goalSessions.length;
+  const totalWordsWritten = goalSessions.reduce((sum, session) => sum + session.wordCount, 0);
   const targetTotalWords = totalDays * goal.dailyWordTarget;
   const progress = Math.min((totalWordsWritten / targetTotalWords) * 100, 100);
   
@@ -116,7 +130,7 @@ export function GoalCard({ goal, onDelete }: GoalCardProps) {
             </button>
             {showLoggedDays && (
               <div className="flex flex-wrap gap-2">
-                {Object.entries(goal.wordsByDate)
+                {Object.entries(wordsByDate)
                   .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
                   .map(([date, words]) => (
                     <div

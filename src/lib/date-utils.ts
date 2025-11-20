@@ -4,15 +4,26 @@ export interface DayData {
   goal: number;
 }
 
+export interface WritingSession {
+  date: string;
+  wordCount: number;
+}
+
 /**
  * Generate a 5-day window of day data (2 days before, today, 2 days after)
  */
 export function generateWeekWindow(
   dailyGoal: number,
-  wordsByDate: Record<string, number>
+  writingSessions: WritingSession[]
 ): DayData[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  // Create a map for quick lookup
+  const sessionMap = new Map<string, number>();
+  writingSessions.forEach((session) => {
+    sessionMap.set(session.date, session.wordCount);
+  });
   
   const days: DayData[] = [];
   for (let i = -2; i <= 2; i++) {
@@ -21,7 +32,7 @@ export function generateWeekWindow(
     const dateString = date.toISOString().split('T')[0];
     days.push({
       date,
-      wordsWritten: wordsByDate[dateString] || 0,
+      wordsWritten: sessionMap.get(dateString) || 0,
       goal: dailyGoal,
     });
   }

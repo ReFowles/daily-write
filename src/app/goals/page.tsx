@@ -11,12 +11,17 @@ export interface Goal {
   startDate: string;
   endDate: string;
   dailyWordTarget: number;
-  wordsByDate: Record<string, number>; // YYYY-MM-DD -> word count
+}
+
+export interface WritingSession {
+  date: string;
+  wordCount: number;
 }
 
 export default function GoalsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [goals, setGoals] = useState<Goal[]>(dummyData.goals as unknown as Goal[]);
+  const [writingSessions] = useState<WritingSession[]>(dummyData.writingSessions as unknown as WritingSession[]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -34,7 +39,7 @@ export default function GoalsPage() {
   
   const completedGoals = goals.filter((goal) => new Date(goal.endDate + "T00:00:00") < today);
 
-  const handleCreateGoal = (goalData: Omit<Goal, "id" | "wordsByDate" | "isCompleted">, onError: (message: string) => void) => {
+  const handleCreateGoal = (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
     const newStart = new Date(goalData.startDate + "T00:00:00");
     const newEnd = new Date(goalData.endDate + "T00:00:00");
 
@@ -56,7 +61,6 @@ export default function GoalsPage() {
     const newGoal: Goal = {
       ...goalData,
       id: Date.now().toString(),
-      wordsByDate: {},
     };
     setGoals([newGoal, ...goals]);
     setShowCreateForm(false);
@@ -107,6 +111,7 @@ export default function GoalsPage() {
                 <GoalCard
                   key={goal.id}
                   goal={goal}
+                  writingSessions={writingSessions}
                   onDelete={handleDeleteGoal}
                 />
               ))}
@@ -129,6 +134,7 @@ export default function GoalsPage() {
                       <GoalCard
                         key={goal.id}
                         goal={goal}
+                        writingSessions={writingSessions}
                         onDelete={handleDeleteGoal}
                       />
                     ))}
@@ -149,6 +155,7 @@ export default function GoalsPage() {
                       <GoalCard
                         key={goal.id}
                         goal={goal}
+                        writingSessions={writingSessions}
                         onDelete={handleDeleteGoal}
                       />
                     ))}

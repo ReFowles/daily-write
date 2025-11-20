@@ -1,14 +1,14 @@
 import { Card } from "./ui/card";
 import { DayCard } from "./day-card";
-import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
+import { generateWeekWindow, isToday, isFuture, WritingSession } from "@/lib/date-utils";
 
 interface WeeklyCalendarProps {
   dailyGoal: number;
-  wordsByDate: Record<string, number>; // date string (YYYY-MM-DD) -> word count
+  writingSessions: WritingSession[];
 }
 
-export function WeeklyCalendar({ dailyGoal, wordsByDate }: WeeklyCalendarProps) {
-  const days = generateWeekWindow(dailyGoal, wordsByDate);
+export function WeeklyCalendar({ dailyGoal, writingSessions }: WeeklyCalendarProps) {
+  const days = generateWeekWindow(dailyGoal, writingSessions);
 
   return (
     <Card className="p-6">

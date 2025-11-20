@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Goal } from "@/app/goals/page";
 
 interface CreateGoalFormProps {
-  onSubmit: (goal: Omit<Goal, "id" | "wordsByDate">, onError: (message: string) => void) => void;
+  onSubmit: (goal: Omit<Goal, "id">, onError: (message: string) => void) => void;
   onCancel: () => void;
 }
 
