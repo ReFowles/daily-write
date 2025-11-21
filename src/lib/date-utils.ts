@@ -265,6 +265,21 @@ export function formatDateRange(startDateString: string, endDateString: string):
 }
 
 /**
+ * Calculate word count from markdown text
+ * Strips markdown syntax and counts actual words
+ */
+export function calculateWordCount(markdown: string): number {
+  const plainText = markdown
+    .replace(/[#*_~`\[\]()]/g, '') // Remove markdown chars
+    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+    .replace(/\[.*?\]\(.*?\)/g, '') // Remove links
+    .trim();
+  
+  const words = plainText.split(/\s+/).filter((word: string) => word.length > 0);
+  return words.length;
+}
+
+/**
  * Format a date as relative time (e.g., "2 hours ago", "yesterday")
  */
 export function formatDistanceToNow(date: Date): string {

@@ -63,6 +63,41 @@ export default function AboutPage() {
             </div>
           </Card>
 
+          {/* Privacy & Data Storage */}
+          <Card className="mb-6 break-inside-avoid p-6">
+            <h2 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
+              Privacy &amp; Data Storage
+            </h2>
+            <div className="space-y-4 text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-200 seafoam:text-cyan-800 ocean:text-cyan-200">
+              <p>
+                <strong>DailyWrite does not save or store your writing content.</strong> The app
+                only tracks your writing goals and word count statistics. All of your actual
+                writing is saved exclusively to your Google Drive account.
+              </p>
+              <p>
+                <strong>What DailyWrite stores:</strong>
+              </p>
+              <ul className="ml-6 list-disc space-y-2">
+                <li>Your writing goals (daily targets, start/end dates)</li>
+                <li>Daily word count totals</li>
+                <li>Progress statistics and historical data</li>
+              </ul>
+              <p className="mt-4">
+                <strong>What DailyWrite does NOT store:</strong>
+              </p>
+              <ul className="ml-6 list-disc space-y-2">
+                <li>Your writing content or text</li>
+                <li>Document titles or file names</li>
+                <li>Any personal information beyond what&apos;s needed for authentication (i.e. your email address)</li>
+              </ul>
+              <p className="mt-4">
+                Your privacy is important. DailyWrite is designed to be a tracking tool, not a
+                content repository. Everything you write lives in your Google Drive where you have
+                full control over your data.
+              </p>
+            </div>
+          </Card>
+
           {/* Writing Experience */}
           <Card className="mb-6 break-inside-avoid p-6">
             <h2 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
@@ -82,20 +117,39 @@ export default function AboutPage() {
             </div>
           </Card>
 
-          {/* Activity Tracking */}
+          {/* How Word Counting Works */}
           <Card className="mb-6 break-inside-avoid p-6">
             <h2 className="mb-4 text-2xl font-bold text-zinc-900 dark:text-zinc-100 strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
-              Activity Tracking
+              How Word Counting Works
             </h2>
             <div className="space-y-4 text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 strawberry:text-rose-800 cherry:text-rose-200 seafoam:text-cyan-800 ocean:text-cyan-200">
               <p>
-                DailyWrite tracks your writing activity to help you maintain your habit. If you
-                leave the site during a writing session,{" "}
-                <strong>the app will check whether you&apos;ve written anything when you return</strong>.
+                DailyWrite tracks <strong>net new words added each day</strong> by measuring the
+                change in your document&apos;s word count during your writing sessions. The app counts
+                words added across all documents you work on throughout the day.
               </p>
               <p>
-                This ensures your word count is always accurate and reflects your actual progress,
-                even if you switched tabs or took a break.
+                <strong>Important limitations to be aware of:</strong>
+              </p>
+              <ul className="ml-6 list-disc space-y-2">
+                <li>
+                  <strong>Pasted content is counted</strong> — The app cannot distinguish between
+                  words you type and words you paste. If you paste existing text, it will be counted
+                  as words written.
+                </li>
+                <li>
+                  <strong>Deletions lower the baseline</strong> — If you delete paragraphs and then
+                  write new content, only the net increase from the lowest word count is tracked.
+                </li>
+                <li>
+                  <strong>Session-based tracking</strong> — Word counts accumulate throughout the
+                  calendar day, persisting across different documents and browser sessions.
+                </li>
+              </ul>
+              <p className="mt-4 font-semibold">
+                DailyWrite is a tool for self-improvement and relies on honest usage. The word count
+                tracking is designed to help you build a consistent writing habit, not to be gamed
+                or circumvented.
               </p>
             </div>
           </Card>

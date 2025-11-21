@@ -29,3 +29,11 @@ export interface CalendarDay {
   isToday: boolean;
   isFuture: boolean;
 }
+
+export interface GoogleDoc {
+  id: string;
+  name: string;
+  modifiedTime: string;
+  webViewLink: string;
+  ownedByMe: boolean;
+}
