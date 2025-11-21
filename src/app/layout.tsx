@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/Navigation";
 import ThemeInit from "./theme-init";
 import ActivityOverlay from "@/components/ActivityOverlay";
@@ -30,10 +31,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeInit />
-        <ActivityOverlay />
-        <Navigation />
-        {children}
+        <SessionProvider>
+          <ThemeInit />
+          <ActivityOverlay />
+          <Navigation />
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

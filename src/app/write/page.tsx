@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
@@ -21,6 +23,8 @@ interface GoogleDoc {
 }
 
 export default function WritePage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
   const [showPicker, setShowPicker] = useState(true);
@@ -45,6 +49,20 @@ export default function WritePage() {
     const words = plainText.split(/\s+/).filter(word => word.length > 0);
     setWordCount(words.length);
   }, []);
+
+  // Redirect if not authenticated (after all hooks)
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-lg text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    router.push("/about");
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">

@@ -15,7 +15,7 @@ import { MonthlyCalendar } from "@/components/MonthlyCalendar";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
-import dummyData from "@/lib/dummy-data.json";
+import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb } from "@/lib/data-store";
 
 export function GoalsPageClient() {
   const searchParams = useSearchParams();
@@ -28,11 +28,33 @@ export function GoalsPageClient() {
     }
   }, [searchParams, setShowCreateForm]);
   
-  const [goals, setGoals] = useState<Goal[]>(dummyData.goals as unknown as Goal[]);
-  const [writingSessions] = useState<WritingSession[]>(dummyData.writingSessions as unknown as WritingSession[]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [writingSessions, setWritingSessions] = useState<WritingSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { isOpen: showCompletedGoals, toggle: toggleCompletedGoals } = useToggle(true);
   const { isOpen: showUpcomingGoals, toggle: toggleUpcomingGoals } = useToggle(true);
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+
+  // Fetch goals and writing sessions on mount
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        const [goalsData, sessionsData] = await Promise.all([
+          getAllGoals(),
+          getAllWritingSessions(),
+        ]);
+        setGoals(goalsData);
+        setWritingSessions(sessionsData);
+      } catch (error) {
+        console.error("Error fetching goals and sessions:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -52,7 +74,7 @@ export function GoalsPageClient() {
     .filter((goal) => parseLocalDate(goal.endDate) < today)
     .sort((a, b) => parseLocalDate(b.endDate).getTime() - parseLocalDate(a.endDate).getTime());
 
-  const handleCreateGoal = (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
+  const handleCreateGoal = async (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
     const newStart = parseLocalDate(goalData.startDate);
     const newEnd = parseLocalDate(goalData.endDate);
 
@@ -71,17 +93,36 @@ export function GoalsPageClient() {
       return;
     }
 
-    const newGoal: Goal = {
-      ...goalData,
-      id: Date.now().toString(),
-    };
-    setGoals([newGoal, ...goals]);
-    setShowCreateForm(false);
+    try {
+      const newGoal = await createGoal(goalData);
+      setGoals([newGoal, ...goals]);
+      setShowCreateForm(false);
+    } catch (error) {
+      console.error("Error creating goal:", error);
+      onError("Failed to create goal. Please try again.");
+    }
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals(goals.filter((goal) => goal.id !== goalId));
+  const handleDeleteGoal = async (goalId: string) => {
+    try {
+      await deleteGoalFromDb(goalId);
+      setGoals(goals.filter((goal) => goal.id !== goalId));
+    } catch (error) {
+      console.error("Error deleting goal:", error);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <main className={cn("min-h-screen", themeClasses.background.page)}>
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-12">
+            <p className={cn("text-lg", themeClasses.text.secondary)}>Loading goals...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
