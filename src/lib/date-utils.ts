@@ -28,7 +28,7 @@ export function generateWeekWindow(
   for (let i = -2; i <= 2; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = toDateString(date);
     
     // Find goal for this specific date
     const goal = goals.find(g => isDateInRange(date, g.startDate, g.endDate));

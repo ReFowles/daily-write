@@ -17,7 +17,11 @@ import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb } from "@/lib/data-store";
 
-export function GoalsPageClient() {
+interface GoalsPageClientProps {
+  userId: string;
+}
+
+export function GoalsPageClient({ userId }: GoalsPageClientProps) {
   const searchParams = useSearchParams();
   const { isOpen: showCreateForm, setIsOpen: setShowCreateForm } = useToggle(false);
   
@@ -41,8 +45,8 @@ export function GoalsPageClient() {
       try {
         setIsLoading(true);
         const [goalsData, sessionsData] = await Promise.all([
-          getAllGoals(),
-          getAllWritingSessions(),
+          getAllGoals(userId),
+          getAllWritingSessions(userId),
         ]);
         setGoals(goalsData);
         setWritingSessions(sessionsData);
@@ -54,7 +58,7 @@ export function GoalsPageClient() {
     }
 
     fetchData();
-  }, []);
+  }, [userId]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -74,7 +78,7 @@ export function GoalsPageClient() {
     .filter((goal) => parseLocalDate(goal.endDate) < today)
     .sort((a, b) => parseLocalDate(b.endDate).getTime() - parseLocalDate(a.endDate).getTime());
 
-  const handleCreateGoal = async (goalData: Omit<Goal, "id">, onError: (message: string) => void) => {
+  const handleCreateGoal = async (goalData: Omit<Goal, "id" | "userId">, onError: (message: string) => void) => {
     const newStart = parseLocalDate(goalData.startDate);
     const newEnd = parseLocalDate(goalData.endDate);
 
@@ -94,7 +98,7 @@ export function GoalsPageClient() {
     }
 
     try {
-      const newGoal = await createGoal(goalData);
+      const newGoal = await createGoal({ ...goalData, userId });
       setGoals([newGoal, ...goals]);
       setShowCreateForm(false);
     } catch (error) {

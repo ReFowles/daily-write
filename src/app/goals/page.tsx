@@ -6,13 +6,13 @@ import { GoalsPageClient } from "@/components/GoalsPageClient";
 export default async function GoalsPage() {
   const session = await auth();
   
-  if (!session) {
+  if (!session?.user?.email) {
     redirect("/about");
   }
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <GoalsPageClient />
+      <GoalsPageClient userId={session.user.email} />
     </Suspense>
   );
 }

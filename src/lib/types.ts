@@ -4,12 +4,14 @@
 
 export interface Goal {
   id: string;
+  userId: string;
   startDate: string; // YYYY-MM-DD format
   endDate: string; // YYYY-MM-DD format
   dailyWordTarget: number;
 }
 
 export interface WritingSession {
+  userId: string;
   date: string; // YYYY-MM-DD format
   wordCount: number;
 }

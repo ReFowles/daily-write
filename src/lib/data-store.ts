@@ -24,23 +24,32 @@ const SESSIONS_COLLECTION = "writingSessions";
 
 // Helper function to convert Firestore dates to YYYY-MM-DD format
 function dateToString(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
  * Goals CRUD Operations
  */
 
-export async function getAllGoals(): Promise<Goal[]> {
+export async function getAllGoals(userId: string): Promise<Goal[]> {
   const db = getFirebaseDb();
   const goalsRef = collection(db, GOALS_COLLECTION);
-  const q = query(goalsRef, orderBy("startDate", "desc"));
+  const q = query(
+    goalsRef,
+    where("userId", "==", userId)
+  );
   const snapshot = await getDocs(q);
   
-  return snapshot.docs.map((doc) => ({
+  const goals = snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
   } as Goal));
+  
+  // Sort client-side to avoid needing a composite index
+  return goals.sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
 export async function getGoalById(goalId: string): Promise<Goal | null> {
@@ -94,50 +103,49 @@ export async function deleteGoal(goalId: string): Promise<void> {
   await deleteDoc(goalRef);
 }
 
-export async function getCurrentGoal(): Promise<Goal | null> {
+export async function getCurrentGoal(userId: string): Promise<Goal | null> {
   const today = dateToString(new Date());
-  const db = getFirebaseDb();
-  const goalsRef = collection(db, GOALS_COLLECTION);
   
-  // Query for goals where startDate <= today AND endDate >= today
-  const q = query(
-    goalsRef,
-    where("startDate", "<=", today),
-    where("endDate", ">=", today)
+  // Fetch all goals and filter client-side to avoid needing a composite index
+  const allGoals = await getAllGoals(userId);
+  
+  const currentGoal = allGoals.find(
+    (goal) => goal.startDate <= today && goal.endDate >= today
   );
   
-  const snapshot = await getDocs(q);
-  
-  if (snapshot.empty) {
-    return null;
-  }
-  
-  const goalDoc = snapshot.docs[0];
-  return {
-    id: goalDoc.id,
-    ...goalDoc.data(),
-  } as Goal;
+  return currentGoal || null;
 }
 
 /**
  * Writing Sessions CRUD Operations
  */
 
-export async function getAllWritingSessions(): Promise<WritingSession[]> {
+export async function getAllWritingSessions(userId: string): Promise<WritingSession[]> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, orderBy("date", "desc"));
+  const q = query(
+    sessionsRef,
+    where("userId", "==", userId)
+  );
   const snapshot = await getDocs(q);
   
-  return snapshot.docs.map((doc) => doc.data() as WritingSession);
+  const sessions = snapshot.docs.map((doc) => doc.data() as WritingSession);
+  
+  // Sort client-side to avoid needing a composite index
+  return sessions.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function getWritingSessionByDate(
+  userId: string,
   date: string
 ): Promise<WritingSession | null> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, where("date", "==", date));
+  const q = query(
+    sessionsRef,
+    where("userId", "==", userId),
+    where("date", "==", date)
+  );
   const snapshot = await getDocs(q);
   
   if (snapshot.empty) {
@@ -148,20 +156,16 @@ export async function getWritingSessionByDate(
 }
 
 export async function getWritingSessionsInRange(
+  userId: string,
   startDate: string,
   endDate: string
 ): Promise<WritingSession[]> {
-  const db = getFirebaseDb();
-  const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(
-    sessionsRef,
-    where("date", ">=", startDate),
-    where("date", "<=", endDate),
-    orderBy("date", "asc")
-  );
-  const snapshot = await getDocs(q);
+  // Fetch all sessions for user and filter client-side to avoid composite index
+  const allSessions = await getAllWritingSessions(userId);
   
-  return snapshot.docs.map((doc) => doc.data() as WritingSession);
+  return allSessions
+    .filter(session => session.date >= startDate && session.date <= endDate)
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function createOrUpdateWritingSession(
@@ -170,8 +174,12 @@ export async function createOrUpdateWritingSession(
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
   
-  // Check if session already exists for this date
-  const q = query(sessionsRef, where("date", "==", session.date));
+  // Check if session already exists for this date and user
+  const q = query(
+    sessionsRef,
+    where("userId", "==", session.userId),
+    where("date", "==", session.date)
+  );
   const snapshot = await getDocs(q);
   
   if (snapshot.empty) {
@@ -190,10 +198,14 @@ export async function createOrUpdateWritingSession(
   }
 }
 
-export async function deleteWritingSession(date: string): Promise<void> {
+export async function deleteWritingSession(userId: string, date: string): Promise<void> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, where("date", "==", date));
+  const q = query(
+    sessionsRef,
+    where("userId", "==", userId),
+    where("date", "==", date)
+  );
   const snapshot = await getDocs(q);
   
   if (!snapshot.empty) {
@@ -206,13 +218,13 @@ export async function deleteWritingSession(date: string): Promise<void> {
  * Statistics and Analytics
  */
 
-export async function getWritingStats(): Promise<{
+export async function getWritingStats(userId: string): Promise<{
   totalWords: number;
   totalDaysWritten: number;
   averageWordsPerDay: number;
   currentStreak: number;
 }> {
-  const sessions = await getAllWritingSessions();
+  const sessions = await getAllWritingSessions(userId);
   
   const totalWords = sessions.reduce((sum, session) => sum + session.wordCount, 0);
   const totalDaysWritten = sessions.filter((session) => session.wordCount > 0).length;

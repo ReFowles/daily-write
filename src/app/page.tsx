@@ -6,21 +6,27 @@ import { getAllGoals, getAllWritingSessions, getWritingStats } from "@/lib/data-
 export default async function Dashboard() {
   const session = await auth();
   
-  if (!session) {
+  if (!session?.user?.email) {
     redirect("/about");
   }
 
+  const userId = session.user.email;
+
   // Fetch data on the server
   const [goals, writingSessions, stats] = await Promise.all([
-    getAllGoals(),
-    getAllWritingSessions(),
-    getWritingStats(),
+    getAllGoals(userId),
+    getAllWritingSessions(userId),
+    getWritingStats(userId),
   ]);
+
+  // Serialize data to plain objects for Client Component
+  const serializedGoals = JSON.parse(JSON.stringify(goals));
+  const serializedWritingSessions = JSON.parse(JSON.stringify(writingSessions));
 
   return (
     <DashboardClient
-      goals={goals}
-      writingSessions={writingSessions}
+      goals={serializedGoals}
+      writingSessions={serializedWritingSessions}
       stats={stats}
     />
   );
