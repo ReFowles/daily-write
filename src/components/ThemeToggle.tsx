@@ -6,20 +6,29 @@ import { Sun, Moon, ChevronDown } from "./icons";
 type Theme = "light" | "dark" | "strawberry" | "cherry" | "seafoam" | "ocean";
 
 export default function ThemeToggle() {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("theme") as Theme;
-      if (saved) return saved;
-      if (document.documentElement.classList.contains("ocean")) return "ocean";
-      if (document.documentElement.classList.contains("seafoam")) return "seafoam";
-      if (document.documentElement.classList.contains("cherry")) return "cherry";
-      if (document.documentElement.classList.contains("dark")) return "dark";
-      if (document.documentElement.classList.contains("strawberry")) return "strawberry";
-    }
-    return "light";
-  });
+  const [currentTheme, setCurrentTheme] = useState<Theme>("light");
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    // Read theme from localStorage or DOM after mount
+    const saved = localStorage.getItem("theme") as Theme;
+    if (saved) {
+      setCurrentTheme(saved);
+    } else if (document.documentElement.classList.contains("ocean")) {
+      setCurrentTheme("ocean");
+    } else if (document.documentElement.classList.contains("seafoam")) {
+      setCurrentTheme("seafoam");
+    } else if (document.documentElement.classList.contains("cherry")) {
+      setCurrentTheme("cherry");
+    } else if (document.documentElement.classList.contains("dark")) {
+      setCurrentTheme("dark");
+    } else if (document.documentElement.classList.contains("strawberry")) {
+      setCurrentTheme("strawberry");
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -31,6 +40,17 @@ export default function ThemeToggle() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-2 rounded-md p-2">
+        <Sun />
+        <span className="text-sm font-medium">Light</span>
+        <ChevronDown />
+      </div>
+    );
+  }
 
   const applyTheme = (theme: Theme) => {
     // Remove all theme classes

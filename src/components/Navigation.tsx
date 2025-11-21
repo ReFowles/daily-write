@@ -1,23 +1,16 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import iconSvg from "../app/icon.svg";
-import { Button } from "./ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
+import { auth } from "@/lib/auth";
+import SignInButton from "./SignInButton";
+import SignOutButton from "./SignOutButton";
+import NavLinks from "./NavLinks";
 
-export default function Navigation() {
-  const pathname = usePathname();
-
-  const navItems = [
-    { name: "Dashboard", href: "/" },
-    { name: "Write", href: "/write" },
-    { name: "History", href: "/history" },
-    { name: "Goals", href: "/goals" },
-  ];
+export default async function Navigation() {
+  const session = await auth();
 
   return (
     <nav className={cn("border-b", themeClasses.border.navBar, themeClasses.background.navBar)}>
@@ -31,29 +24,10 @@ export default function Navigation() {
               </span>
             </Link>
           </div>
-          <div className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    themeClasses.nav.link,
-                    isActive ? themeClasses.nav.linkActive : themeClasses.nav.linkInactive
-                  )}
-                >
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
-          {/* Placeholder for future Google Auth button */}
+          <NavLinks />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="secondary">
-              Sign In
-            </Button>
+            {session ? <SignOutButton /> : <SignInButton />}
           </div>
         </div>
       </div>
