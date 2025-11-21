@@ -1,27 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import GoogleDocsPicker from "@/components/GoogleDocsPicker";
+import dynamic from 'next/dynamic';
+
+const MarkdownEditor = dynamic(() => import('@/components/MarkdownEditor'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-gray-500">Loading editor...</div>
+});
 
 interface GoogleDoc {
   id: string;
   name: string;
   modifiedTime: string;
   webViewLink: string;
+  ownedByMe: boolean;
 }
 
 export default function WritePage() {
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
   const [showPicker, setShowPicker] = useState(true);
+  const [content, setContent] = useState("");
+  const [wordCount, setWordCount] = useState(0);
 
   const handleSelectDoc = (doc: GoogleDoc) => {
     setSelectedDoc(doc);
     setShowPicker(false);
   };
+
+  const handleContentChange = useCallback((markdown: string) => {
+    setContent(markdown);
+    
+    // Calculate word count from markdown (strip markdown syntax)
+    const plainText = markdown
+      .replace(/[#*_~`\[\]()]/g, '') // Remove markdown chars
+      .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+      .replace(/\[.*?\]\(.*?\)/g, '') // Remove links
+      .trim();
+    
+    const words = plainText.split(/\s+/).filter(word => word.length > 0);
+    setWordCount(words.length);
+  }, []);
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
@@ -53,19 +76,35 @@ export default function WritePage() {
           <Card className="mb-6 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
                   Writing in:
                 </p>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
+                <h3 className="font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
                   {selectedDoc.name}
                 </h3>
               </div>
               <button
                 onClick={() => setShowPicker(true)}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 strawberry:text-rose-600 strawberry:hover:text-rose-700 cherry:text-rose-400 cherry:hover:text-rose-300 seafoam:text-cyan-600 seafoam:hover:text-cyan-700 ocean:text-cyan-400 ocean:hover:text-cyan-300"
               >
                 Change Document
               </button>
+            </div>
+          </Card>
+        )}
+
+        {/* Markdown Editor */}
+        {selectedDoc && !showPicker && (
+          <Card>
+            <MarkdownEditor
+              markdown={content}
+              onChange={handleContentChange}
+              placeholder="Start writing..."
+            />
+            <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+              <div className="text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+                {wordCount} words
+              </div>
             </div>
           </Card>
         )}
