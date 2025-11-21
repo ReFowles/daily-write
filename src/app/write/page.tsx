@@ -4,6 +4,14 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
+import GoogleDocsPicker from "@/components/GoogleDocsPicker";
+
+interface GoogleDoc {
+  id: string;
+  name: string;
+  modifiedTime: string;
+  webViewLink: string;
+}
 
 export default function WritePage() {
   const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
@@ -11,6 +19,8 @@ export default function WritePage() {
   const [title, setTitle] = useState("");
   const [wordCount, setWordCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
+  const [showPicker, setShowPicker] = useState(true);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
@@ -21,11 +31,17 @@ export default function WritePage() {
     setWordCount(words.length);
   };
 
+  const handleSelectDoc = (doc: GoogleDoc) => {
+    setSelectedDoc(doc);
+    setTitle(doc.name);
+    setShowPicker(false);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     // TODO: Implement save functionality
     // This will eventually save to your data store
-    console.log("Saving:", { title, content, wordCount });
+    console.log("Saving:", { title, content, wordCount, selectedDoc });
     
     // Simulate save delay
     setTimeout(() => {
@@ -48,6 +64,38 @@ export default function WritePage() {
           showNewGoalButton={false}
           showWriteButton={false}
         />
+
+        {/* Google Docs Picker */}
+        {showPicker && (
+          <div className="mb-6">
+            <GoogleDocsPicker
+              onSelectDoc={handleSelectDoc}
+              selectedDocId={selectedDoc?.id}
+            />
+          </div>
+        )}
+
+        {/* Selected Document Info */}
+        {selectedDoc && !showPicker && (
+          <Card className="mb-6 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Writing in:
+                </p>
+                <h3 className="font-semibold text-gray-900 dark:text-white">
+                  {selectedDoc.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPicker(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              >
+                Change Document
+              </button>
+            </div>
+          </Card>
+        )}
 
         {/* Writing Area */}
         <Card>
