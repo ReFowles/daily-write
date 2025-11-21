@@ -40,7 +40,6 @@ src/
 │   ├── Navigation.tsx            # Main navigation component
 │   ├── PageHeader.tsx            # Reusable page header component
 │   ├── ProgressCard.tsx          # Progress display card
-│   ├── SessionCard.tsx           # Writing session card
 │   ├── StatsCard.tsx             # Statistics display card
 │   ├── ThemeToggle.tsx           # Theme switcher component
 │   ├── WeeklyCalendar.tsx        # Weekly calendar view

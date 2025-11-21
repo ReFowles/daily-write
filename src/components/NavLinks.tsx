@@ -11,8 +11,8 @@ export default function NavLinks() {
   const navItems = [
     { name: "Dashboard", href: "/" },
     { name: "Write", href: "/write" },
-    { name: "History", href: "/history" },
     { name: "Goals", href: "/goals" },
+    { name: "About", href: "/about" },
   ];
 
   return (
