@@ -55,7 +55,7 @@ const MarkdownEditor = forwardRef<MDXEditorMethods, MarkdownEditorProps>(
             linkPlugin(),
             linkDialogPlugin(),
           ]}
-          contentEditableClassName="prose dark:prose-invert max-w-none min-h-[calc(100vh-400px)] focus:outline-none"
+          contentEditableClassName="prose dark:prose-invert max-w-none focus:outline-none p-4"
         />
       </div>
     );

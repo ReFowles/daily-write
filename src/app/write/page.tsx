@@ -30,10 +30,36 @@ export default function WritePage() {
   const [showPicker, setShowPicker] = useState(true);
   const [content, setContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
+  const [loadingContent, setLoadingContent] = useState(false);
 
-  const handleSelectDoc = (doc: GoogleDoc) => {
+  const handleSelectDoc = async (doc: GoogleDoc) => {
     setSelectedDoc(doc);
     setShowPicker(false);
+    setLoadingContent(true);
+    
+    // Load the document content
+    try {
+      const response = await fetch('/api/google-docs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documentId: doc.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load document content');
+      }
+
+      const data = await response.json();
+      setContent(data.markdown || '');
+    } catch (error) {
+      console.error('Error loading document:', error);
+      // Set empty content on error so user can still write
+      setContent('');
+    } finally {
+      setLoadingContent(false);
+    }
   };
 
   const handleContentChange = useCallback((markdown: string) => {
@@ -65,8 +91,8 @@ export default function WritePage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
+      <div className="mx-auto flex h-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
           title="Write"
           description="Start your daily writing session"
@@ -113,17 +139,29 @@ export default function WritePage() {
 
         {/* Markdown Editor */}
         {selectedDoc && !showPicker && (
-          <Card>
-            <MarkdownEditor
-              markdown={content}
-              onChange={handleContentChange}
-              placeholder="Start writing..."
-            />
-            <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
-              <div className="text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
-                {wordCount} words
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            {loadingContent ? (
+              <div className="flex items-center justify-center p-12">
+                <p className="text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+                  Loading document content...
+                </p>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto">
+                  <MarkdownEditor
+                    markdown={content}
+                    onChange={handleContentChange}
+                    placeholder="Start writing..."
+                  />
+                </div>
+                <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+                  <div className="text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+                    {wordCount} words
+                  </div>
+                </div>
+              </>
+            )}
           </Card>
         )}
       </div>

@@ -53,6 +53,7 @@ body {
     @apply text-gray-900 dark:text-gray-50;
     @apply strawberry:text-rose-900 cherry:text-rose-300;
     @apply seafoam:text-cyan-900 ocean:text-cyan-300;
+    @apply leading-loose;
   }
 
   .mdx-editor-wrapper .prose h1,
@@ -61,9 +62,33 @@ body {
   .mdx-editor-wrapper .prose h4,
   .mdx-editor-wrapper .prose h5,
   .mdx-editor-wrapper .prose h6 {
-    @apply text-gray-900 dark:text-gray-50;
+    @apply font-bold text-gray-900 dark:text-gray-50;
     @apply strawberry:text-rose-900 cherry:text-rose-300;
     @apply seafoam:text-cyan-900 ocean:text-cyan-300;
+  }
+
+  .mdx-editor-wrapper .prose h1 {
+    @apply text-3xl mb-4 mt-6;
+  }
+
+  .mdx-editor-wrapper .prose h2 {
+    @apply text-2xl mb-3 mt-5;
+  }
+
+  .mdx-editor-wrapper .prose h3 {
+    @apply text-xl mb-3 mt-4;
+  }
+
+  .mdx-editor-wrapper .prose h4 {
+    @apply text-lg mb-2 mt-3;
+  }
+
+  .mdx-editor-wrapper .prose h5 {
+    @apply text-base mb-2 mt-3;
+  }
+
+  .mdx-editor-wrapper .prose h6 {
+    @apply text-sm mb-2 mt-2;
   }
 
   .mdx-editor-wrapper .prose p,
@@ -72,6 +97,7 @@ body {
     @apply text-gray-900 dark:text-gray-50;
     @apply strawberry:text-rose-900 cherry:text-rose-300;
     @apply seafoam:text-cyan-900 ocean:text-cyan-300;
+    @apply leading-loose;
   }
 
   .mdx-editor-wrapper [role="toolbar"] {
