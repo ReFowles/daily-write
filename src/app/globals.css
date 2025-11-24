@@ -321,4 +321,50 @@ body {
     @apply strawberry:text-rose-600 cherry:text-rose-400;
     @apply seafoam:text-cyan-600 ocean:text-cyan-400;
   }
+
+  /* Blockquote styles */
+  .mdx-editor-wrapper .prose blockquote {
+    @apply border-l-4 pl-4 my-4 italic;
+    @apply border-gray-300 dark:border-gray-700;
+    @apply strawberry:border-rose-400 cherry:border-rose-600;
+    @apply seafoam:border-cyan-400 ocean:border-cyan-600;
+    @apply text-gray-700 dark:text-gray-400;
+    @apply strawberry:text-rose-800 cherry:text-rose-400;
+    @apply seafoam:text-cyan-800 ocean:text-cyan-400;
+  }
+
+  /* List styles */
+  .mdx-editor-wrapper .prose ul,
+  .mdx-editor-wrapper .prose ol {
+    @apply my-4 pl-6;
+  }
+
+  .mdx-editor-wrapper .prose ul {
+    @apply list-disc;
+  }
+
+  .mdx-editor-wrapper .prose ol {
+    @apply list-decimal;
+  }
+
+  .mdx-editor-wrapper .prose li {
+    @apply mb-2;
+  }
+
+  .mdx-editor-wrapper .prose ul > li::marker,
+  .mdx-editor-wrapper .prose ol > li::marker {
+    @apply text-gray-500 dark:text-gray-500;
+    @apply strawberry:text-rose-500 cherry:text-rose-500;
+    @apply seafoam:text-cyan-500 ocean:text-cyan-500;
+  }
+
+  /* Strikethrough styles */
+  .mdx-editor-wrapper .prose del,
+  .mdx-editor-wrapper .prose s {
+    @apply text-gray-500 dark:text-gray-600;
+    @apply strawberry:text-rose-500 cherry:text-rose-600;
+    @apply seafoam:text-cyan-500 ocean:text-cyan-600;
+    text-decoration: line-through;
+    opacity: 0.8;
+  }
 }

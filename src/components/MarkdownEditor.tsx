@@ -12,6 +12,7 @@ import {
   toolbarPlugin,
   UndoRedo,
   BoldItalicUnderlineToggles,
+  StrikeThroughSupSubToggles,
   BlockTypeSelect,
   CreateLink,
   ListsToggle,
@@ -41,6 +42,7 @@ const MarkdownEditor = forwardRef<MDXEditorMethods, MarkdownEditorProps>(
                 <>
                   <UndoRedo />
                   <BoldItalicUnderlineToggles />
+                  <StrikeThroughSupSubToggles options={['Strikethrough']} />
                   <BlockTypeSelect />
                   <CreateLink />
                   <ListsToggle />
