@@ -92,6 +92,11 @@ pnpm lint         # Run ESLint
 ## TODO:
 
 - Automatically use curly quotes/apostrophies
+- Additional text editor styles
+  - Quote bock
+  - Bullets, numbers
+  - Strikethrough?
+- How to handle multiple doc tabs
 - Save (write) changes to Docs
 - Check for word count updates/changes from Docs on return to app
 - Figure out highlight > delete doesn't affect word count
