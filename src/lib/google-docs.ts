@@ -114,44 +114,101 @@ export async function getGoogleDocAsMarkdown(
         headingPrefix = '#'.repeat(parseInt(level, 10)) + ' ';
       }
 
+      // Process text runs and merge consecutive runs with same formatting
+      interface TextRun {
+        content: string;
+        bold?: boolean;
+        italic?: boolean;
+        underline?: boolean;
+        strikethrough?: boolean;
+        link?: string;
+      }
+
+      const runs: TextRun[] = [];
+      
       for (const elem of paragraphElements) {
         if (elem.textRun?.content) {
-          let text = elem.textRun.content;
           const textStyle = elem.textRun.textStyle;
-
-          // Skip formatting for newlines and preserve them
-          if (text === '\n') {
-            paragraphText += text;
-            continue;
-          }
-
-          // Apply text formatting (preserve leading/trailing spaces)
-          const hasFormatting = textStyle?.bold || textStyle?.italic || textStyle?.link?.url;
-          const trimmedText = text.trim();
-          const leadingSpace = hasFormatting && text.startsWith(' ') ? ' ' : '';
-          const trailingSpace = hasFormatting && text.endsWith(' ') && text !== ' ' ? ' ' : '';
-
-          if (textStyle?.link?.url) {
-            // Links take precedence
-            let linkText = trimmedText;
-            if (textStyle.bold && textStyle.italic) {
-              linkText = `***${trimmedText}***`;
-            } else if (textStyle.bold) {
-              linkText = `**${trimmedText}**`;
-            } else if (textStyle.italic) {
-              linkText = `*${trimmedText}*`;
-            }
-            text = `${leadingSpace}[${linkText}](${textStyle.link.url})${trailingSpace}`;
-          } else if (textStyle?.bold && textStyle?.italic) {
-            text = `${leadingSpace}***${trimmedText}***${trailingSpace}`;
-          } else if (textStyle?.bold) {
-            text = `${leadingSpace}**${trimmedText}**${trailingSpace}`;
-          } else if (textStyle?.italic) {
-            text = `${leadingSpace}*${trimmedText}*${trailingSpace}`;
-          }
-
-          paragraphText += text;
+          runs.push({
+            content: elem.textRun.content,
+            bold: textStyle?.bold || false,
+            italic: textStyle?.italic || false,
+            underline: textStyle?.underline || false,
+            strikethrough: textStyle?.strikethrough || false,
+            link: textStyle?.link?.url,
+          });
         }
+      }
+
+      // Merge consecutive runs with identical formatting
+      const mergedRuns: TextRun[] = [];
+      for (const run of runs) {
+        const last = mergedRuns[mergedRuns.length - 1];
+        if (
+          last &&
+          last.bold === run.bold &&
+          last.italic === run.italic &&
+          last.underline === run.underline &&
+          last.strikethrough === run.strikethrough &&
+          last.link === run.link
+        ) {
+          last.content += run.content;
+        } else {
+          mergedRuns.push({ ...run });
+        }
+      }
+
+      // Convert merged runs to markdown
+      for (const run of mergedRuns) {
+        let text = run.content;
+
+        // Preserve newlines without formatting
+        if (text === '\n') {
+          paragraphText += text;
+          continue;
+        }
+
+        // If no formatting, just add the text as-is
+        const hasFormatting = run.bold || run.italic || run.underline || run.strikethrough || run.link;
+        if (!hasFormatting) {
+          paragraphText += text;
+          continue;
+        }
+
+        // For formatted text, handle leading/trailing spaces
+        const trimmedText = text.trim();
+        if (!trimmedText) {
+          paragraphText += text;
+          continue;
+        }
+
+        const leadingSpace = text.startsWith(' ') ? ' ' : '';
+        const trailingSpace = text.endsWith(' ') && text !== ' ' ? ' ' : '';
+
+        let formattedText = trimmedText;
+
+        // Apply formatting layers (innermost to outermost)
+        if (run.strikethrough) {
+          formattedText = `~~${formattedText}~~`;
+        }
+
+        if (run.underline) {
+          formattedText = `<u>${formattedText}</u>`;
+        }
+
+        if (run.italic && run.bold) {
+          formattedText = `***${formattedText}***`;
+        } else if (run.bold) {
+          formattedText = `**${formattedText}**`;
+        } else if (run.italic) {
+          formattedText = `*${formattedText}*`;
+        }
+
+        if (run.link) {
+          formattedText = `[${formattedText}](${run.link})`;
+        }
+
+        paragraphText += leadingSpace + formattedText + trailingSpace;
       }
 
       // Add the paragraph to markdown

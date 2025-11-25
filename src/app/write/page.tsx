@@ -257,7 +257,8 @@ export default function WritePage() {
               <>
                 <div className="flex-1 overflow-y-auto">
                   <MarkdownEditor
-                    markdown={content}
+                    key={selectedDoc.id}
+                    markdown={content || ''}
                     onChange={handleContentChange}
                     placeholder="Start writing..."
                   />
