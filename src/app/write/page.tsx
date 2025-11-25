@@ -37,9 +37,23 @@ export default function WritePage() {
   const [lastSavedCount, setLastSavedCount] = useState(0);
   const [lastSavedContent, setLastSavedContent] = useState("");
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   
   // Ref to track if we're currently saving to avoid race conditions
   const isSavingToDoc = useRef(false);
+
+  // Track document visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(!document.hidden);
+    };
+    
+    // Set initial state
+    setIsDocumentVisible(!document.hidden);
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   // Load today's existing word count from Firestore on mount
   useEffect(() => {
@@ -63,7 +77,7 @@ export default function WritePage() {
 
   // Function to save content to Google Docs
   const saveToGoogleDocs = useCallback(async (docId: string, markdown: string) => {
-    if (isSavingToDoc.current) return;
+    if (isSavingToDoc.current) return false;
     
     isSavingToDoc.current = true;
     setDocSaveError(null);
@@ -151,20 +165,23 @@ export default function WritePage() {
   
   // Total words written today = where we started this session + words added in current doc
   const wordsWrittenToday = sessionStartWordCount + currentDocWordsAdded;
+  
+  // Check if there are unsaved Google Docs changes
+  const hasUnsavedDocChanges = selectedDoc && content !== lastSavedContent && !showPicker;
+  
+  // Check if there are unsaved Firestore changes
+  const hasUnsavedSessionChanges = wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
 
-  // Auto-save to Google Docs when content changes
+  // Auto-save to Google Docs when content changes (only when visible and has changes)
   useEffect(() => {
-    // Don't save if no document selected or content hasn't changed
-    if (!selectedDoc || content === lastSavedContent || showPicker) {
-      return;
-    }
-
-    // Only save if the document is visible (tab is active)
-    if (document.hidden) {
+    // Don't save if app is not visible or no unsaved changes
+    if (!isDocumentVisible || !hasUnsavedDocChanges) {
       return;
     }
 
     const timeoutId = setTimeout(async () => {
+      if (!selectedDoc) return;
+      
       setSaveStatus('saving');
       const success = await saveToGoogleDocs(selectedDoc.id, content);
       if (success) {
@@ -175,22 +192,12 @@ export default function WritePage() {
     }, GOOGLE_DOCS_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [content, lastSavedContent, selectedDoc, showPicker, saveToGoogleDocs]);
+  }, [content, isDocumentVisible, hasUnsavedDocChanges, selectedDoc, saveToGoogleDocs]);
 
-  // Auto-save writing session to Firestore (only when document is visible)
+  // Auto-save writing session to Firestore (only when visible and has changes)
   useEffect(() => {
-    // Don't save if no user or no words written today
-    if (!session?.user?.email || wordsWrittenToday === 0) {
-      return;
-    }
-
-    // Don't save if we've already saved this exact count
-    if (wordsWrittenToday === lastSavedCount) {
-      return;
-    }
-
-    // Only save if the document is visible (tab is active)
-    if (document.hidden) {
+    // Don't save if no user, app not visible, or no unsaved changes
+    if (!session?.user?.email || !isDocumentVisible || !hasUnsavedSessionChanges) {
       return;
     }
 
@@ -201,7 +208,7 @@ export default function WritePage() {
         await createOrUpdateWritingSession({
           userId: session.user.email!,
           date: today,
-          wordCount: wordsWrittenToday, // Save total for the day
+          wordCount: wordsWrittenToday,
         });
         setLastSavedCount(wordsWrittenToday);
         setSessionStartWordCount(wordsWrittenToday);
@@ -213,42 +220,7 @@ export default function WritePage() {
     }, AUTO_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [session?.user?.email, wordsWrittenToday, lastSavedCount, wordCount]);
-
-  // Save when user leaves the page (switches tabs or closes browser)
-  useEffect(() => {
-    if (!session?.user?.email) return;
-
-    const handleVisibilityChange = async () => {
-      // Save immediately when tab becomes hidden
-      if (document.hidden) {
-        // Save to Google Docs if there are unsaved changes
-        if (selectedDoc && content !== lastSavedContent) {
-          await saveToGoogleDocs(selectedDoc.id, content);
-        }
-        
-        // Save writing session if there are unsaved changes
-        if (wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount) {
-          const today = toDateString(new Date());
-          try {
-            await createOrUpdateWritingSession({
-              userId: session.user.email!,
-              date: today,
-              wordCount: wordsWrittenToday,
-            });
-            setLastSavedCount(wordsWrittenToday);
-            setSessionStartWordCount(wordsWrittenToday);
-            setDocStartWordCount(wordCount);
-          } catch (error) {
-            console.error('Failed to save on visibility change:', error);
-          }
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [session?.user?.email, wordsWrittenToday, lastSavedCount, wordCount, selectedDoc, content, lastSavedContent, saveToGoogleDocs]);
+  }, [session?.user?.email, wordsWrittenToday, wordCount, isDocumentVisible, hasUnsavedSessionChanges]);
 
   // Redirect if not authenticated (after all hooks)
   if (status === "loading") {

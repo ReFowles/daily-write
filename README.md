@@ -93,12 +93,13 @@ pnpm lint         # Run ESLint
 
 - Automatically use curly quotes/apostrophies
 - How to handle multiple doc tabs
-- Save (write) changes to Docs
 - Check for word count updates/changes from Docs on return to app
 - Figure out highlight > delete doesn't affect word count
 - Add images to About page
 - "Full screen" text editor
 - Any final markdown/formatting bugs
+  - Spaces at end of line
+- Create new document
 
 ## Contributing
 
