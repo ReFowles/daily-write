@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
@@ -19,6 +19,8 @@ const MarkdownEditor = dynamic(() => import('@/components/MarkdownEditor'), {
 
 // Auto-save delay in milliseconds
 const AUTO_SAVE_DELAY = 2000;
+// Google Docs save delay (longer to avoid too many API calls)
+const GOOGLE_DOCS_SAVE_DELAY = 3000;
 
 export default function WritePage() {
   const router = useRouter();
@@ -33,6 +35,11 @@ export default function WritePage() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [lastSavedCount, setLastSavedCount] = useState(0);
+  const [lastSavedContent, setLastSavedContent] = useState("");
+  const [docSaveError, setDocSaveError] = useState<string | null>(null);
+  
+  // Ref to track if we're currently saving to avoid race conditions
+  const isSavingToDoc = useRef(false);
 
   // Load today's existing word count from Firestore on mount
   useEffect(() => {
@@ -54,10 +61,43 @@ export default function WritePage() {
     loadTodaySession();
   }, [session?.user?.email]);
 
+  // Function to save content to Google Docs
+  const saveToGoogleDocs = useCallback(async (docId: string, markdown: string) => {
+    if (isSavingToDoc.current) return;
+    
+    isSavingToDoc.current = true;
+    setDocSaveError(null);
+    
+    try {
+      const response = await fetch('/api/google-docs', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documentId: docId, markdown }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save to Google Docs');
+      }
+
+      setLastSavedContent(markdown);
+      return true;
+    } catch (error) {
+      console.error('Error saving to Google Docs:', error);
+      setDocSaveError(error instanceof Error ? error.message : 'Failed to save');
+      return false;
+    } finally {
+      isSavingToDoc.current = false;
+    }
+  }, []);
+
   const handleSelectDoc = async (doc: GoogleDoc) => {
     setSelectedDoc(doc);
     setShowPicker(false);
     setLoadingContent(true);
+    setDocSaveError(null);
     
     // Load the document content
     try {
@@ -76,6 +116,7 @@ export default function WritePage() {
       const data = await response.json();
       const loadedContent = data.markdown || '';
       setContent(loadedContent);
+      setLastSavedContent(loadedContent);
       
       // Calculate initial word count from loaded content
       const initialCount = calculateWordCount(loadedContent);
@@ -86,6 +127,7 @@ export default function WritePage() {
       console.error('Error loading document:', error);
       // Set empty content on error so user can still write
       setContent('');
+      setLastSavedContent('');
       setDocStartWordCount(0);
     } finally {
       setLoadingContent(false);
@@ -110,6 +152,31 @@ export default function WritePage() {
   // Total words written today = where we started this session + words added in current doc
   const wordsWrittenToday = sessionStartWordCount + currentDocWordsAdded;
 
+  // Auto-save to Google Docs when content changes
+  useEffect(() => {
+    // Don't save if no document selected or content hasn't changed
+    if (!selectedDoc || content === lastSavedContent || showPicker) {
+      return;
+    }
+
+    // Only save if the document is visible (tab is active)
+    if (document.hidden) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSaveStatus('saving');
+      const success = await saveToGoogleDocs(selectedDoc.id, content);
+      if (success) {
+        setSaveStatus('saved');
+      } else {
+        setSaveStatus('unsaved');
+      }
+    }, GOOGLE_DOCS_SAVE_DELAY);
+
+    return () => clearTimeout(timeoutId);
+  }, [content, lastSavedContent, selectedDoc, showPicker, saveToGoogleDocs]);
+
   // Auto-save writing session to Firestore (only when document is visible)
   useEffect(() => {
     // Don't save if no user or no words written today
@@ -130,7 +197,6 @@ export default function WritePage() {
     // Save after delay when user stops typing
     const timeoutId = setTimeout(async () => {
       const today = toDateString(new Date());
-      setSaveStatus('saving');
       try {
         await createOrUpdateWritingSession({
           userId: session.user.email!,
@@ -141,10 +207,8 @@ export default function WritePage() {
         setSessionStartWordCount(wordsWrittenToday);
         // Reset document baseline so we don't double-count these words
         setDocStartWordCount(wordCount);
-        setSaveStatus('saved');
       } catch (error) {
         console.error('Failed to save writing session:', error);
-        setSaveStatus('unsaved');
       }
     }, AUTO_SAVE_DELAY);
 
@@ -156,31 +220,35 @@ export default function WritePage() {
     if (!session?.user?.email) return;
 
     const handleVisibilityChange = async () => {
-      // Save immediately when tab becomes hidden (only if there are unsaved changes)
-      if (document.hidden && wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount) {
-        const today = toDateString(new Date());
-        setSaveStatus('saving');
-        try {
-          await createOrUpdateWritingSession({
-            userId: session.user.email!,
-            date: today,
-            wordCount: wordsWrittenToday,
-          });
-          setLastSavedCount(wordsWrittenToday);
-          setSessionStartWordCount(wordsWrittenToday);
-          // Reset document baseline so we don't double-count these words
-          setDocStartWordCount(wordCount);
-          setSaveStatus('saved');
-        } catch (error) {
-          console.error('Failed to save on visibility change:', error);
-          setSaveStatus('unsaved');
+      // Save immediately when tab becomes hidden
+      if (document.hidden) {
+        // Save to Google Docs if there are unsaved changes
+        if (selectedDoc && content !== lastSavedContent) {
+          await saveToGoogleDocs(selectedDoc.id, content);
+        }
+        
+        // Save writing session if there are unsaved changes
+        if (wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount) {
+          const today = toDateString(new Date());
+          try {
+            await createOrUpdateWritingSession({
+              userId: session.user.email!,
+              date: today,
+              wordCount: wordsWrittenToday,
+            });
+            setLastSavedCount(wordsWrittenToday);
+            setSessionStartWordCount(wordsWrittenToday);
+            setDocStartWordCount(wordCount);
+          } catch (error) {
+            console.error('Failed to save on visibility change:', error);
+          }
         }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [session?.user?.email, wordsWrittenToday, lastSavedCount, wordCount]);
+  }, [session?.user?.email, wordsWrittenToday, lastSavedCount, wordCount, selectedDoc, content, lastSavedContent, saveToGoogleDocs]);
 
   // Redirect if not authenticated (after all hooks)
   if (status === "loading") {
@@ -273,14 +341,21 @@ export default function WritePage() {
                     </div>
                   </div>
                   <div 
-                    className="text-xs text-zinc-500 dark:text-zinc-500 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500"
+                    className="flex items-center gap-2 text-xs"
                     role="status"
                     aria-live="polite"
                     aria-atomic="true"
                   >
-                    {saveStatus === 'saving' && 'Saving...'}
-                    {saveStatus === 'saved' && 'Saved'}
-                    {saveStatus === 'unsaved' && 'Unsaved changes'}
+                    {docSaveError && (
+                      <span className="text-red-500 dark:text-red-400">
+                        Error: {docSaveError}
+                      </span>
+                    )}
+                    <span className="text-zinc-500 dark:text-zinc-500 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500">
+                      {saveStatus === 'saving' && 'Saving to Google Docs...'}
+                      {saveStatus === 'saved' && !docSaveError && 'Saved to Google Docs'}
+                      {saveStatus === 'unsaved' && !docSaveError && 'Unsaved changes'}
+                    </span>
                   </div>
                 </div>
               </>

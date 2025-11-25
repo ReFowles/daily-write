@@ -259,6 +259,306 @@ export async function getGoogleDocAsMarkdown(
 }
 
 /**
+ * Convert markdown to Google Docs requests
+ * This creates a series of batch update requests to update the document
+ */
+function markdownToDocRequests(
+  markdown: string
+): { requests: object[]; plainText: string } {
+  const requests: object[] = [];
+  const lines = markdown.split('\n');
+  let plainText = '';
+  const formattingRanges: {
+    startIndex: number;
+    endIndex: number;
+    bold?: boolean;
+    italic?: boolean;
+    strikethrough?: boolean;
+    underline?: boolean;
+    link?: string;
+  }[] = [];
+
+  // Helper to unescape markdown special characters
+  const unescapeMarkdown = (text: string): string => {
+    return text
+      .replace(/\\([\\*_~`\[\]#|])/g, '$1')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  };
+
+  // Process each line
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    let headingLevel = 0;
+
+    // Check for headings
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      headingLevel = headingMatch[1].length;
+      line = headingMatch[2];
+    }
+
+    // Track the start index for this line
+    const lineStartIndex = plainText.length + 1; // +1 for 1-based indexing
+
+    // Process inline formatting (bold, italic, strikethrough, links)
+    let processedLine = '';
+    let currentIndex = lineStartIndex;
+    let remaining = line;
+
+    // Process formatting patterns
+    while (remaining.length > 0) {
+      // Check for bold+italic (***text***)
+      const boldItalicMatch = remaining.match(/^\*\*\*(.+?)\*\*\*/);
+      if (boldItalicMatch) {
+        const content = unescapeMarkdown(boldItalicMatch[1]);
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          bold: true,
+          italic: true,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(boldItalicMatch[0].length);
+        continue;
+      }
+
+      // Check for bold (**text**)
+      const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
+      if (boldMatch) {
+        const content = unescapeMarkdown(boldMatch[1]);
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          bold: true,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(boldMatch[0].length);
+        continue;
+      }
+
+      // Check for italic (*text*)
+      const italicMatch = remaining.match(/^\*(.+?)\*/);
+      if (italicMatch) {
+        const content = unescapeMarkdown(italicMatch[1]);
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          italic: true,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(italicMatch[0].length);
+        continue;
+      }
+
+      // Check for strikethrough (~~text~~)
+      const strikeMatch = remaining.match(/^~~(.+?)~~/);
+      if (strikeMatch) {
+        const content = unescapeMarkdown(strikeMatch[1]);
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          strikethrough: true,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(strikeMatch[0].length);
+        continue;
+      }
+
+      // Check for underline (<u>text</u>)
+      const underlineMatch = remaining.match(/^<u>(.+?)<\/u>/);
+      if (underlineMatch) {
+        const content = unescapeMarkdown(underlineMatch[1]);
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          underline: true,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(underlineMatch[0].length);
+        continue;
+      }
+
+      // Check for links ([text](url))
+      const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
+      if (linkMatch) {
+        const content = unescapeMarkdown(linkMatch[1]);
+        const url = linkMatch[2];
+        formattingRanges.push({
+          startIndex: currentIndex,
+          endIndex: currentIndex + content.length,
+          link: url,
+        });
+        processedLine += content;
+        currentIndex += content.length;
+        remaining = remaining.slice(linkMatch[0].length);
+        continue;
+      }
+
+      // No formatting, just add the character
+      const char = unescapeMarkdown(remaining[0]);
+      processedLine += char;
+      currentIndex += char.length;
+      remaining = remaining.slice(1);
+    }
+
+    // Add the line to plain text
+    plainText += processedLine;
+
+    // Add newline (except for last line if empty)
+    if (i < lines.length - 1 || processedLine.length > 0) {
+      plainText += '\n';
+    }
+
+    // If this is a heading, store heading info for later
+    if (headingLevel > 0) {
+      const lineEndIndex = lineStartIndex + processedLine.length;
+      formattingRanges.push({
+        startIndex: lineStartIndex,
+        endIndex: lineEndIndex,
+        bold: false, // Will be handled by paragraph style
+      });
+    }
+  }
+
+  // Create the text insertion request
+  if (plainText.length > 0) {
+    requests.push({
+      insertText: {
+        location: { index: 1 },
+        text: plainText,
+      },
+    });
+  }
+
+  // Create formatting requests (in reverse order so indices stay valid)
+  for (const range of formattingRanges.reverse()) {
+    if (range.bold || range.italic || range.strikethrough || range.underline) {
+      const updateTextStyle: {
+        range: { startIndex: number; endIndex: number };
+        textStyle: Record<string, boolean>;
+        fields: string;
+      } = {
+        range: {
+          startIndex: range.startIndex,
+          endIndex: range.endIndex,
+        },
+        textStyle: {},
+        fields: '',
+      };
+
+      const fields: string[] = [];
+      if (range.bold !== undefined) {
+        updateTextStyle.textStyle.bold = range.bold;
+        fields.push('bold');
+      }
+      if (range.italic !== undefined) {
+        updateTextStyle.textStyle.italic = range.italic;
+        fields.push('italic');
+      }
+      if (range.strikethrough !== undefined) {
+        updateTextStyle.textStyle.strikethrough = range.strikethrough;
+        fields.push('strikethrough');
+      }
+      if (range.underline !== undefined) {
+        updateTextStyle.textStyle.underline = range.underline;
+        fields.push('underline');
+      }
+
+      updateTextStyle.fields = fields.join(',');
+
+      if (fields.length > 0) {
+        requests.push({ updateTextStyle });
+      }
+    }
+
+    if (range.link) {
+      requests.push({
+        updateTextStyle: {
+          range: {
+            startIndex: range.startIndex,
+            endIndex: range.endIndex,
+          },
+          textStyle: {
+            link: { url: range.link },
+          },
+          fields: 'link',
+        },
+      });
+    }
+  }
+
+  return { requests, plainText };
+}
+
+/**
+ * Update a Google Doc with new markdown content
+ */
+export async function updateGoogleDoc(
+  accessToken: string,
+  documentId: string,
+  markdown: string
+): Promise<{ success: boolean; wordCount: number }> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+
+  // First, get the current document to find the content length
+  const currentDoc = await docs.documents.get({ documentId });
+  const content = currentDoc.data.body?.content || [];
+  
+  // Find the end index of the document content
+  let endIndex = 1;
+  for (const element of content) {
+    if (element.endIndex && element.endIndex > endIndex) {
+      endIndex = element.endIndex;
+    }
+  }
+
+  // Build requests: first delete all content, then insert new content
+  const requests: object[] = [];
+
+  // Delete existing content (if there's content beyond the initial newline)
+  if (endIndex > 2) {
+    requests.push({
+      deleteContentRange: {
+        range: {
+          startIndex: 1,
+          endIndex: endIndex - 1,
+        },
+      },
+    });
+  }
+
+  // Convert markdown to Google Docs requests
+  const { requests: insertRequests, plainText } = markdownToDocRequests(markdown);
+  requests.push(...insertRequests);
+
+  // Execute the batch update
+  if (requests.length > 0) {
+    await docs.documents.batchUpdate({
+      documentId,
+      requestBody: { requests },
+    });
+  }
+
+  // Calculate word count from the plain text
+  const wordCount = plainText
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0).length;
+
+  return { success: true, wordCount };
+}
+
+/**
  * Get word count delta for a document since a specific time
  */
 export async function getWordCountDelta(

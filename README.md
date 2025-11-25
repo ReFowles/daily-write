@@ -97,6 +97,8 @@ pnpm lint         # Run ESLint
 - Check for word count updates/changes from Docs on return to app
 - Figure out highlight > delete doesn't affect word count
 - Add images to About page
+- "Full screen" text editor
+- Any final markdown/formatting bugs
 
 ## Contributing
 
