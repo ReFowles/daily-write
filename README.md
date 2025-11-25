@@ -99,7 +99,6 @@ pnpm lint         # Run ESLint
 - "Full screen" text editor
 - Any final markdown/formatting bugs
   - Spaces at end of line
-- Create new document
 
 ## Contributing
 

@@ -9,6 +9,43 @@ export interface GoogleDoc {
 }
 
 /**
+ * Create a new Google Doc with the given title
+ */
+export async function createGoogleDoc(
+  accessToken: string,
+  title: string
+): Promise<GoogleDoc> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+  const drive = google.drive({ version: 'v3', auth });
+
+  // Create the document using Google Docs API
+  const createResponse = await docs.documents.create({
+    requestBody: {
+      title,
+    },
+  });
+
+  const documentId = createResponse.data.documentId!;
+
+  // Get full file metadata from Drive API
+  const fileResponse = await drive.files.get({
+    fileId: documentId,
+    fields: 'id, name, modifiedTime, webViewLink, ownedByMe',
+  });
+
+  return {
+    id: fileResponse.data.id!,
+    name: fileResponse.data.name!,
+    modifiedTime: fileResponse.data.modifiedTime!,
+    webViewLink: fileResponse.data.webViewLink!,
+    ownedByMe: fileResponse.data.ownedByMe ?? true,
+  };
+}
+
+/**
  * Get a list of Google Docs owned by or shared with the user
  */
 export async function listGoogleDocs(accessToken: string): Promise<GoogleDoc[]> {

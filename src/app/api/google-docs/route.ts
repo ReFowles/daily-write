@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { listGoogleDocs, getGoogleDocAsMarkdown, updateGoogleDoc } from '@/lib/google-docs';
+import { listGoogleDocs, getGoogleDocAsMarkdown, updateGoogleDoc, createGoogleDoc } from '@/lib/google-docs';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -29,7 +29,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { documentId } = await request.json();
+    const body = await request.json();
+
+    // Check if this is a create request or a get content request
+    if (body.action === 'create') {
+      const { title } = body;
+
+      if (!title || typeof title !== 'string') {
+        return NextResponse.json(
+          { error: 'Document title is required' },
+          { status: 400 }
+        );
+      }
+
+      const newDoc = await createGoogleDoc(session.accessToken, title);
+      return NextResponse.json({ doc: newDoc });
+    }
+
+    // Default behavior: get document content
+    const { documentId } = body;
 
     if (!documentId) {
       return NextResponse.json(
@@ -45,9 +63,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ markdown });
   } catch (error) {
-    console.error('Error fetching Google Doc content:', error);
+    console.error('Error processing Google Doc request:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch document content' },
+      { error: 'Failed to process document request' },
       { status: 500 }
     );
   }
