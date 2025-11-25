@@ -135,7 +135,7 @@ export async function getGoogleDocAsMarkdown(
             italic: textStyle?.italic || false,
             underline: textStyle?.underline || false,
             strikethrough: textStyle?.strikethrough || false,
-            link: textStyle?.link?.url,
+            link: textStyle?.link?.url ?? undefined,
           });
         }
       }
@@ -158,9 +158,30 @@ export async function getGoogleDocAsMarkdown(
         }
       }
 
+      // Helper to escape special characters so they display as literal characters
+      // This escapes both HTML entities and markdown special characters
+      const escapeSpecialChars = (text: string): string => {
+        return text
+          // Escape backslashes first (so we don't double-escape later escapes)
+          .replace(/\\/g, '\\\\')
+          // HTML entities
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          // Markdown special characters
+          .replace(/\*/g, '\\*')
+          .replace(/_/g, '\\_')
+          .replace(/~/g, '\\~')
+          .replace(/`/g, '\\`')
+          .replace(/\[/g, '\\[')
+          .replace(/\]/g, '\\]')
+          .replace(/#/g, '\\#')
+          .replace(/\|/g, '\\|');
+      };
+
       // Convert merged runs to markdown
       for (const run of mergedRuns) {
-        let text = run.content;
+        const text = run.content;
 
         // Preserve newlines without formatting
         if (text === '\n') {
@@ -168,10 +189,10 @@ export async function getGoogleDocAsMarkdown(
           continue;
         }
 
-        // If no formatting, just add the text as-is
+        // If no formatting, escape special chars and add the text
         const hasFormatting = run.bold || run.italic || run.underline || run.strikethrough || run.link;
         if (!hasFormatting) {
-          paragraphText += text;
+          paragraphText += escapeSpecialChars(text);
           continue;
         }
 
@@ -185,7 +206,8 @@ export async function getGoogleDocAsMarkdown(
         const leadingSpace = text.startsWith(' ') ? ' ' : '';
         const trailingSpace = text.endsWith(' ') && text !== ' ' ? ' ' : '';
 
-        let formattedText = trimmedText;
+        // Escape special characters in the content so literal chars show up
+        let formattedText = escapeSpecialChars(trimmedText);
 
         // Apply formatting layers (innermost to outermost)
         if (run.strikethrough) {
