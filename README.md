@@ -99,14 +99,16 @@ pnpm lint         # Run ESLint
 - "Full screen" text editor
 - Any final markdown/formatting bugs
   - Spaces at end of line
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+  - Escaping characters
+- New goal types?
+  - Set total word count by deadline, recalculate number of words per day every day
+- Change dashboard wording from "Session" to "Day"
+- Refreshing the write page takes you back to the doc, not the choice screen (slug support)
+- Dark themes text editor toolbar selected icons too bright
+- Tooltip on document tabs not working?
+- Update About page with more limitation information
+  - Can't create or delete document tabs (read-only)
+  - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs.
 
 ## License
 

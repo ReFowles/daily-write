@@ -37,3 +37,11 @@ export interface GoogleDoc {
   webViewLink: string;
   ownedByMe: boolean;
 }
+
+export interface DocumentTab {
+  tabId: string;
+  title: string;
+  index: number;
+  nestingLevel: number;
+  parentTabId?: string;
+}

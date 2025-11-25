@@ -8,8 +8,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
 import { toDateString, calculateWordCount } from "@/lib/date-utils";
-import type { GoogleDoc } from "@/lib/types";
+import type { GoogleDoc, DocumentTab } from "@/lib/types";
 import GoogleDocsPicker from "@/components/GoogleDocsPicker";
+import DocumentTabs from "@/components/DocumentTabs";
 import dynamic from 'next/dynamic';
 
 const MarkdownEditor = dynamic(() => import('@/components/MarkdownEditor'), {
@@ -27,6 +28,7 @@ export default function WritePage() {
   const { data: session, status } = useSession();
   const { todayGoal, daysLeft, currentGoal } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
+  const [selectedTab, setSelectedTab] = useState<DocumentTab | null>(null);
   const [showPicker, setShowPicker] = useState(true);
   const [content, setContent] = useState("");
   const [wordCount, setWordCount] = useState(0);
@@ -76,7 +78,7 @@ export default function WritePage() {
   }, [session?.user?.email]);
 
   // Function to save content to Google Docs
-  const saveToGoogleDocs = useCallback(async (docId: string, markdown: string) => {
+  const saveToGoogleDocs = useCallback(async (docId: string, markdown: string, tabId?: string) => {
     if (isSavingToDoc.current) return false;
     
     isSavingToDoc.current = true;
@@ -88,7 +90,7 @@ export default function WritePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ documentId: docId, markdown }),
+        body: JSON.stringify({ documentId: docId, markdown, tabId }),
       });
 
       if (!response.ok) {
@@ -109,22 +111,44 @@ export default function WritePage() {
 
   const handleSelectDoc = async (doc: GoogleDoc) => {
     setSelectedDoc(doc);
+    setSelectedTab(null); // Clear tab selection - will be set by DocumentTabs component
     setShowPicker(false);
     setLoadingContent(true);
     setDocSaveError(null);
     
-    // Load the document content
+    // Note: Content will be loaded when a tab is selected
+    // The DocumentTabs component will auto-select the first tab
+    setContent('');
+    setLastSavedContent('');
+    setWordCount(0);
+    setDocStartWordCount(0);
+    setLoadingContent(false);
+  };
+
+  const handleSelectTab = useCallback(async (tab: DocumentTab) => {
+    // Save current content before switching tabs
+    if (selectedDoc && selectedTab && content !== lastSavedContent) {
+      await saveToGoogleDocs(selectedDoc.id, content, selectedTab.tabId);
+    }
+
+    setSelectedTab(tab);
+    setLoadingContent(true);
+    setDocSaveError(null);
+    
+    if (!selectedDoc) return;
+    
+    // Load the tab content
     try {
       const response = await fetch('/api/google-docs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ documentId: doc.id }),
+        body: JSON.stringify({ documentId: selectedDoc.id, tabId: tab.tabId }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load document content');
+        throw new Error('Failed to load tab content');
       }
 
       const data = await response.json();
@@ -136,17 +160,15 @@ export default function WritePage() {
       const initialCount = calculateWordCount(loadedContent);
       setWordCount(initialCount);
       setDocStartWordCount(initialCount);
-      // Note: sessionStartWordCount is NOT reset - it preserves progress from all docs
     } catch (error) {
-      console.error('Error loading document:', error);
-      // Set empty content on error so user can still write
+      console.error('Error loading tab content:', error);
       setContent('');
       setLastSavedContent('');
       setDocStartWordCount(0);
     } finally {
       setLoadingContent(false);
     }
-  };
+  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs]);
 
   const handleContentChange = useCallback((markdown: string) => {
     setContent(markdown);
@@ -183,7 +205,7 @@ export default function WritePage() {
       if (!selectedDoc) return;
       
       setSaveStatus('saving');
-      const success = await saveToGoogleDocs(selectedDoc.id, content);
+      const success = await saveToGoogleDocs(selectedDoc.id, content, selectedTab?.tabId);
       if (success) {
         setSaveStatus('saved');
       } else {
@@ -192,7 +214,7 @@ export default function WritePage() {
     }, GOOGLE_DOCS_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [content, isDocumentVisible, hasUnsavedDocChanges, selectedDoc, saveToGoogleDocs]);
+  }, [content, isDocumentVisible, hasUnsavedDocChanges, selectedDoc, selectedTab, saveToGoogleDocs]);
 
   // Auto-save writing session to Firestore (only when visible and has changes)
   useEffect(() => {
@@ -271,6 +293,11 @@ export default function WritePage() {
                 </p>
                 <h3 className="font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
                   {selectedDoc.name}
+                  {selectedTab && selectedTab.title !== 'Tab 1' && (
+                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400 strawberry:text-rose-500 cherry:text-rose-400 seafoam:text-cyan-500 ocean:text-cyan-400">
+                      {' '}/ {selectedTab.title}
+                    </span>
+                  )}
                 </h3>
               </div>
               <button
@@ -287,6 +314,13 @@ export default function WritePage() {
         {/* Markdown Editor */}
         {selectedDoc && !showPicker && (
           <Card className="flex flex-1 flex-col overflow-hidden">
+            {/* Document Tabs */}
+            <DocumentTabs
+              documentId={selectedDoc.id}
+              selectedTabId={selectedTab?.tabId}
+              onSelectTab={handleSelectTab}
+            />
+            
             {loadingContent ? (
               <div className="flex items-center justify-center p-12" role="status" aria-live="polite">
                 <p className="text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">

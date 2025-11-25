@@ -1,5 +1,11 @@
 import { auth } from '@/lib/auth';
-import { listGoogleDocs, getGoogleDocAsMarkdown, updateGoogleDoc, createGoogleDoc } from '@/lib/google-docs';
+import { 
+  listGoogleDocs, 
+  getGoogleDocAsMarkdown, 
+  updateGoogleDoc, 
+  createGoogleDoc,
+  getDocumentTabs,
+} from '@/lib/google-docs';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -31,37 +37,59 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Check if this is a create request or a get content request
-    if (body.action === 'create') {
-      const { title } = body;
+    // Handle different actions
+    switch (body.action) {
+      case 'create': {
+        const { title } = body;
 
-      if (!title || typeof title !== 'string') {
-        return NextResponse.json(
-          { error: 'Document title is required' },
-          { status: 400 }
-        );
+        if (!title || typeof title !== 'string') {
+          return NextResponse.json(
+            { error: 'Document title is required' },
+            { status: 400 }
+          );
+        }
+
+        const newDoc = await createGoogleDoc(session.accessToken, title);
+        return NextResponse.json({ doc: newDoc });
       }
 
-      const newDoc = await createGoogleDoc(session.accessToken, title);
-      return NextResponse.json({ doc: newDoc });
+      case 'getTabs': {
+        const { documentId } = body;
+
+        if (!documentId) {
+          return NextResponse.json(
+            { error: 'Document ID is required' },
+            { status: 400 }
+          );
+        }
+
+        const tabs = await getDocumentTabs(session.accessToken, documentId);
+        return NextResponse.json({ tabs });
+      }
+
+      // NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs.
+      // Tabs are read-only via the API. Users must manage tabs directly in Google Docs.
+
+      default: {
+        // Default behavior: get document content
+        const { documentId, tabId } = body;
+
+        if (!documentId) {
+          return NextResponse.json(
+            { error: 'Document ID is required' },
+            { status: 400 }
+          );
+        }
+
+        const markdown = await getGoogleDocAsMarkdown(
+          session.accessToken,
+          documentId,
+          tabId
+        );
+
+        return NextResponse.json({ markdown });
+      }
     }
-
-    // Default behavior: get document content
-    const { documentId } = body;
-
-    if (!documentId) {
-      return NextResponse.json(
-        { error: 'Document ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const markdown = await getGoogleDocAsMarkdown(
-      session.accessToken,
-      documentId
-    );
-
-    return NextResponse.json({ markdown });
   } catch (error) {
     console.error('Error processing Google Doc request:', error);
     return NextResponse.json(
@@ -79,7 +107,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { documentId, markdown } = await request.json();
+    const { documentId, markdown, tabId } = await request.json();
 
     if (!documentId) {
       return NextResponse.json(
@@ -98,7 +126,8 @@ export async function PUT(request: Request) {
     const result = await updateGoogleDoc(
       session.accessToken,
       documentId,
-      markdown
+      markdown,
+      tabId
     );
 
     return NextResponse.json(result);

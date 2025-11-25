@@ -8,6 +8,14 @@ export interface GoogleDoc {
   ownedByMe: boolean;
 }
 
+export interface DocumentTab {
+  tabId: string;
+  title: string;
+  index: number;
+  nestingLevel: number;
+  parentTabId?: string;
+}
+
 /**
  * Create a new Google Doc with the given title
  */
@@ -71,6 +79,70 @@ export async function listGoogleDocs(accessToken: string): Promise<GoogleDoc[]> 
 }
 
 /**
+ * Get all tabs within a Google Doc
+ */
+export async function getDocumentTabs(
+  accessToken: string,
+  documentId: string
+): Promise<DocumentTab[]> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+
+  const response = await docs.documents.get({
+    documentId,
+    includeTabsContent: true,
+  });
+
+  const tabs: DocumentTab[] = [];
+
+  // Define interface for tab structure since types may not be up to date
+  interface TabData {
+    tabProperties?: {
+      tabId?: string | null;
+      title?: string | null;
+      index?: number | null;
+      nestingLevel?: number | null;
+      parentTabId?: string | null;
+    };
+    childTabs?: TabData[];
+  }
+
+  // Helper function to recursively extract tabs
+  const extractTabs = (tabList: TabData[] | undefined, parentTabId?: string) => {
+    if (!tabList) return;
+    
+    for (const tab of tabList) {
+      if (tab.tabProperties) {
+        tabs.push({
+          tabId: tab.tabProperties.tabId || '',
+          title: tab.tabProperties.title || 'Untitled',
+          index: tab.tabProperties.index || 0,
+          nestingLevel: tab.tabProperties.nestingLevel || 0,
+          parentTabId: parentTabId || tab.tabProperties.parentTabId || undefined,
+        });
+      }
+      
+      // Process child tabs recursively
+      if (tab.childTabs && tab.childTabs.length > 0) {
+        extractTabs(tab.childTabs, tab.tabProperties?.tabId || undefined);
+      }
+    }
+  };
+
+  // Cast to unknown first then to our interface to handle potentially missing types
+  extractTabs(response.data.tabs as unknown as TabData[]);
+  
+  return tabs;
+}
+
+// NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs programmatically.
+// Tabs are read-only via the API. Users must manage tabs directly in Google Docs.
+// The following functions (createDocumentTab, deleteDocumentTab, updateDocumentTab) have been removed
+// because these operations are not supported by the Google Docs API.
+
+/**
  * Get the content and word count of a Google Doc
  */
 export async function getGoogleDocContent(
@@ -117,25 +189,38 @@ export async function getGoogleDocContent(
   };
 }
 
+// Helper interface for body content structure
+interface BodyContent {
+  content?: Array<{
+    paragraph?: {
+      elements?: Array<{
+        textRun?: {
+          content?: string;
+          textStyle?: {
+            bold?: boolean;
+            italic?: boolean;
+            underline?: boolean;
+            strikethrough?: boolean;
+            link?: {
+              url?: string;
+            };
+          };
+        };
+      }>;
+      paragraphStyle?: {
+        namedStyleType?: string;
+      };
+    };
+    table?: unknown;
+  }>;
+}
+
 /**
- * Convert Google Docs content to Markdown
+ * Convert body content to Markdown
  */
-export async function getGoogleDocAsMarkdown(
-  accessToken: string,
-  documentId: string
-): Promise<string> {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
-
-  const docs = google.docs({ version: 'v1', auth });
-
-  const response = await docs.documents.get({
-    documentId,
-  });
-
-  const document = response.data;
+function bodyToMarkdown(bodyContent: BodyContent): string {
   let markdown = '';
-  const content = document.body?.content || [];
+  const content = bodyContent?.content || [];
 
   for (const element of content) {
     if (element.paragraph) {
@@ -196,16 +281,12 @@ export async function getGoogleDocAsMarkdown(
       }
 
       // Helper to escape special characters so they display as literal characters
-      // This escapes both HTML entities and markdown special characters
       const escapeSpecialChars = (text: string): string => {
         return text
-          // Escape backslashes first (so we don't double-escape later escapes)
           .replace(/\\/g, '\\\\')
-          // HTML entities
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
-          // Markdown special characters
           .replace(/\*/g, '\\*')
           .replace(/_/g, '\\_')
           .replace(/~/g, '\\~')
@@ -220,20 +301,17 @@ export async function getGoogleDocAsMarkdown(
       for (const run of mergedRuns) {
         const text = run.content;
 
-        // Preserve newlines without formatting
         if (text === '\n') {
           paragraphText += text;
           continue;
         }
 
-        // If no formatting, escape special chars and add the text
         const hasFormatting = run.bold || run.italic || run.underline || run.strikethrough || run.link;
         if (!hasFormatting) {
           paragraphText += escapeSpecialChars(text);
           continue;
         }
 
-        // For formatted text, handle leading/trailing spaces
         const trimmedText = text.trim();
         if (!trimmedText) {
           paragraphText += text;
@@ -243,10 +321,8 @@ export async function getGoogleDocAsMarkdown(
         const leadingSpace = text.startsWith(' ') ? ' ' : '';
         const trailingSpace = text.endsWith(' ') && text !== ' ' ? ' ' : '';
 
-        // Escape special characters in the content so literal chars show up
         let formattedText = escapeSpecialChars(trimmedText);
 
-        // Apply formatting layers (innermost to outermost)
         if (run.strikethrough) {
           formattedText = `~~${formattedText}~~`;
         }
@@ -272,22 +348,18 @@ export async function getGoogleDocAsMarkdown(
 
       // Add the paragraph to markdown
       if (paragraphText.trim()) {
-        // Remove trailing newline from paragraph text since we'll add our own
         const cleanText = paragraphText.replace(/\n+$/, '');
         markdown += headingPrefix + cleanText;
         
-        // Headings need double line break for proper markdown separation
         if (headingPrefix) {
           markdown += '\n\n';
         } else {
-          // Regular paragraphs get single line break
           markdown += '\n';
         }
       } else {
         markdown += '\n';
       }
     } else if (element.table) {
-      // Basic table support - just add a note for now
       markdown += '_[Table content]_\n\n';
     }
   }
@@ -296,11 +368,83 @@ export async function getGoogleDocAsMarkdown(
 }
 
 /**
+ * Convert Google Docs content to Markdown
+ * @param tabId - Optional tab ID to get content from a specific tab
+ */
+export async function getGoogleDocAsMarkdown(
+  accessToken: string,
+  documentId: string,
+  tabId?: string
+): Promise<string> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+
+  const response = await docs.documents.get({
+    documentId,
+    includeTabsContent: true,
+  });
+
+  const document = response.data;
+  
+  // If a specific tab is requested, find it and return its content
+  if (tabId && document.tabs) {
+    interface TabData {
+      tabProperties?: {
+        tabId?: string | null;
+      };
+      documentTab?: {
+        body?: BodyContent;
+      };
+      childTabs?: TabData[];
+    }
+    
+    // Helper to find a tab by ID recursively
+    const findTab = (tabs: TabData[], targetId: string): TabData | undefined => {
+      for (const tab of tabs) {
+        if (tab.tabProperties?.tabId === targetId) {
+          return tab;
+        }
+        if (tab.childTabs) {
+          const found = findTab(tab.childTabs, targetId);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    
+    const targetTab = findTab(document.tabs as unknown as TabData[], tabId);
+    if (targetTab?.documentTab?.body) {
+      return bodyToMarkdown(targetTab.documentTab.body);
+    }
+  }
+  
+  // Default: return first tab's content or legacy body content
+  if (document.tabs && document.tabs.length > 0) {
+    interface TabData {
+      documentTab?: {
+        body?: BodyContent;
+      };
+    }
+    const firstTab = document.tabs[0] as unknown as TabData;
+    if (firstTab?.documentTab?.body) {
+      return bodyToMarkdown(firstTab.documentTab.body);
+    }
+  }
+  
+  // Fallback to legacy body content
+  return bodyToMarkdown(document.body as BodyContent);
+}
+
+/**
  * Convert markdown to Google Docs requests
  * This creates a series of batch update requests to update the document
+ * @param tabId - Optional tab ID to target a specific tab
  */
 function markdownToDocRequests(
-  markdown: string
+  markdown: string,
+  tabId?: string
 ): { requests: object[]; plainText: string } {
   const requests: object[] = [];
   const lines = markdown.split('\n');
@@ -466,9 +610,13 @@ function markdownToDocRequests(
 
   // Create the text insertion request
   if (plainText.length > 0) {
+    const location: { index: number; tabId?: string } = { index: 1 };
+    if (tabId) {
+      location.tabId = tabId;
+    }
     requests.push({
       insertText: {
-        location: { index: 1 },
+        location,
         text: plainText,
       },
     });
@@ -477,15 +625,20 @@ function markdownToDocRequests(
   // Create formatting requests (in reverse order so indices stay valid)
   for (const range of formattingRanges.reverse()) {
     if (range.bold || range.italic || range.strikethrough || range.underline) {
+      const rangeObj: { startIndex: number; endIndex: number; tabId?: string } = {
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      };
+      if (tabId) {
+        rangeObj.tabId = tabId;
+      }
+      
       const updateTextStyle: {
-        range: { startIndex: number; endIndex: number };
+        range: { startIndex: number; endIndex: number; tabId?: string };
         textStyle: Record<string, boolean>;
         fields: string;
       } = {
-        range: {
-          startIndex: range.startIndex,
-          endIndex: range.endIndex,
-        },
+        range: rangeObj,
         textStyle: {},
         fields: '',
       };
@@ -516,12 +669,17 @@ function markdownToDocRequests(
     }
 
     if (range.link) {
+      const rangeObj: { startIndex: number; endIndex: number; tabId?: string } = {
+        startIndex: range.startIndex,
+        endIndex: range.endIndex,
+      };
+      if (tabId) {
+        rangeObj.tabId = tabId;
+      }
+      
       requests.push({
         updateTextStyle: {
-          range: {
-            startIndex: range.startIndex,
-            endIndex: range.endIndex,
-          },
+          range: rangeObj,
           textStyle: {
             link: { url: range.link },
           },
@@ -536,11 +694,13 @@ function markdownToDocRequests(
 
 /**
  * Update a Google Doc with new markdown content
+ * @param tabId - Optional tab ID to update content in a specific tab
  */
 export async function updateGoogleDoc(
   accessToken: string,
   documentId: string,
-  markdown: string
+  markdown: string,
+  tabId?: string
 ): Promise<{ success: boolean; wordCount: number }> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
@@ -548,14 +708,57 @@ export async function updateGoogleDoc(
   const docs = google.docs({ version: 'v1', auth });
 
   // First, get the current document to find the content length
-  const currentDoc = await docs.documents.get({ documentId });
-  const content = currentDoc.data.body?.content || [];
+  const currentDoc = await docs.documents.get({ 
+    documentId,
+    includeTabsContent: true,
+  });
   
-  // Find the end index of the document content
+  // Find the end index of the document/tab content
   let endIndex = 1;
-  for (const element of content) {
-    if (element.endIndex && element.endIndex > endIndex) {
-      endIndex = element.endIndex;
+  
+  if (tabId && currentDoc.data.tabs) {
+    // Find the specific tab's content
+    interface TabData {
+      tabProperties?: {
+        tabId?: string | null;
+      };
+      documentTab?: {
+        body?: {
+          content?: Array<{ endIndex?: number | null }>;
+        };
+      };
+      childTabs?: TabData[];
+    }
+    
+    const findTab = (tabs: TabData[], targetId: string): TabData | undefined => {
+      for (const tab of tabs) {
+        if (tab.tabProperties?.tabId === targetId) {
+          return tab;
+        }
+        if (tab.childTabs) {
+          const found = findTab(tab.childTabs, targetId);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    
+    const targetTab = findTab(currentDoc.data.tabs as unknown as TabData[], tabId);
+    const content = targetTab?.documentTab?.body?.content || [];
+    
+    for (const element of content) {
+      if (element.endIndex && element.endIndex > endIndex) {
+        endIndex = element.endIndex;
+      }
+    }
+  } else {
+    // Use legacy body content
+    const content = currentDoc.data.body?.content || [];
+    
+    for (const element of content) {
+      if (element.endIndex && element.endIndex > endIndex) {
+        endIndex = element.endIndex;
+      }
     }
   }
 
@@ -564,18 +767,22 @@ export async function updateGoogleDoc(
 
   // Delete existing content (if there's content beyond the initial newline)
   if (endIndex > 2) {
+    const deleteRange: { startIndex: number; endIndex: number; tabId?: string } = {
+      startIndex: 1,
+      endIndex: endIndex - 1,
+    };
+    if (tabId) {
+      deleteRange.tabId = tabId;
+    }
     requests.push({
       deleteContentRange: {
-        range: {
-          startIndex: 1,
-          endIndex: endIndex - 1,
-        },
+        range: deleteRange,
       },
     });
   }
 
   // Convert markdown to Google Docs requests
-  const { requests: insertRequests, plainText } = markdownToDocRequests(markdown);
+  const { requests: insertRequests, plainText } = markdownToDocRequests(markdown, tabId);
   requests.push(...insertRequests);
 
   // Execute the batch update

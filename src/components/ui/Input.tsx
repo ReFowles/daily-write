@@ -12,6 +12,7 @@ interface InputProps {
   min?: string | number;
   max?: string | number;
   className?: string;
+  autoFocus?: boolean;
   "aria-label"?: string;
 }
 
@@ -27,6 +28,7 @@ export function Input({
   min,
   max,
   className = "",
+  autoFocus = false,
   "aria-label": ariaLabel,
 }: InputProps) {
   const baseClasses =
@@ -46,6 +48,7 @@ export function Input({
       disabled={disabled}
       min={min}
       max={max}
+      autoFocus={autoFocus}
       aria-label={ariaLabel}
       className={cn(baseClasses, disabledClasses, className)}
     />
