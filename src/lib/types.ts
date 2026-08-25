@@ -2,6 +2,8 @@
  * Shared type definitions for the daily-write application
  */
 
+export type { DocumentContent } from './document-content';
+
 export interface Goal {
   id: string;
   userId: string;
