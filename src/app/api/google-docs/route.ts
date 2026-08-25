@@ -1,10 +1,11 @@
 import { auth } from '@/lib/auth';
-import { 
-  listGoogleDocs, 
+import {
+  listGoogleDocs,
   getGoogleDocAsContent,
   updateGoogleDocFromContent,
   createGoogleDoc,
   getDocumentTabs,
+  DocumentDriftError,
 } from '@/lib/google-docs';
 import { isDocumentContent } from '@/lib/document-content';
 import { NextResponse } from 'next/server';
@@ -82,13 +83,13 @@ export async function POST(request: Request) {
           );
         }
 
-        const content = await getGoogleDocAsContent(
+        const { content, revisionId } = await getGoogleDocAsContent(
           session.accessToken,
           documentId,
           tabId
         );
 
-        return NextResponse.json({ content });
+        return NextResponse.json({ content, revisionId });
       }
     }
   } catch (error) {
@@ -108,7 +109,8 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { documentId, content, tabId } = await request.json();
+    const { documentId, content, tabId, prevContent, baseRevisionId } =
+      await request.json();
 
     if (!documentId) {
       return NextResponse.json(
@@ -124,18 +126,36 @@ export async function PUT(request: Request) {
       );
     }
 
+    if (prevContent !== undefined && prevContent !== null && !isDocumentContent(prevContent)) {
+      return NextResponse.json(
+        { error: 'prevContent must be valid document content when supplied' },
+        { status: 400 }
+      );
+    }
+
     const result = await updateGoogleDocFromContent(
       session.accessToken,
       documentId,
       content,
-      tabId
+      tabId,
+      {
+        prevContent: prevContent ?? null,
+        baseRevisionId: typeof baseRevisionId === 'string' ? baseRevisionId : null,
+      }
     );
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof DocumentDriftError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 409 }
+      );
+    }
     console.error('Error updating Google Doc:', error);
+    const details = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: 'Failed to update document' },
+      { error: 'Failed to update document', details },
       { status: 500 }
     );
   }

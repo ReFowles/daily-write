@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contentToGoogleDocsRequests } from './content-to-google-docs';
+import { diffDocumentContent } from './document-content-diff';
 import { googleDocsToContent, type GoogleDocsDocument } from './google-docs-to-content';
 import type { DocumentContent } from './document-content';
 
@@ -55,10 +56,22 @@ interface SimResult {
   lists: Record<string, { listProperties: { nestingLevels: Array<{ glyphType?: string; glyphSymbol?: string }> } }>;
 }
 
-function simulate(requests: object[]): SimResult {
-  const paragraphs: SimParagraph[] = [{ text: '', styles: [], paragraphStyle: {} }];
-  const lists: SimResult['lists'] = {};
-  let nextListSeq = 0;
+function freshSim(): SimState {
+  return {
+    paragraphs: [{ text: '', styles: [], paragraphStyle: {} }],
+    lists: {},
+    nextListSeq: 0,
+  };
+}
+
+interface SimState {
+  paragraphs: SimParagraph[];
+  lists: SimResult['lists'];
+  nextListSeq: number;
+}
+
+function applyRequests(state: SimState, requests: object[]): void {
+  const { paragraphs, lists } = state;
 
   for (const request of requests) {
     if ('insertText' in request) {
@@ -95,6 +108,47 @@ function simulate(requests: object[]): SimResult {
       continue;
     }
 
+    if ('deleteContentRange' in request) {
+      const { range } = (request as {
+        deleteContentRange: { range: { startIndex: number; endIndex: number } };
+      }).deleteContentRange;
+
+      let remaining = range.endIndex - range.startIndex;
+      while (remaining > 0) {
+        const start = locateChar(paragraphs, range.startIndex);
+        const active = paragraphs[start.paragraphIndex];
+        const paraChars = active.text.length + 1; // +1 for trailing newline
+        const availableInPara = paraChars - start.charIndex;
+        const take = Math.min(remaining, availableInPara);
+
+        if (start.charIndex + take <= active.text.length) {
+          // Straight in-paragraph deletion.
+          active.text = active.text.slice(0, start.charIndex) + active.text.slice(start.charIndex + take);
+          active.styles = [
+            ...active.styles.slice(0, start.charIndex),
+            ...active.styles.slice(start.charIndex + take),
+          ];
+        } else {
+          // Deletion consumes the trailing newline; merge with next paragraph.
+          const keptText = active.text.slice(0, start.charIndex);
+          const keptStyles = active.styles.slice(0, start.charIndex);
+          const next = paragraphs[start.paragraphIndex + 1];
+          if (next) {
+            active.text = keptText + next.text;
+            active.styles = [...keptStyles, ...next.styles];
+            active.paragraphStyle = { ...next.paragraphStyle };
+            active.bullet = next.bullet;
+            paragraphs.splice(start.paragraphIndex + 1, 1);
+          } else {
+            active.text = keptText;
+            active.styles = keptStyles;
+          }
+        }
+        remaining -= take;
+      }
+      continue;
+    }
+
     if ('updateTextStyle' in request) {
       const { range, textStyle, fields } = (request as {
         updateTextStyle: {
@@ -109,7 +163,12 @@ function simulate(requests: object[]): SimResult {
         if (isNewline) continue;
         const target = paragraphs[paragraphIndex].styles[charIndex];
         for (const field of fieldList) {
-          (target as Record<string, unknown>)[field] = textStyle[field];
+          const value = textStyle[field];
+          if (value === undefined) {
+            delete (target as Record<string, unknown>)[field];
+          } else {
+            (target as Record<string, unknown>)[field] = value;
+          }
         }
       }
       continue;
@@ -137,7 +196,7 @@ function simulate(requests: object[]): SimResult {
           bulletPreset: string;
         };
       }).createParagraphBullets;
-      const listId = `L${++nextListSeq}`;
+      const listId = `L${++state.nextListSeq}`;
       const isOrdered = bulletPreset.startsWith('NUMBERED');
       lists[listId] = {
         listProperties: {
@@ -153,9 +212,25 @@ function simulate(requests: object[]): SimResult {
       }
       continue;
     }
-  }
 
-  return { paragraphs, lists };
+    if ('deleteParagraphBullets' in request) {
+      const { range } = (request as {
+        deleteParagraphBullets: { range: { startIndex: number; endIndex: number } };
+      }).deleteParagraphBullets;
+      const start = locateChar(paragraphs, range.startIndex).paragraphIndex;
+      const end = locateChar(paragraphs, Math.max(range.endIndex - 1, range.startIndex)).paragraphIndex;
+      for (let i = start; i <= end; i++) {
+        paragraphs[i].bullet = undefined;
+      }
+      continue;
+    }
+  }
+}
+
+function simulate(requests: object[]): SimResult {
+  const state = freshSim();
+  applyRequests(state, requests);
+  return { paragraphs: state.paragraphs, lists: state.lists };
 }
 
 function simulatedToApiShape(sim: SimResult): GoogleDocsDocument {
@@ -370,5 +445,148 @@ describe('DocumentContent round-trip through Google Docs converters', () => {
       const cast = request as { insertText?: { location: { tabId?: string } } };
       if (cast.insertText) expect(cast.insertText.location.tabId).toBe('tab-1');
     }
+  });
+});
+
+function diffRoundTrip(prev: DocumentContent, next: DocumentContent): DocumentContent {
+  const state = freshSim();
+  const baseline = contentToGoogleDocsRequests(prev).requests.filter(
+    (r) => !('insertTable' in (r as object))
+  );
+  applyRequests(state, baseline);
+
+  const plan = diffDocumentContent(prev, next);
+  if (plan.mode !== 'diff') {
+    throw new Error(`expected mode:'diff' for round-trip, got mode:'${plan.mode}'`);
+  }
+  applyRequests(state, plan.requests);
+
+  const api = simulatedToApiShape({ paragraphs: state.paragraphs, lists: state.lists });
+  return googleDocsToContent(api);
+}
+
+describe('diffDocumentContent applied to a simulated Google Doc', () => {
+  it('is a no-op when prev and next are equal', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'stable' }] },
+      ],
+    };
+    expect(diffRoundTrip(input, input)).toEqual(input);
+  });
+
+  it('applies a mid-paragraph text insertion', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'hello brave world' }] },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
+  });
+
+  it('applies a pure deletion', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'hello world' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'hello' }] },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
+  });
+
+  it('applies a multi-paragraph append', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'second' }] },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
+  });
+
+  it('applies a bold mark toggle without changing text', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'hello' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'hello', marks: [{ type: 'bold' }] }],
+        },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
+  });
+
+  it('applies a paragraph→heading conversion', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Title' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 1 },
+          content: [{ type: 'text', text: 'Title' }],
+        },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
+  });
+
+  it('applies a paragraph→bulletList conversion', () => {
+    const prev: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'one' }] },
+      ],
+    };
+    const next: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'bulletList',
+          content: [
+            {
+              type: 'listItem',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: 'one' }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(diffRoundTrip(prev, next)).toEqual(next);
   });
 });

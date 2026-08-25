@@ -44,6 +44,8 @@ export default function WritePage() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [lastSavedCount, setLastSavedCount] = useState(0);
   const [lastSavedContent, setLastSavedContent] = useState<DocumentContent | null>(null);
+  const [baseRevisionId, setBaseRevisionId] = useState<string | null>(null);
+  const [driftBlocked, setDriftBlocked] = useState(false);
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
@@ -97,7 +99,11 @@ export default function WritePage() {
     loadTodaySession();
   }, [session?.user?.email]);
 
-  // Function to save content to Google Docs
+  // Function to save content to Google Docs. Reads latest baseline state from
+  // refs so callers don't need to pass them and the useCallback stays stable.
+  const saveStateRef = useRef({ lastSavedContent, baseRevisionId });
+  saveStateRef.current = { lastSavedContent, baseRevisionId };
+
   const saveToGoogleDocs = useCallback(async (docId: string, docContent: DocumentContent, tabId?: string) => {
     if (isSavingToDoc.current) return false;
     
@@ -105,20 +111,44 @@ export default function WritePage() {
     setDocSaveError(null);
     
     try {
+      const { lastSavedContent: prevContent, baseRevisionId: baseline } = saveStateRef.current;
       const response = await fetch('/api/google-docs', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ documentId: docId, content: docContent, tabId }),
+        body: JSON.stringify({
+          documentId: docId,
+          content: docContent,
+          tabId,
+          prevContent,
+          baseRevisionId: baseline,
+        }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save to Google Docs');
+      if (response.status === 409) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData?.code === 'DOCUMENT_DRIFT') {
+          setDriftBlocked(true);
+          setDocSaveError('This document was edited elsewhere. Reload the tab to continue writing.');
+          return false;
+        }
       }
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const detail =
+          typeof errorData?.details === 'string' && errorData.details.length > 0
+            ? `${errorData.error ?? 'Failed to save to Google Docs'}: ${errorData.details}`
+            : errorData?.error;
+        throw new Error(detail || 'Failed to save to Google Docs');
+      }
+
+      const data = await response.json().catch(() => ({}));
       setLastSavedContent(docContent);
+      if (typeof data?.revisionId === 'string' && data.revisionId.length > 0) {
+        setBaseRevisionId(data.revisionId);
+      }
       return true;
     } catch (error) {
       console.error('Error saving to Google Docs:', error);
@@ -140,6 +170,8 @@ export default function WritePage() {
     // The DocumentTabs component will auto-select the first tab
     setContent(null);
     setLastSavedContent(null);
+    setBaseRevisionId(null);
+    setDriftBlocked(false);
     setWordCount(0);
     setDocStartWordCount(0);
     setLoadingContent(false);
@@ -175,6 +207,8 @@ export default function WritePage() {
       const loadedContent: DocumentContent = data.content ?? emptyDocument();
       setContent(loadedContent);
       setLastSavedContent(loadedContent);
+      setBaseRevisionId(typeof data.revisionId === 'string' ? data.revisionId : null);
+      setDriftBlocked(false);
       
       // Calculate initial word count from loaded content
       const initialCount = calculateWordCount(getPlainText(loadedContent));
@@ -184,6 +218,7 @@ export default function WritePage() {
       console.error('Error loading tab content:', error);
       setContent(emptyDocument());
       setLastSavedContent(emptyDocument());
+      setBaseRevisionId(null);
       setDocStartWordCount(0);
     } finally {
       setLoadingContent(false);
@@ -254,16 +289,23 @@ export default function WritePage() {
         if (cancelled || !response.ok) return;
         const data = await response.json();
         const fetched: DocumentContent = data.content ?? emptyDocument();
+        const fetchedRevisionId: string | null =
+          typeof data.revisionId === 'string' ? data.revisionId : null;
 
         const latest = refreshStateRef.current;
         if (cancelled) return;
         if (latest.selectedDoc?.id !== doc.id) return;
         if (latest.selectedTab?.tabId !== tab.tabId) return;
         if (latest.hasUnsavedDocChanges) return;
-        if (contentsEqual(fetched, latest.lastSavedContent)) return;
+        if (contentsEqual(fetched, latest.lastSavedContent)) {
+          if (fetchedRevisionId) setBaseRevisionId(fetchedRevisionId);
+          return;
+        }
 
         setContent(fetched);
         setLastSavedContent(fetched);
+        if (fetchedRevisionId) setBaseRevisionId(fetchedRevisionId);
+        setDriftBlocked(false);
         const refreshedCount = calculateWordCount(getPlainText(fetched));
         setWordCount(refreshedCount);
         setDocStartWordCount(refreshedCount);
@@ -279,8 +321,9 @@ export default function WritePage() {
 
   // Auto-save to Google Docs when content changes (only when visible and has changes)
   useEffect(() => {
-    // Don't save if app is not visible or no unsaved changes
-    if (!isDocumentVisible || !hasUnsavedDocChanges) {
+    // Don't save if app is not visible, no unsaved changes, or the server told
+    // us the doc drifted (user must reload the tab to unblock).
+    if (!isDocumentVisible || !hasUnsavedDocChanges || driftBlocked) {
       return;
     }
 
@@ -297,7 +340,7 @@ export default function WritePage() {
     }, GOOGLE_DOCS_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [content, isDocumentVisible, hasUnsavedDocChanges, selectedDoc, selectedTab, saveToGoogleDocs]);
+  }, [content, isDocumentVisible, hasUnsavedDocChanges, driftBlocked, selectedDoc, selectedTab, saveToGoogleDocs]);
 
   // Auto-save writing session to Firestore (only when visible and has changes)
   useEffect(() => {

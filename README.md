@@ -109,6 +109,10 @@ pnpm lint         # Run ESLint
 - Update About page with more limitation information
   - Can't create or delete document tabs (read-only)
   - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs.
+- Preserve Google-Docs-only features on paragraphs edited in the app
+  - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
+- First-class table structural edits
+  - Add/remove row and column ops (`insertTableRow`, `deleteTableRow`, column equivalents) instead of the current table-scoped delete + `insertTable` fallback. Requires the round-trip test harness to grow support for those requests first.
 
 ## License
 

@@ -7,8 +7,21 @@ import {
   type GoogleDocsDocument,
 } from './google-docs-to-content';
 import { contentToGoogleDocsRequests } from './content-to-google-docs';
+import { diffDocumentContent } from './document-content-diff';
 
 export type { GoogleDoc, DocumentTab };
+
+// Thrown when the fetched document's revisionId no longer matches the baseline
+// the client sent. Callers map this to a 409 so the UI can prompt for reload.
+export class DocumentDriftError extends Error {
+  readonly code = 'DOCUMENT_DRIFT';
+  constructor(
+    message = 'Document changed since baseline; refresh to continue.'
+  ) {
+    super(message);
+    this.name = 'DocumentDriftError';
+  }
+}
 
 /**
  * Create a new Google Doc with the given title
@@ -228,12 +241,13 @@ export async function getWordCountDelta(
 }
 
 // Fetches a Google Doc and returns it in the editor-agnostic DocumentContent
-// wire format used by the client.
+// wire format used by the client, alongside the current revisionId so the
+// client can send it back as a drift baseline on save.
 export async function getGoogleDocAsContent(
   accessToken: string,
   documentId: string,
   tabId?: string
-): Promise<DocumentContent> {
+): Promise<{ content: DocumentContent; revisionId: string }> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
 
@@ -243,23 +257,35 @@ export async function getGoogleDocAsContent(
     includeTabsContent: true,
   });
 
-  return googleDocsToContent(response.data as unknown as GoogleDocsDocument, tabId);
+  const content = googleDocsToContent(
+    response.data as unknown as GoogleDocsDocument,
+    tabId
+  );
+  return { content, revisionId: response.data.revisionId ?? '' };
 }
 
-// Replaces the content of a Google Doc (or a specific tab) with the given
-// DocumentContent by deleting the existing range and applying the requests
-// produced by contentToGoogleDocsRequests.
-//
-// Known limitation: table cell content is not yet preserved on write. Tables
-// are inserted with the right dimensions but empty cells. Full cell-content
-// preservation requires a second batchUpdate after re-fetching the document
-// to learn the real cell indices; see plan follow-up.
+export interface UpdateGoogleDocOptions {
+  prevContent?: DocumentContent | null;
+  baseRevisionId?: string | null;
+}
+
+export interface UpdateGoogleDocResult {
+  success: boolean;
+  wordCount: number;
+  revisionId: string;
+}
+
+// Writes DocumentContent back to a Google Doc. When prevContent and
+// baseRevisionId are provided, computes and sends a minimal diff; otherwise
+// falls back to the legacy full-replace path so older client payloads still
+// work during rollout. Throws DocumentDriftError on revision mismatch.
 export async function updateGoogleDocFromContent(
   accessToken: string,
   documentId: string,
   content: DocumentContent,
-  tabId?: string
-): Promise<{ success: boolean; wordCount: number }> {
+  tabId?: string,
+  options: UpdateGoogleDocOptions = {}
+): Promise<UpdateGoogleDocResult> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
 
@@ -269,35 +295,104 @@ export async function updateGoogleDocFromContent(
     documentId,
     includeTabsContent: true,
   });
+  const currentRevisionId = currentDoc.data.revisionId ?? '';
 
-  let endIndex = 1;
+  const { prevContent, baseRevisionId } = options;
+  const canDiff =
+    prevContent != null &&
+    baseRevisionId != null &&
+    baseRevisionId.length > 0;
 
-  interface TabData {
-    tabProperties?: { tabId?: string | null };
-    documentTab?: {
-      body?: { content?: Array<{ endIndex?: number | null }> };
-    };
-    childTabs?: TabData[];
+  if (canDiff && baseRevisionId !== currentRevisionId) {
+    throw new DocumentDriftError();
   }
 
-  const findTab = (tabs: TabData[], targetId: string): TabData | undefined => {
-    for (const tab of tabs) {
-      if (tab.tabProperties?.tabId === targetId) return tab;
-      if (tab.childTabs) {
-        const found = findTab(tab.childTabs, targetId);
-        if (found) return found;
-      }
-    }
-    return undefined;
+  const diffPlan = canDiff ? diffDocumentContent(prevContent, content, tabId) : null;
+  const diffIsUsable = diffPlan?.mode === 'diff';
+  const diffRequests = diffIsUsable ? diffPlan.requests : null;
+  const fullReplaceRequests = buildFullReplaceRequests(currentDoc.data, content, tabId);
+
+  const runBatch = async (requests: object[]): Promise<void> => {
+    if (requests.length === 0) return;
+    await docs.documents.batchUpdate({
+      documentId,
+      requestBody: { requests },
+    });
   };
 
-  if (tabId && currentDoc.data.tabs) {
-    const target = findTab(currentDoc.data.tabs as unknown as TabData[], tabId);
+  if (diffRequests) {
+    try {
+      await runBatch(diffRequests);
+    } catch (error) {
+      // Diff planner produced requests Google Docs rejected. Fall back so the
+      // user's save still lands, and surface the underlying error for triage.
+      console.error(
+        'Diff-based save failed; retrying with full replace.',
+        error instanceof Error ? error.message : error
+      );
+      await runBatch(fullReplaceRequests);
+    }
+  } else {
+    await runBatch(fullReplaceRequests);
+  }
+
+  const postDoc = await docs.documents.get({ documentId });
+  const revisionId = postDoc.data.revisionId ?? currentRevisionId;
+
+  const wordCount = getPlainText(content)
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0).length;
+
+  return { success: true, wordCount, revisionId };
+}
+
+interface DocsBodyElement {
+  endIndex?: number | null;
+}
+
+interface DocsTabForEnd {
+  tabProperties?: { tabId?: string | null };
+  documentTab?: { body?: { content?: DocsBodyElement[] | null } | null } | null;
+  childTabs?: DocsTabForEnd[] | null;
+}
+
+function findTabByIdForEnd(
+  tabs: DocsTabForEnd[] | null | undefined,
+  targetId: string
+): DocsTabForEnd | undefined {
+  if (!tabs) return undefined;
+  for (const tab of tabs) {
+    if (tab.tabProperties?.tabId === targetId) return tab;
+    const found = findTabByIdForEnd(tab.childTabs, targetId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+// Deletes the existing content (if any) and reinserts everything from
+// `content`. Kept as the fallback path when diff is unavailable or the planner
+// bails out (e.g. tables present, backwards-compat legacy payload).
+function buildFullReplaceRequests(
+  currentDocData: {
+    tabs?: unknown;
+    body?: { content?: DocsBodyElement[] | null } | null;
+  },
+  content: DocumentContent,
+  tabId?: string
+): object[] {
+  let endIndex = 1;
+
+  if (tabId && currentDocData.tabs) {
+    const target = findTabByIdForEnd(
+      currentDocData.tabs as DocsTabForEnd[],
+      tabId
+    );
     for (const element of target?.documentTab?.body?.content ?? []) {
       if (element.endIndex && element.endIndex > endIndex) endIndex = element.endIndex;
     }
   } else {
-    for (const element of currentDoc.data.body?.content ?? []) {
+    for (const element of currentDocData.body?.content ?? []) {
       if (element.endIndex && element.endIndex > endIndex) endIndex = element.endIndex;
     }
   }
@@ -313,21 +408,8 @@ export async function updateGoogleDocFromContent(
     requests.push({ deleteContentRange: { range: deleteRange } });
   }
 
-  const { requests: insertRequests, plainText } = contentToGoogleDocsRequests(content, tabId);
+  const { requests: insertRequests } = contentToGoogleDocsRequests(content, tabId);
   requests.push(...insertRequests);
 
-  if (requests.length > 0) {
-    await docs.documents.batchUpdate({
-      documentId,
-      requestBody: { requests },
-    });
-  }
-
-  const derivedPlainText = plainText.length > 0 ? plainText : getPlainText(content);
-  const wordCount = derivedPlainText
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length;
-
-  return { success: true, wordCount };
+  return requests;
 }

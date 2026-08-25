@@ -4,13 +4,19 @@ vi.mock("@/lib/auth", () => ({
   auth: vi.fn(),
 }));
 
-vi.mock("@/lib/google-docs", () => ({
-  listGoogleDocs: vi.fn(),
-  getGoogleDocAsContent: vi.fn(),
-  updateGoogleDocFromContent: vi.fn(),
-  createGoogleDoc: vi.fn(),
-  getDocumentTabs: vi.fn(),
-}));
+vi.mock("@/lib/google-docs", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/google-docs")>(
+    "@/lib/google-docs"
+  );
+  return {
+    ...actual,
+    listGoogleDocs: vi.fn(),
+    getGoogleDocAsContent: vi.fn(),
+    updateGoogleDocFromContent: vi.fn(),
+    createGoogleDoc: vi.fn(),
+    getDocumentTabs: vi.fn(),
+  };
+});
 
 import { auth } from "@/lib/auth";
 import {
@@ -19,6 +25,7 @@ import {
   getGoogleDocAsContent,
   listGoogleDocs,
   updateGoogleDocFromContent,
+  DocumentDriftError,
 } from "@/lib/google-docs";
 import { GET, POST, PUT } from "./route";
 import type { DocumentContent } from "@/lib/document-content";
@@ -149,14 +156,20 @@ describe("google-docs API route", () => {
       expect(getDocumentTabsMock).toHaveBeenCalledWith("test-token", "doc-1");
     });
 
-    it("default action returns content for the document", async () => {
+    it("default action returns content and revisionId for the document", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      getGoogleDocAsContentMock.mockResolvedValueOnce(sampleContent);
+      getGoogleDocAsContentMock.mockResolvedValueOnce({
+        content: sampleContent,
+        revisionId: "rev-abc",
+      });
 
       const res = await POST(makeRequest({ documentId: "doc-1", tabId: "t1" }));
       expect(res.status).toBe(200);
       expect(getGoogleDocAsContentMock).toHaveBeenCalledWith("test-token", "doc-1", "t1");
-      await expect(res.json()).resolves.toEqual({ content: sampleContent });
+      await expect(res.json()).resolves.toEqual({
+        content: sampleContent,
+        revisionId: "rev-abc",
+      });
     });
   });
 
@@ -186,9 +199,59 @@ describe("google-docs API route", () => {
       expect(res.status).toBe(400);
     });
 
-    it("updates the document when inputs are valid", async () => {
+    it("rejects when prevContent is present but malformed", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      updateGoogleDocFromContentMock.mockResolvedValueOnce({ success: true, wordCount: 2 });
+      const res = await PUT(
+        makeRequest({
+          documentId: "d",
+          content: sampleContent,
+          prevContent: "bad",
+          baseRevisionId: "rev",
+        })
+      );
+      expect(res.status).toBe(400);
+      expect(updateGoogleDocFromContentMock).not.toHaveBeenCalled();
+    });
+
+    it("updates the document and returns revisionId on success", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      updateGoogleDocFromContentMock.mockResolvedValueOnce({
+        success: true,
+        wordCount: 2,
+        revisionId: "rev-next",
+      });
+
+      const res = await PUT(
+        makeRequest({
+          documentId: "doc-1",
+          content: sampleContent,
+          tabId: "t1",
+          prevContent: sampleContent,
+          baseRevisionId: "rev-prev",
+        })
+      );
+      expect(res.status).toBe(200);
+      expect(updateGoogleDocFromContentMock).toHaveBeenCalledWith(
+        "test-token",
+        "doc-1",
+        sampleContent,
+        "t1",
+        { prevContent: sampleContent, baseRevisionId: "rev-prev" }
+      );
+      await expect(res.json()).resolves.toEqual({
+        success: true,
+        wordCount: 2,
+        revisionId: "rev-next",
+      });
+    });
+
+    it("still succeeds when prevContent and baseRevisionId are omitted (legacy client)", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      updateGoogleDocFromContentMock.mockResolvedValueOnce({
+        success: true,
+        wordCount: 2,
+        revisionId: "rev-next",
+      });
 
       const res = await PUT(
         makeRequest({ documentId: "doc-1", content: sampleContent, tabId: "t1" })
@@ -198,8 +261,27 @@ describe("google-docs API route", () => {
         "test-token",
         "doc-1",
         sampleContent,
-        "t1"
+        "t1",
+        { prevContent: null, baseRevisionId: null }
       );
+    });
+
+    it("returns 409 with DOCUMENT_DRIFT code when the helper throws DocumentDriftError", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      updateGoogleDocFromContentMock.mockRejectedValueOnce(new DocumentDriftError());
+      vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const res = await PUT(
+        makeRequest({
+          documentId: "doc-1",
+          content: sampleContent,
+          prevContent: sampleContent,
+          baseRevisionId: "stale",
+        })
+      );
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as { code?: string };
+      expect(body.code).toBe("DOCUMENT_DRIFT");
     });
   });
 });

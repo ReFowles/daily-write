@@ -1,11 +1,5 @@
-import type {
-  BlockNode,
-  DocumentContent,
-  HeadingLevel,
-  InlineNode,
-  ListItemNode,
-  Mark,
-} from './document-content';
+import type { BlockNode, DocumentContent, Mark } from './document-content';
+import { buildDocIndex, type BlockIndexEntry } from './document-content-index';
 
 // Second-pass description of a table's cell content. The updater applies this
 // after the initial batch by re-fetching the doc to learn each cell's real
@@ -24,21 +18,7 @@ export interface ConverterResult {
   pendingTables: PendingTable[];
 }
 
-interface ParagraphInfo {
-  startIndex: number;
-  endIndex: number;
-  kind: 'paragraph' | 'heading' | 'listItem';
-  headingLevel?: HeadingLevel;
-  listType?: 'bullet' | 'ordered';
-  runs: Array<{ startIndex: number; endIndex: number; marks: Mark[] }>;
-}
-
-interface TableSlot {
-  insertIndex: number;
-  table: PendingTable;
-}
-
-function withTab<T extends Record<string, unknown>>(
+export function withTab<T extends Record<string, unknown>>(
   obj: T,
   tabId: string | undefined,
   nestKey?: 'location'
@@ -51,7 +31,7 @@ function withTab<T extends Record<string, unknown>>(
   return { ...obj, tabId };
 }
 
-function marksToTextStyle(
+export function marksToTextStyle(
   marks: Mark[]
 ): { textStyle: Record<string, unknown>; fields: string[] } {
   const textStyle: Record<string, unknown> = {};
@@ -87,100 +67,8 @@ export function contentToGoogleDocsRequests(
   content: DocumentContent,
   tabId?: string
 ): ConverterResult {
-  const paragraphs: ParagraphInfo[] = [];
-  const tableSlots: TableSlot[] = [];
-  let plainText = '';
-
-  const appendParagraph = (
-    inlines: Array<{ text: string; marks: Mark[] }>,
-    kind: 'paragraph' | 'heading' | 'listItem',
-    opts: { headingLevel?: HeadingLevel; listType?: 'bullet' | 'ordered' } = {}
-  ) => {
-    const startIndex = plainText.length + 1;
-    const runs: ParagraphInfo['runs'] = [];
-    for (const inline of inlines) {
-      if (inline.text.length === 0) continue;
-      const runStart = plainText.length + 1;
-      plainText += inline.text;
-      const runEnd = plainText.length + 1;
-      runs.push({ startIndex: runStart, endIndex: runEnd, marks: inline.marks });
-    }
-    const endIndex = plainText.length + 1;
-    plainText += '\n';
-    paragraphs.push({
-      startIndex,
-      endIndex,
-      kind,
-      headingLevel: opts.headingLevel,
-      listType: opts.listType,
-      runs,
-    });
-  };
-
-  const collectInlines = (
-    nodes: InlineNode[] | undefined
-  ): Array<{ text: string; marks: Mark[] }> => {
-    const out: Array<{ text: string; marks: Mark[] }> = [];
-    for (const node of nodes ?? []) {
-      if (node.type === 'text') {
-        out.push({ text: node.text, marks: node.marks ?? [] });
-      }
-    }
-    return out;
-  };
-
-  const walkListItem = (item: ListItemNode, listType: 'bullet' | 'ordered') => {
-    const children = item.content ?? [];
-    const [first, ...rest] = children;
-
-    if (first?.type === 'paragraph' || first?.type === 'heading') {
-      appendParagraph(collectInlines(first.content), 'listItem', { listType });
-    } else {
-      appendParagraph([], 'listItem', { listType });
-    }
-    // Nested blocks (including nested lists) are flattened to sibling paragraphs
-    // for now; nesting on the write path is a follow-up.
-    walk(rest as BlockNode[]);
-  };
-
-  const walk = (nodes: BlockNode[]) => {
-    for (const node of nodes) {
-      switch (node.type) {
-        case 'paragraph':
-          appendParagraph(collectInlines(node.content), 'paragraph');
-          break;
-        case 'heading':
-          appendParagraph(collectInlines(node.content), 'heading', {
-            headingLevel: node.attrs.level,
-          });
-          break;
-        case 'bulletList':
-        case 'orderedList': {
-          const listType = node.type === 'bulletList' ? 'bullet' : 'ordered';
-          for (const item of node.content ?? []) walkListItem(item, listType);
-          break;
-        }
-        case 'table': {
-          const rows = node.content ?? [];
-          const cols = rows[0]?.content?.length ?? 0;
-          if (rows.length === 0 || cols === 0) break;
-          tableSlots.push({
-            insertIndex: plainText.length + 1,
-            table: {
-              rows: rows.length,
-              cols,
-              cellContents: rows.map((r) =>
-                (r.content ?? []).map((c) => (c.content ?? []) as BlockNode[])
-              ),
-            },
-          });
-          break;
-        }
-      }
-    }
-  };
-
-  walk(content.content);
+  const index = buildDocIndex(content);
+  const { plainText, blocks, tables } = index;
 
   const requests: object[] = [];
 
@@ -213,8 +101,8 @@ export function contentToGoogleDocsRequests(
     });
   }
 
-  for (const p of paragraphs) {
-    for (const run of p.runs) {
+  for (const block of blocks) {
+    for (const run of block.runs) {
       if (run.marks.length === 0) continue;
       if (run.startIndex === run.endIndex) continue;
       const { textStyle, fields } = marksToTextStyle(run.marks);
@@ -229,15 +117,18 @@ export function contentToGoogleDocsRequests(
     }
   }
 
-  for (const p of paragraphs) {
-    if (p.kind === 'heading' && p.headingLevel) {
+  for (const block of blocks) {
+    if (block.kind === 'heading' && block.headingLevel) {
       requests.push({
         updateParagraphStyle: {
           range: withTab(
-            { startIndex: p.startIndex, endIndex: Math.max(p.endIndex, p.startIndex + 1) },
+            {
+              startIndex: block.startIndex,
+              endIndex: Math.max(block.endIndex, block.startIndex + 1),
+            },
             tabId
           ),
-          paragraphStyle: { namedStyleType: `HEADING_${p.headingLevel}` },
+          paragraphStyle: { namedStyleType: `HEADING_${block.headingLevel}` },
           fields: 'namedStyleType',
         },
       });
@@ -245,23 +136,23 @@ export function contentToGoogleDocsRequests(
   }
 
   let i = 0;
-  while (i < paragraphs.length) {
-    const p = paragraphs[i];
-    if (p.kind !== 'listItem' || !p.listType) {
+  while (i < blocks.length) {
+    const block = blocks[i];
+    if (block.kind !== 'listItem' || !block.listType) {
       i++;
       continue;
     }
     const startI = i;
-    const listType = p.listType;
+    const listType = block.listType;
     while (
-      i < paragraphs.length &&
-      paragraphs[i].kind === 'listItem' &&
-      paragraphs[i].listType === listType
+      i < blocks.length &&
+      blocks[i].kind === 'listItem' &&
+      blocks[i].listType === listType
     ) {
       i++;
     }
-    const rangeStart = paragraphs[startI].startIndex;
-    const rangeEnd = Math.max(paragraphs[i - 1].endIndex, rangeStart + 1);
+    const rangeStart = blocks[startI].startIndex;
+    const rangeEnd = Math.max(blocks[i - 1].endIndex, rangeStart + 1);
     requests.push({
       createParagraphBullets: {
         range: withTab({ startIndex: rangeStart, endIndex: rangeEnd }, tabId),
@@ -274,13 +165,13 @@ export function contentToGoogleDocsRequests(
   }
 
   const pendingTables: PendingTable[] = [];
-  const orderedSlots = [...tableSlots].sort((a, b) => b.insertIndex - a.insertIndex);
+  const orderedSlots = [...tables].sort((a, b) => b.insertIndex - a.insertIndex);
   for (const slot of orderedSlots) {
     requests.push({
       insertTable: withTab(
         {
-          rows: slot.table.rows,
-          columns: slot.table.cols,
+          rows: slot.rows,
+          columns: slot.cols,
           location: { index: slot.insertIndex },
         },
         tabId,
@@ -288,7 +179,15 @@ export function contentToGoogleDocsRequests(
       ),
     });
   }
-  for (const slot of tableSlots) pendingTables.push(slot.table);
+  for (const slot of tables) {
+    pendingTables.push({
+      rows: slot.rows,
+      cols: slot.cols,
+      cellContents: slot.cellContents,
+    });
+  }
 
   return { requests, plainText, pendingTables };
 }
+
+export type { BlockIndexEntry };
