@@ -12,61 +12,89 @@
 - **Styling**: Tailwind CSS 4.x
 - **Package Manager**: **pnpm** (v10.20.0)
 - **Linting**: ESLint 9.x with Next.js config
+- **Formatting**: Prettier 3.x
 - **Compiler**: React Compiler (babel-plugin-react-compiler 1.0.0)
+- **Auth**: NextAuth v5 (beta) with Google provider
+- **Database**: Firebase Firestore
+- **Integrations**: Google Docs & Drive APIs (googleapis)
+- **Editor**: MDXEditor (`@mdxeditor/editor`)
 
 ## Project Structure
 
 ```
 src/
-├── app/                           # Next.js App Router pages
-│   ├── globals.css               # Global styles
-│   ├── icon.svg                  # App icon
-│   ├── layout.tsx                # Root layout
-│   ├── page.tsx                  # Home page (dashboard)
-│   ├── theme-init.tsx            # Theme initialization
-│   ├── goals/                    # Goals page
+├── app/                            # Next.js App Router pages & routes
+│   ├── globals.css                # Global styles
+│   ├── icon.svg                   # App icon
+│   ├── layout.tsx                 # Root layout
+│   ├── page.tsx                   # Home (dashboard) — server component
+│   ├── theme-init.tsx             # Theme initialization script
+│   ├── about/                     # About page
 │   │   └── page.tsx
-│   ├── history/                  # Writing history page
+│   ├── goals/                     # Goals page
 │   │   └── page.tsx
-│   └── write/                    # Writing session page
-│       └── page.tsx
-├── components/                    # React components
-│   ├── CalendarHeader.tsx        # Calendar header with month navigation
-│   ├── CreateGoalForm.tsx        # Goal creation form
-│   ├── DayCard.tsx               # Day display card
-│   ├── GoalCard.tsx              # Goal display card
-│   ├── GoalsPageClient.tsx       # Client-side goals page logic
-│   ├── MonthlyCalendar.tsx       # Monthly calendar view
-│   ├── Navigation.tsx            # Main navigation component
-│   ├── PageHeader.tsx            # Reusable page header component
-│   ├── ProgressCard.tsx          # Progress display card
-│   ├── StatsCard.tsx             # Statistics display card
-│   ├── ThemeToggle.tsx           # Theme switcher component
-│   ├── WeeklyCalendar.tsx        # Weekly calendar view
-│   ├── WritingStatsHeader.tsx    # Stats header component
-│   ├── icons/                    # Icon components
-│   │   ├── ChevronDown.tsx       # Chevron down icon
-│   │   ├── ChevronLeft.tsx       # Chevron left icon
-│   │   ├── ChevronRight.tsx      # Chevron right icon
-│   │   ├── Moon.tsx              # Moon icon for dark theme
-│   │   ├── Sun.tsx               # Sun icon for light theme
-│   │   ├── Trash.tsx             # Trash/delete icon
-│   │   └── index.ts              # Icon exports
-│   └── ui/                       # UI primitives
-│       ├── Button.tsx            # Button component
-│       ├── Card.tsx              # Base card component
-│       ├── Input.tsx             # Input component
-│       └── ProgressBar.tsx       # Progress bar component
-└── lib/                          # Utility functions and helpers
-    ├── class-utils.ts            # CSS class utility functions
-    ├── date-utils.ts             # Date formatting utilities
-    ├── dummy-data.json           # Sample data for development
-    ├── theme-utils.ts            # Theme management utilities
-    ├── types.ts                  # TypeScript type definitions
-    ├── use-calendar-navigation.ts # Custom hook for calendar navigation
-    ├── use-current-goal.ts       # Custom hook for goal management
-    └── use-toggle.ts             # Custom hook for toggle state
+│   ├── write/                     # Writing session page
+│   │   └── page.tsx
+│   └── api/                       # Route handlers
+│       ├── auth/[...nextauth]/    # NextAuth handler
+│       │   └── route.ts
+│       └── google-docs/           # Google Docs CRUD proxy
+│           └── route.ts
+├── components/                     # React components
+│   ├── ActivityOverlay.tsx        # Overlay showing recent activity
+│   ├── CalendarHeader.tsx         # Calendar header with month navigation
+│   ├── CreateGoalForm.tsx         # Goal creation form
+│   ├── DashboardClient.tsx        # Client wrapper for the dashboard
+│   ├── DayCard.tsx                # Day display card
+│   ├── DocumentTabs.tsx           # Google Docs tab selector
+│   ├── GoalCard.tsx               # Goal display card
+│   ├── GoalsPageClient.tsx        # Client-side goals page logic
+│   ├── GoogleDocsPicker.tsx       # Picker for selecting a Google Doc
+│   ├── MarkdownEditor.tsx         # MDXEditor wrapper for writing
+│   ├── MonthlyCalendar.tsx        # Monthly calendar view
+│   ├── Navigation.tsx             # Main navigation shell
+│   ├── NavLinks.tsx               # Nav link list
+│   ├── PageHeader.tsx             # Reusable page header
+│   ├── ProgressCard.tsx           # Progress display card
+│   ├── SignInButton.tsx           # Google sign-in button
+│   ├── SignOutButton.tsx          # Sign-out button
+│   ├── StatsCard.tsx              # Statistics display card
+│   ├── ThemeToggle.tsx            # Theme switcher
+│   ├── WeeklyCalendar.tsx         # Weekly calendar view
+│   ├── WritingStatsHeader.tsx     # Stats header component
+│   ├── icons/                     # Icon components (see icons/index.ts)
+│   │   ├── ChevronDown.tsx
+│   │   ├── ChevronLeft.tsx
+│   │   ├── ChevronRight.tsx
+│   │   ├── Moon.tsx
+│   │   ├── Sun.tsx
+│   │   ├── Trash.tsx
+│   │   └── index.ts
+│   └── ui/                        # UI primitives
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── Input.tsx
+│       └── ProgressBar.tsx
+├── lib/                            # Utilities, hooks, and service layer
+│   ├── auth.ts                    # NextAuth configuration
+│   ├── class-utils.ts             # CSS class utility (`cn`)
+│   ├── data-store.ts              # Firestore CRUD for goals & sessions
+│   ├── date-utils.ts              # Date formatting utilities
+│   ├── firebase.ts                # Firebase client singleton
+│   ├── google-docs.ts             # Google Docs & Drive API wrappers
+│   ├── theme-utils.ts             # Theme class tokens
+│   ├── types.ts                   # Shared domain type definitions
+│   ├── use-calendar-navigation.ts # Hook: calendar navigation
+│   ├── use-current-goal.ts        # Hook: current goal + progress
+│   └── use-toggle.ts              # Hook: boolean toggle
+└── types/                          # Ambient TypeScript declarations
+    └── next-auth.d.ts             # Session/JWT module augmentation
 ```
+
+Top-level files of note:
+
+- `firestore.rules` — Firestore security rules (per-user isolation via `request.auth.token.email`).
+- `scripts/` — Reserved for maintenance scripts (currently empty).
 
 ## Development Workflow
 
@@ -103,10 +131,13 @@ pnpm build
 pnpm start
 ```
 
-### Linting
+### Linting, Type-checking, and Formatting
 
 ```bash
-pnpm lint
+pnpm lint          # ESLint
+pnpm typecheck     # tsc --noEmit
+pnpm format        # Prettier write
+pnpm format:check  # Prettier check (CI-safe)
 ```
 
 **Important: All linting errors must be addressed, not silenced.** Do not use `eslint-disable` comments or suppress warnings unless there is a documented, exceptional reason. Fix the underlying issues instead.
@@ -115,12 +146,13 @@ pnpm lint
 
 ### Type System
 
-The application uses a centralized type system defined in `src/lib/types.ts`:
+Domain types live in `src/lib/types.ts` (`Goal`, `WritingSession`, `DayData`, `CalendarDay`, `GoogleDoc`, `DocumentTab`). Ambient module augmentations (e.g. NextAuth session/JWT) live in `src/types/`.
 
 - **Goal**: Represents a writing goal with start/end dates and daily word target
 - **WritingSession**: Tracks words written on a specific date
 - **DayData**: Combines date, words written, and goal for a single day
 - **CalendarDay**: Extended day data with UI state (isToday, isFuture)
+- **GoogleDoc / DocumentTab**: Google Docs metadata used by the Docs integration
 
 All date strings follow `YYYY-MM-DD` format for consistency.
 

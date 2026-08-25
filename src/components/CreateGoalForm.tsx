@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
-import { parseLocalDate } from "@/lib/date-utils";
+import { parseLocalDate, toDateString } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 
 interface CreateGoalFormProps {
@@ -18,7 +18,7 @@ interface CreateGoalFormProps {
 
 export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions = [] }: CreateGoalFormProps) {
   const today = new Date();
-  const [startDate, setStartDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
+  const [startDate, setStartDate] = useState(toDateString(today));
   const [endDate, setEndDate] = useState("");
   const [dailyWordTarget, setDailyWordTarget] = useState("");
   const [error, setError] = useState("");

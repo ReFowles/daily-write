@@ -16,18 +16,11 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./firebase";
+import { toDateString } from "./date-utils";
 import type { Goal, WritingSession } from "./types";
 
 const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
-
-// Helper function to convert Firestore dates to YYYY-MM-DD format
-function dateToString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 /**
  * Goals CRUD Operations
@@ -103,7 +96,7 @@ export async function deleteGoal(goalId: string): Promise<void> {
 }
 
 export async function getCurrentGoal(userId: string): Promise<Goal | null> {
-  const today = dateToString(new Date());
+  const today = toDateString(new Date());
   
   // Fetch all goals and filter client-side to avoid needing a composite index
   const allGoals = await getAllGoals(userId);
@@ -236,7 +229,7 @@ export async function getWritingStats(userId: string): Promise<{
   const checkDate = new Date(today);
   
   while (true) {
-    const dateString = dateToString(checkDate);
+    const dateString = toDateString(checkDate);
     const session = sessions.find((s) => s.date === dateString);
     
     if (session && session.wordCount > 0) {

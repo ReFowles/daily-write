@@ -1,20 +1,7 @@
 import { google } from 'googleapis';
+import type { GoogleDoc, DocumentTab } from './types';
 
-export interface GoogleDoc {
-  id: string;
-  name: string;
-  modifiedTime: string;
-  webViewLink: string;
-  ownedByMe: boolean;
-}
-
-export interface DocumentTab {
-  tabId: string;
-  title: string;
-  index: number;
-  nestingLevel: number;
-  parentTabId?: string;
-}
+export type { GoogleDoc, DocumentTab };
 
 /**
  * Create a new Google Doc with the given title
@@ -131,7 +118,7 @@ export async function getDocumentTabs(
     }
   };
 
-  // Cast to unknown first then to our interface to handle potentially missing types
+  // googleapis types omit the `tabs` field on Document; cast to our local shape.
   extractTabs(response.data.tabs as unknown as TabData[]);
   
   return tabs;
