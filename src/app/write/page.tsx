@@ -9,11 +9,13 @@ import { useCurrentGoal } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
 import { toDateString, calculateWordCount } from "@/lib/date-utils";
 import type { GoogleDoc, DocumentTab } from "@/lib/types";
+import type { DocumentContent } from "@/lib/document-content";
+import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
 import GoogleDocsPicker from "@/components/GoogleDocsPicker";
 import DocumentTabs from "@/components/DocumentTabs";
 import dynamic from 'next/dynamic';
 
-const MarkdownEditor = dynamic(() => import('@/components/MarkdownEditor'), {
+const Editor = dynamic(() => import('@/components/editor').then((m) => m.Editor), {
   ssr: false,
   loading: () => <div className="p-4 text-gray-500">Loading editor...</div>
 });
@@ -30,14 +32,14 @@ export default function WritePage() {
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
   const [selectedTab, setSelectedTab] = useState<DocumentTab | null>(null);
   const [showPicker, setShowPicker] = useState(true);
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState<DocumentContent | null>(null);
   const [wordCount, setWordCount] = useState(0);
   const [docStartWordCount, setDocStartWordCount] = useState(0);
   const [sessionStartWordCount, setSessionStartWordCount] = useState(0);
   const [loadingContent, setLoadingContent] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [lastSavedCount, setLastSavedCount] = useState(0);
-  const [lastSavedContent, setLastSavedContent] = useState("");
+  const [lastSavedContent, setLastSavedContent] = useState<DocumentContent | null>(null);
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   
@@ -78,7 +80,7 @@ export default function WritePage() {
   }, [session?.user?.email]);
 
   // Function to save content to Google Docs
-  const saveToGoogleDocs = useCallback(async (docId: string, markdown: string, tabId?: string) => {
+  const saveToGoogleDocs = useCallback(async (docId: string, docContent: DocumentContent, tabId?: string) => {
     if (isSavingToDoc.current) return false;
     
     isSavingToDoc.current = true;
@@ -90,7 +92,7 @@ export default function WritePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ documentId: docId, markdown, tabId }),
+        body: JSON.stringify({ documentId: docId, content: docContent, tabId }),
       });
 
       if (!response.ok) {
@@ -98,7 +100,7 @@ export default function WritePage() {
         throw new Error(errorData.error || 'Failed to save to Google Docs');
       }
 
-      setLastSavedContent(markdown);
+      setLastSavedContent(docContent);
       return true;
     } catch (error) {
       console.error('Error saving to Google Docs:', error);
@@ -118,8 +120,8 @@ export default function WritePage() {
     
     // Note: Content will be loaded when a tab is selected
     // The DocumentTabs component will auto-select the first tab
-    setContent('');
-    setLastSavedContent('');
+    setContent(null);
+    setLastSavedContent(null);
     setWordCount(0);
     setDocStartWordCount(0);
     setLoadingContent(false);
@@ -127,7 +129,7 @@ export default function WritePage() {
 
   const handleSelectTab = useCallback(async (tab: DocumentTab) => {
     // Save current content before switching tabs
-    if (selectedDoc && selectedTab && content !== lastSavedContent) {
+    if (selectedDoc && selectedTab && content && !contentsEqual(content, lastSavedContent)) {
       await saveToGoogleDocs(selectedDoc.id, content, selectedTab.tabId);
     }
 
@@ -152,31 +154,31 @@ export default function WritePage() {
       }
 
       const data = await response.json();
-      const loadedContent = data.markdown || '';
+      const loadedContent: DocumentContent = data.content ?? emptyDocument();
       setContent(loadedContent);
       setLastSavedContent(loadedContent);
       
       // Calculate initial word count from loaded content
-      const initialCount = calculateWordCount(loadedContent);
+      const initialCount = calculateWordCount(getPlainText(loadedContent));
       setWordCount(initialCount);
       setDocStartWordCount(initialCount);
     } catch (error) {
       console.error('Error loading tab content:', error);
-      setContent('');
-      setLastSavedContent('');
+      setContent(emptyDocument());
+      setLastSavedContent(emptyDocument());
       setDocStartWordCount(0);
     } finally {
       setLoadingContent(false);
     }
   }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs]);
 
-  const handleContentChange = useCallback((markdown: string) => {
-    setContent(markdown);
+  const handleContentChange = useCallback((next: DocumentContent) => {
+    setContent(next);
     setSaveStatus('unsaved');
     
     // Debounce word count calculation slightly to avoid blocking on every keystroke
     requestAnimationFrame(() => {
-      const currentCount = calculateWordCount(markdown);
+      const currentCount = calculateWordCount(getPlainText(next));
       setWordCount(currentCount);
     });
   }, []);
@@ -189,7 +191,9 @@ export default function WritePage() {
   const wordsWrittenToday = sessionStartWordCount + currentDocWordsAdded;
   
   // Check if there are unsaved Google Docs changes
-  const hasUnsavedDocChanges = selectedDoc && content !== lastSavedContent && !showPicker;
+  const hasUnsavedDocChanges = Boolean(
+    selectedDoc && content && !contentsEqual(content, lastSavedContent) && !showPicker
+  );
   
   // Check if there are unsaved Firestore changes
   const hasUnsavedSessionChanges = wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
@@ -202,7 +206,7 @@ export default function WritePage() {
     }
 
     const timeoutId = setTimeout(async () => {
-      if (!selectedDoc) return;
+      if (!selectedDoc || !content) return;
       
       setSaveStatus('saving');
       const success = await saveToGoogleDocs(selectedDoc.id, content, selectedTab?.tabId);
@@ -330,9 +334,9 @@ export default function WritePage() {
             ) : (
               <>
                 <div className="flex-1 overflow-y-auto">
-                  <MarkdownEditor
-                    key={selectedDoc.id}
-                    markdown={content || ''}
+                  <Editor
+                    key={`${selectedDoc.id}-${selectedTab?.tabId ?? 'default'}`}
+                    content={content}
                     onChange={handleContentChange}
                     placeholder="Start writing..."
                   />

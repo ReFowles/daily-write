@@ -1,11 +1,12 @@
 import { auth } from '@/lib/auth';
 import { 
   listGoogleDocs, 
-  getGoogleDocAsMarkdown, 
-  updateGoogleDoc, 
+  getGoogleDocAsContent,
+  updateGoogleDocFromContent,
   createGoogleDoc,
   getDocumentTabs,
 } from '@/lib/google-docs';
+import { isDocumentContent } from '@/lib/document-content';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
@@ -81,13 +82,13 @@ export async function POST(request: Request) {
           );
         }
 
-        const markdown = await getGoogleDocAsMarkdown(
+        const content = await getGoogleDocAsContent(
           session.accessToken,
           documentId,
           tabId
         );
 
-        return NextResponse.json({ markdown });
+        return NextResponse.json({ content });
       }
     }
   } catch (error) {
@@ -107,7 +108,7 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { documentId, markdown, tabId } = await request.json();
+    const { documentId, content, tabId } = await request.json();
 
     if (!documentId) {
       return NextResponse.json(
@@ -116,17 +117,17 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (typeof markdown !== 'string') {
+    if (!isDocumentContent(content)) {
       return NextResponse.json(
-        { error: 'Markdown content is required' },
+        { error: 'Valid document content is required' },
         { status: 400 }
       );
     }
 
-    const result = await updateGoogleDoc(
+    const result = await updateGoogleDocFromContent(
       session.accessToken,
       documentId,
-      markdown,
+      content,
       tabId
     );
 

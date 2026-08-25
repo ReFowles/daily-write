@@ -6,8 +6,8 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/google-docs", () => ({
   listGoogleDocs: vi.fn(),
-  getGoogleDocAsMarkdown: vi.fn(),
-  updateGoogleDoc: vi.fn(),
+  getGoogleDocAsContent: vi.fn(),
+  updateGoogleDocFromContent: vi.fn(),
   createGoogleDoc: vi.fn(),
   getDocumentTabs: vi.fn(),
 }));
@@ -16,11 +16,12 @@ import { auth } from "@/lib/auth";
 import {
   createGoogleDoc,
   getDocumentTabs,
-  getGoogleDocAsMarkdown,
+  getGoogleDocAsContent,
   listGoogleDocs,
-  updateGoogleDoc,
+  updateGoogleDocFromContent,
 } from "@/lib/google-docs";
 import { GET, POST, PUT } from "./route";
+import type { DocumentContent } from "@/lib/document-content";
 
 type MinimalSession = { accessToken: string } | null;
 
@@ -29,8 +30,8 @@ const authMock = vi.mocked(auth as unknown as () => Promise<MinimalSession>);
 const listGoogleDocsMock = vi.mocked(listGoogleDocs);
 const createGoogleDocMock = vi.mocked(createGoogleDoc);
 const getDocumentTabsMock = vi.mocked(getDocumentTabs);
-const getGoogleDocAsMarkdownMock = vi.mocked(getGoogleDocAsMarkdown);
-const updateGoogleDocMock = vi.mocked(updateGoogleDoc);
+const getGoogleDocAsContentMock = vi.mocked(getGoogleDocAsContent);
+const updateGoogleDocFromContentMock = vi.mocked(updateGoogleDocFromContent);
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost/api/google-docs", {
@@ -41,6 +42,13 @@ function makeRequest(body: unknown): Request {
 }
 
 const authenticatedSession: MinimalSession = { accessToken: "test-token" };
+
+const sampleContent: DocumentContent = {
+  type: "doc",
+  content: [
+    { type: "paragraph", content: [{ type: "text", text: "hello world!" }] },
+  ],
+};
 
 describe("google-docs API route", () => {
   beforeEach(() => {
@@ -141,46 +149,57 @@ describe("google-docs API route", () => {
       expect(getDocumentTabsMock).toHaveBeenCalledWith("test-token", "doc-1");
     });
 
-    it("default action returns markdown for the document", async () => {
+    it("default action returns content for the document", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      getGoogleDocAsMarkdownMock.mockResolvedValueOnce("# hello");
+      getGoogleDocAsContentMock.mockResolvedValueOnce(sampleContent);
 
       const res = await POST(makeRequest({ documentId: "doc-1", tabId: "t1" }));
       expect(res.status).toBe(200);
-      expect(getGoogleDocAsMarkdownMock).toHaveBeenCalledWith("test-token", "doc-1", "t1");
-      await expect(res.json()).resolves.toEqual({ markdown: "# hello" });
+      expect(getGoogleDocAsContentMock).toHaveBeenCalledWith("test-token", "doc-1", "t1");
+      await expect(res.json()).resolves.toEqual({ content: sampleContent });
     });
   });
 
   describe("PUT", () => {
     it("returns 401 without a session access token", async () => {
       authMock.mockResolvedValueOnce(null);
-      const res = await PUT(makeRequest({ documentId: "d", markdown: "m" }));
+      const res = await PUT(makeRequest({ documentId: "d", content: sampleContent }));
       expect(res.status).toBe(401);
-      expect(updateGoogleDocMock).not.toHaveBeenCalled();
+      expect(updateGoogleDocFromContentMock).not.toHaveBeenCalled();
     });
 
     it("rejects when documentId is missing", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      const res = await PUT(makeRequest({ markdown: "m" }));
+      const res = await PUT(makeRequest({ content: sampleContent }));
       expect(res.status).toBe(400);
     });
 
-    it("rejects when markdown is not a string", async () => {
+    it("rejects when content is not a well-formed document", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      const res = await PUT(makeRequest({ documentId: "d", markdown: 42 }));
+      const res = await PUT(makeRequest({ documentId: "d", content: "not a doc" }));
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects when content is missing", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await PUT(makeRequest({ documentId: "d" }));
       expect(res.status).toBe(400);
     });
 
     it("updates the document when inputs are valid", async () => {
       authMock.mockResolvedValueOnce(authenticatedSession);
-      updateGoogleDocMock.mockResolvedValueOnce({ success: true, wordCount: 3 });
+      updateGoogleDocFromContentMock.mockResolvedValueOnce({ success: true, wordCount: 2 });
 
       const res = await PUT(
-        makeRequest({ documentId: "doc-1", markdown: "hello world!", tabId: "t1" })
+        makeRequest({ documentId: "doc-1", content: sampleContent, tabId: "t1" })
       );
       expect(res.status).toBe(200);
-      expect(updateGoogleDocMock).toHaveBeenCalledWith("test-token", "doc-1", "hello world!", "t1");
+      expect(updateGoogleDocFromContentMock).toHaveBeenCalledWith(
+        "test-token",
+        "doc-1",
+        sampleContent,
+        "t1"
+      );
     });
   });
 });

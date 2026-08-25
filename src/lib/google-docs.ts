@@ -1,5 +1,12 @@
 import { google } from 'googleapis';
 import type { GoogleDoc, DocumentTab } from './types';
+import type { DocumentContent } from './document-content';
+import { getPlainText } from './document-content';
+import {
+  googleDocsToContent,
+  type GoogleDocsDocument,
+} from './google-docs-to-content';
+import { contentToGoogleDocsRequests } from './content-to-google-docs';
 
 export type { GoogleDoc, DocumentTab };
 
@@ -850,4 +857,109 @@ export async function getWordCountDelta(
     console.error('Error getting word count delta:', error);
     return 0;
   }
+}
+
+// Fetches a Google Doc and returns it in the editor-agnostic DocumentContent
+// wire format used by the client.
+export async function getGoogleDocAsContent(
+  accessToken: string,
+  documentId: string,
+  tabId?: string
+): Promise<DocumentContent> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+  const response = await docs.documents.get({
+    documentId,
+    includeTabsContent: true,
+  });
+
+  return googleDocsToContent(response.data as unknown as GoogleDocsDocument, tabId);
+}
+
+// Replaces the content of a Google Doc (or a specific tab) with the given
+// DocumentContent by deleting the existing range and applying the requests
+// produced by contentToGoogleDocsRequests.
+//
+// Known limitation: table cell content is not yet preserved on write. Tables
+// are inserted with the right dimensions but empty cells. Full cell-content
+// preservation requires a second batchUpdate after re-fetching the document
+// to learn the real cell indices; see plan follow-up.
+export async function updateGoogleDocFromContent(
+  accessToken: string,
+  documentId: string,
+  content: DocumentContent,
+  tabId?: string
+): Promise<{ success: boolean; wordCount: number }> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: 'v1', auth });
+
+  const currentDoc = await docs.documents.get({
+    documentId,
+    includeTabsContent: true,
+  });
+
+  let endIndex = 1;
+
+  interface TabData {
+    tabProperties?: { tabId?: string | null };
+    documentTab?: {
+      body?: { content?: Array<{ endIndex?: number | null }> };
+    };
+    childTabs?: TabData[];
+  }
+
+  const findTab = (tabs: TabData[], targetId: string): TabData | undefined => {
+    for (const tab of tabs) {
+      if (tab.tabProperties?.tabId === targetId) return tab;
+      if (tab.childTabs) {
+        const found = findTab(tab.childTabs, targetId);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  if (tabId && currentDoc.data.tabs) {
+    const target = findTab(currentDoc.data.tabs as unknown as TabData[], tabId);
+    for (const element of target?.documentTab?.body?.content ?? []) {
+      if (element.endIndex && element.endIndex > endIndex) endIndex = element.endIndex;
+    }
+  } else {
+    for (const element of currentDoc.data.body?.content ?? []) {
+      if (element.endIndex && element.endIndex > endIndex) endIndex = element.endIndex;
+    }
+  }
+
+  const requests: object[] = [];
+
+  if (endIndex > 2) {
+    const deleteRange: { startIndex: number; endIndex: number; tabId?: string } = {
+      startIndex: 1,
+      endIndex: endIndex - 1,
+    };
+    if (tabId) deleteRange.tabId = tabId;
+    requests.push({ deleteContentRange: { range: deleteRange } });
+  }
+
+  const { requests: insertRequests, plainText } = contentToGoogleDocsRequests(content, tabId);
+  requests.push(...insertRequests);
+
+  if (requests.length > 0) {
+    await docs.documents.batchUpdate({
+      documentId,
+      requestBody: { requests },
+    });
+  }
+
+  const derivedPlainText = plainText.length > 0 ? plainText : getPlainText(content);
+  const wordCount = derivedPlainText
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 0).length;
+
+  return { success: true, wordCount };
 }
