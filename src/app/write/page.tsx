@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
@@ -324,11 +325,25 @@ export default function WritePage() {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
+    <main className="h-[calc(100vh-4rem)] overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
       <div className="mx-auto flex h-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
-          title="Write"
-          description="Start your daily writing session"
+          title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
+          description={
+            selectedDoc && !showPicker ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowPicker(true)}
+                aria-label="Change selected document"
+                className="mt-2 cursor-pointer"
+              >
+                Change Document
+              </Button>
+            ) : (
+              "Start your daily writing session"
+            )
+          }
           dailyGoal={todayGoal}
           daysLeft={daysLeft}
           writtenToday={wordsWrittenToday}
@@ -346,34 +361,6 @@ export default function WritePage() {
               selectedDocId={selectedDoc?.id}
             />
           </div>
-        )}
-
-        {/* Selected Document Info */}
-        {selectedDoc && !showPicker && (
-          <Card className="mb-6 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
-                  Writing in:
-                </p>
-                <h3 className="font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
-                  {selectedDoc.name}
-                  {selectedTab && selectedTab.title !== 'Tab 1' && (
-                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400 strawberry:text-rose-500 cherry:text-rose-400 seafoam:text-cyan-500 ocean:text-cyan-400">
-                      {' '}/ {selectedTab.title}
-                    </span>
-                  )}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowPicker(true)}
-                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 strawberry:text-rose-600 strawberry:hover:text-rose-700 cherry:text-rose-400 cherry:hover:text-rose-300 seafoam:text-cyan-600 seafoam:hover:text-cyan-700 ocean:text-cyan-400 ocean:hover:text-cyan-300"
-                aria-label="Change selected document"
-              >
-                Change Document
-              </button>
-            </div>
-          </Card>
         )}
 
         {/* Markdown Editor */}
@@ -405,14 +392,14 @@ export default function WritePage() {
                 <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
                   <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
                     <div>
-                      <span className="font-semibold">{wordsWrittenToday}</span> words written today
+                      <span className="font-semibold">{wordsWrittenToday}</span> Words Today
                     </div>
                     <div className="text-zinc-400 dark:text-zinc-600 strawberry:text-rose-500 cherry:text-rose-600 seafoam:text-cyan-500 ocean:text-cyan-600">
-                      {wordCount} total words
+                      {wordCount} Words in Doc
                     </div>
                   </div>
                   <div 
-                    className="flex items-center gap-2 text-xs"
+                    className="flex items-center gap-3 text-xs"
                     role="status"
                     aria-live="polite"
                     aria-atomic="true"

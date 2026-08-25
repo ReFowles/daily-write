@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
@@ -9,7 +10,7 @@ import { cn } from "@/lib/class-utils";
 
 interface PageHeaderProps {
   title: string;
-  description: string;
+  description: ReactNode;
   dailyGoal?: number;
   daysLeft?: number;
   writtenToday?: number;
