@@ -15,7 +15,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@mdxeditor/editor": "^4.2.1",
     "@tiptap/extension-link": "^3.30.3",
     "@tiptap/extension-placeholder": "^3.30.3",
     "@tiptap/extension-table": "^3.30.3",

@@ -17,7 +17,7 @@
 - **Auth**: NextAuth v5 (beta) with Google provider
 - **Database**: Firebase Firestore
 - **Integrations**: Google Docs & Drive APIs (googleapis)
-- **Editor**: MDXEditor (`@mdxeditor/editor`)
+- **Editor**: Tiptap (`@tiptap/react`) via a decoupled `Editor` component in `src/components/editor/`
 
 ## Project Structure
 
@@ -50,7 +50,6 @@ src/
 │   ├── GoalCard.tsx               # Goal display card
 │   ├── GoalsPageClient.tsx        # Client-side goals page logic
 │   ├── GoogleDocsPicker.tsx       # Picker for selecting a Google Doc
-│   ├── MarkdownEditor.tsx         # MDXEditor wrapper for writing
 │   ├── MonthlyCalendar.tsx        # Monthly calendar view
 │   ├── Navigation.tsx             # Main navigation shell
 │   ├── NavLinks.tsx               # Nav link list
@@ -62,6 +61,10 @@ src/
 │   ├── ThemeToggle.tsx            # Theme switcher
 │   ├── WeeklyCalendar.tsx         # Weekly calendar view
 │   ├── WritingStatsHeader.tsx     # Stats header component
+│   ├── editor/                    # Tiptap-backed Editor (implementation isolated here)
+│   │   ├── Editor.tsx
+│   │   ├── Toolbar.tsx
+│   │   └── index.ts
 │   ├── icons/                     # Icon components (see icons/index.ts)
 │   │   ├── ChevronDown.tsx
 │   │   ├── ChevronLeft.tsx
@@ -78,9 +81,12 @@ src/
 ├── lib/                            # Utilities, hooks, and service layer
 │   ├── auth.ts                    # NextAuth configuration
 │   ├── class-utils.ts             # CSS class utility (`cn`)
+│   ├── content-to-google-docs.ts  # DocumentContent -> Google Docs batchUpdate requests
 │   ├── data-store.ts              # Firestore CRUD for goals & sessions
 │   ├── date-utils.ts              # Date formatting utilities
+│   ├── document-content.ts        # Editor-agnostic DocumentContent type + helpers
 │   ├── firebase.ts                # Firebase client singleton
+│   ├── google-docs-to-content.ts  # Google Docs API response -> DocumentContent
 │   ├── google-docs.ts             # Google Docs & Drive API wrappers
 │   ├── theme-utils.ts             # Theme class tokens
 │   ├── types.ts                   # Shared domain type definitions
