@@ -20,6 +20,7 @@ interface PageHeaderProps {
   showWriteButton?: boolean;
   onNewGoalClick?: () => void;
   newGoalButtonText?: string;
+  hideStats?: boolean;
 }
 
 export function PageHeader({
@@ -34,6 +35,7 @@ export function PageHeader({
   showWriteButton = true,
   onNewGoalClick,
   newGoalButtonText = "New Goal",
+  hideStats = false,
 }: PageHeaderProps) {
   const { data: session } = useSession();
   const dateRangeText = (!goalStartDate || !goalEndDate) 
@@ -53,8 +55,10 @@ export function PageHeader({
       </div>
 
       {/* Stats cards and action buttons - only show when authenticated */}
-      {session && (
+      {session && (!hideStats || showNewGoalButton || showWriteButton) && (
         <div className="flex flex-wrap items-stretch justify-end gap-3">
+        {!hideStats && (
+          <>
         {/* Today Card */}
         <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
           <div className="text-xs text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
@@ -99,6 +103,8 @@ export function PageHeader({
             {daysLeft}
           </div>
         </div>
+          </>
+        )}
 
         {/* Action Buttons */}
         <div className="flex flex-col gap-2">
