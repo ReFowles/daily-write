@@ -1,7 +1,22 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useEditorState, type Editor } from '@tiptap/react';
+import {
+  LuBold,
+  LuHeading1,
+  LuHeading2,
+  LuHeading3,
+  LuItalic,
+  LuLink,
+  LuList,
+  LuListOrdered,
+  LuRedo2,
+  LuStrikethrough,
+  LuTable,
+  LuUnderline,
+  LuUndo2,
+} from 'react-icons/lu';
 import { cn } from '@/lib/class-utils';
 
 interface ToolbarProps {
@@ -9,12 +24,11 @@ interface ToolbarProps {
 }
 
 interface ToolbarButtonProps {
-  label: string;
+  icon: ReactNode;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
   ariaLabel: string;
-  style?: 'bold' | 'italic' | 'underline' | 'strike' | 'normal';
 }
 
 const inactiveClasses =
@@ -49,21 +63,12 @@ const dividerClasses =
   'seafoam:bg-cyan-200 ocean:bg-cyan-900';
 
 function ToolbarButton({
-  label,
+  icon,
   onClick,
   active = false,
   disabled = false,
   ariaLabel,
-  style = 'normal',
 }: ToolbarButtonProps) {
-  const styleClass = {
-    bold: 'font-bold',
-    italic: 'italic',
-    underline: 'underline',
-    strike: 'line-through',
-    normal: '',
-  }[style];
-
   return (
     <button
       type="button"
@@ -72,13 +77,12 @@ function ToolbarButton({
       aria-label={ariaLabel}
       aria-pressed={active}
       className={cn(
-        'min-w-[2rem] rounded-md px-2 py-1 text-sm transition-colors',
-        styleClass,
+        'inline-flex h-8 w-8 items-center justify-center rounded-md text-base transition-colors',
         active ? activeClasses : inactiveClasses,
         disabled && 'cursor-not-allowed opacity-40'
       )}
     >
-      {label}
+      {icon}
     </button>
   );
 }
@@ -122,107 +126,96 @@ export function Toolbar({ editor }: ToolbarProps) {
 
   if (!editor || !state) {
     return (
-      <div
-        role="toolbar"
-        aria-label="Editor toolbar"
-        className={toolbarContainerClasses}
-      />
+      <div role="toolbar" aria-label="Editor toolbar" className={toolbarContainerClasses} />
     );
   }
 
   return (
-    <div
-      role="toolbar"
-      aria-label="Editor toolbar"
-      className={toolbarContainerClasses}
-    >
+    <div role="toolbar" aria-label="Editor toolbar" className={toolbarContainerClasses}>
       <ToolbarButton
-        label="Undo"
-        ariaLabel="Undo"
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!state.canUndo}
-      />
-      <ToolbarButton
-        label="Redo"
-        ariaLabel="Redo"
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!state.canRedo}
-      />
-      <ToolbarDivider />
-      <ToolbarButton
-        label="B"
+        icon={<LuBold aria-hidden />}
         ariaLabel="Bold"
-        style="bold"
         active={state.isBold}
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <ToolbarButton
-        label="I"
+        icon={<LuItalic aria-hidden />}
         ariaLabel="Italic"
-        style="italic"
         active={state.isItalic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       />
       <ToolbarButton
-        label="U"
+        icon={<LuUnderline aria-hidden />}
         ariaLabel="Underline"
-        style="underline"
         active={state.isUnderline}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       />
       <ToolbarButton
-        label="S"
+        icon={<LuStrikethrough aria-hidden />}
         ariaLabel="Strikethrough"
-        style="strike"
         active={state.isStrike}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       />
       <ToolbarDivider />
       <ToolbarButton
-        label="H1"
+        icon={<LuHeading1 aria-hidden />}
         ariaLabel="Heading 1"
         active={state.isH1}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <ToolbarButton
-        label="H2"
+        icon={<LuHeading2 aria-hidden />}
         ariaLabel="Heading 2"
         active={state.isH2}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       />
       <ToolbarButton
-        label="H3"
+        icon={<LuHeading3 aria-hidden />}
         ariaLabel="Heading 3"
         active={state.isH3}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       />
       <ToolbarDivider />
       <ToolbarButton
-        label="• List"
+        icon={<LuList aria-hidden />}
         ariaLabel="Bullet list"
         active={state.isBulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <ToolbarButton
-        label="1. List"
+        icon={<LuListOrdered aria-hidden />}
         ariaLabel="Numbered list"
         active={state.isOrderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <ToolbarDivider />
       <ToolbarButton
-        label="Link"
+        icon={<LuLink aria-hidden />}
         ariaLabel="Insert link"
         active={state.isLink}
         onClick={promptForLink}
       />
       <ToolbarButton
-        label="Table"
+        icon={<LuTable aria-hidden />}
         ariaLabel="Insert table"
         onClick={() =>
           editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()
         }
       />
+      <div className="ml-auto flex items-center gap-1">
+        <ToolbarButton
+          icon={<LuUndo2 aria-hidden />}
+          ariaLabel="Undo"
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!state.canUndo}
+        />
+        <ToolbarButton
+          icon={<LuRedo2 aria-hidden />}
+          ariaLabel="Redo"
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!state.canRedo}
+        />
+      </div>
     </div>
   );
 }
