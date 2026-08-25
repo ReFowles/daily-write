@@ -280,23 +280,6 @@ function bodyToMarkdown(bodyContent: BodyContent): string {
         }
       }
 
-      // Helper to escape special characters so they display as literal characters
-      const escapeSpecialChars = (text: string): string => {
-        return text
-          .replace(/\\/g, '\\\\')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/\*/g, '\\*')
-          .replace(/_/g, '\\_')
-          .replace(/~/g, '\\~')
-          .replace(/`/g, '\\`')
-          .replace(/\[/g, '\\[')
-          .replace(/\]/g, '\\]')
-          .replace(/#/g, '\\#')
-          .replace(/\|/g, '\\|');
-      };
-
       // Convert merged runs to markdown
       for (const run of mergedRuns) {
         const text = run.content;
@@ -308,7 +291,9 @@ function bodyToMarkdown(bodyContent: BodyContent): string {
 
         const hasFormatting = run.bold || run.italic || run.underline || run.strikethrough || run.link;
         if (!hasFormatting) {
-          paragraphText += escapeSpecialChars(text);
+          // Plain text from Google Docs - use as-is, no escaping needed
+          // Google Docs stores actual characters, not markdown
+          paragraphText += text;
           continue;
         }
 
@@ -321,7 +306,8 @@ function bodyToMarkdown(bodyContent: BodyContent): string {
         const leadingSpace = text.startsWith(' ') ? ' ' : '';
         const trailingSpace = text.endsWith(' ') && text !== ' ' ? ' ' : '';
 
-        let formattedText = escapeSpecialChars(trimmedText);
+        // Use trimmed text directly - no escaping needed
+        let formattedText = trimmedText;
 
         if (run.strikethrough) {
           formattedText = `~~${formattedText}~~`;
@@ -447,7 +433,22 @@ function markdownToDocRequests(
   tabId?: string
 ): { requests: object[]; plainText: string } {
   const requests: object[] = [];
-  const lines = markdown.split('\n');
+  
+  // Decode HTML entities that may come from the markdown editor
+  const decodeHtmlEntities = (text: string): string => {
+    return text
+      .replace(/&#x20;/g, ' ')
+      .replace(/&#32;/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+  };
+  
+  const decodedMarkdown = decodeHtmlEntities(markdown);
+  const lines = decodedMarkdown.split('\n');
   let plainText = '';
   const formattingRanges: {
     startIndex: number;
@@ -458,15 +459,13 @@ function markdownToDocRequests(
     underline?: boolean;
     link?: string;
   }[] = [];
-
-  // Helper to unescape markdown special characters
-  const unescapeMarkdown = (text: string): string => {
-    return text
-      .replace(/\\([\\*_~`\[\]#|])/g, '$1')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&');
-  };
+  
+  // Track headings separately for paragraph style updates
+  const headingRanges: {
+    startIndex: number;
+    endIndex: number;
+    level: number;
+  }[] = [];
 
   // Process each line
   for (let i = 0; i < lines.length; i++) {
@@ -493,7 +492,7 @@ function markdownToDocRequests(
       // Check for bold+italic (***text***)
       const boldItalicMatch = remaining.match(/^\*\*\*(.+?)\*\*\*/);
       if (boldItalicMatch) {
-        const content = unescapeMarkdown(boldItalicMatch[1]);
+        const content = boldItalicMatch[1];
         formattingRanges.push({
           startIndex: currentIndex,
           endIndex: currentIndex + content.length,
@@ -509,7 +508,7 @@ function markdownToDocRequests(
       // Check for bold (**text**)
       const boldMatch = remaining.match(/^\*\*(.+?)\*\*/);
       if (boldMatch) {
-        const content = unescapeMarkdown(boldMatch[1]);
+        const content = boldMatch[1];
         formattingRanges.push({
           startIndex: currentIndex,
           endIndex: currentIndex + content.length,
@@ -524,7 +523,7 @@ function markdownToDocRequests(
       // Check for italic (*text*)
       const italicMatch = remaining.match(/^\*(.+?)\*/);
       if (italicMatch) {
-        const content = unescapeMarkdown(italicMatch[1]);
+        const content = italicMatch[1];
         formattingRanges.push({
           startIndex: currentIndex,
           endIndex: currentIndex + content.length,
@@ -539,7 +538,7 @@ function markdownToDocRequests(
       // Check for strikethrough (~~text~~)
       const strikeMatch = remaining.match(/^~~(.+?)~~/);
       if (strikeMatch) {
-        const content = unescapeMarkdown(strikeMatch[1]);
+        const content = strikeMatch[1];
         formattingRanges.push({
           startIndex: currentIndex,
           endIndex: currentIndex + content.length,
@@ -554,7 +553,7 @@ function markdownToDocRequests(
       // Check for underline (<u>text</u>)
       const underlineMatch = remaining.match(/^<u>(.+?)<\/u>/);
       if (underlineMatch) {
-        const content = unescapeMarkdown(underlineMatch[1]);
+        const content = underlineMatch[1];
         formattingRanges.push({
           startIndex: currentIndex,
           endIndex: currentIndex + content.length,
@@ -569,7 +568,7 @@ function markdownToDocRequests(
       // Check for links ([text](url))
       const linkMatch = remaining.match(/^\[([^\]]+)\]\(([^)]+)\)/);
       if (linkMatch) {
-        const content = unescapeMarkdown(linkMatch[1]);
+        const content = linkMatch[1];
         const url = linkMatch[2];
         formattingRanges.push({
           startIndex: currentIndex,
@@ -582,10 +581,9 @@ function markdownToDocRequests(
         continue;
       }
 
-      // No formatting, just add the character
-      const char = unescapeMarkdown(remaining[0]);
-      processedLine += char;
-      currentIndex += char.length;
+      // No formatting, just add the character as-is
+      processedLine += remaining[0];
+      currentIndex += 1;
       remaining = remaining.slice(1);
     }
 
@@ -597,13 +595,13 @@ function markdownToDocRequests(
       plainText += '\n';
     }
 
-    // If this is a heading, store heading info for later
+    // If this is a heading, store heading info for paragraph style
     if (headingLevel > 0) {
       const lineEndIndex = lineStartIndex + processedLine.length;
-      formattingRanges.push({
+      headingRanges.push({
         startIndex: lineStartIndex,
         endIndex: lineEndIndex,
-        bold: false, // Will be handled by paragraph style
+        level: headingLevel,
       });
     }
   }
@@ -687,6 +685,27 @@ function markdownToDocRequests(
         },
       });
     }
+  }
+  
+  // Create paragraph style requests for headings
+  for (const heading of headingRanges.reverse()) {
+    const rangeObj: { startIndex: number; endIndex: number; tabId?: string } = {
+      startIndex: heading.startIndex,
+      endIndex: heading.endIndex,
+    };
+    if (tabId) {
+      rangeObj.tabId = tabId;
+    }
+    
+    requests.push({
+      updateParagraphStyle: {
+        range: rangeObj,
+        paragraphStyle: {
+          namedStyleType: `HEADING_${heading.level}`,
+        },
+        fields: 'namedStyleType',
+      },
+    });
   }
 
   return { requests, plainText };
