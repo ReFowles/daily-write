@@ -198,6 +198,67 @@ export default function WritePage() {
   // Check if there are unsaved Firestore changes
   const hasUnsavedSessionChanges = wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
 
+  // Snapshot of state read inside the visibility-refresh effect below without
+  // adding those values to the effect's dep list.
+  const refreshStateRef = useRef({
+    selectedDoc,
+    selectedTab,
+    hasUnsavedDocChanges,
+    lastSavedContent,
+  });
+  refreshStateRef.current = {
+    selectedDoc,
+    selectedTab,
+    hasUnsavedDocChanges,
+    lastSavedContent,
+  };
+
+  // Pick up external edits made in Google Docs while the app was in the
+  // background. Skipped while there are unsaved local edits so we never
+  // clobber the user's in-progress work.
+  useEffect(() => {
+    if (!isDocumentVisible) return;
+    const snapshot = refreshStateRef.current;
+    if (!snapshot.selectedDoc || !snapshot.selectedTab) return;
+    if (snapshot.hasUnsavedDocChanges) return;
+
+    let cancelled = false;
+    const doc = snapshot.selectedDoc;
+    const tab = snapshot.selectedTab;
+
+    (async () => {
+      try {
+        const response = await fetch('/api/google-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: doc.id, tabId: tab.tabId }),
+        });
+        if (cancelled || !response.ok) return;
+        const data = await response.json();
+        const fetched: DocumentContent = data.content ?? emptyDocument();
+
+        const latest = refreshStateRef.current;
+        if (cancelled) return;
+        if (latest.selectedDoc?.id !== doc.id) return;
+        if (latest.selectedTab?.tabId !== tab.tabId) return;
+        if (latest.hasUnsavedDocChanges) return;
+        if (contentsEqual(fetched, latest.lastSavedContent)) return;
+
+        setContent(fetched);
+        setLastSavedContent(fetched);
+        const refreshedCount = calculateWordCount(getPlainText(fetched));
+        setWordCount(refreshedCount);
+        setDocStartWordCount(refreshedCount);
+      } catch (error) {
+        console.error('Failed to refresh content from Google Docs:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isDocumentVisible]);
+
   // Auto-save to Google Docs when content changes (only when visible and has changes)
   useEffect(() => {
     // Don't save if app is not visible or no unsaved changes
