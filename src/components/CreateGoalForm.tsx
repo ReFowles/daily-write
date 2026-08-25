@@ -10,14 +10,15 @@ import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 
 interface CreateGoalFormProps {
-  onSubmit: (goal: Omit<Goal, "id">, onError: (message: string) => void) => void;
+  onSubmit: (goal: Omit<Goal, "id" | "userId">, onError: (message: string) => void) => void;
   onCancel: () => void;
   goals?: Goal[];
   writingSessions?: WritingSession[];
 }
 
 export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions = [] }: CreateGoalFormProps) {
-  const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
+  const today = new Date();
+  const [startDate, setStartDate] = useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
   const [endDate, setEndDate] = useState("");
   const [dailyWordTarget, setDailyWordTarget] = useState("");
   const [error, setError] = useState("");

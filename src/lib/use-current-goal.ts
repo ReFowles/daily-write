@@ -1,36 +1,71 @@
-import { calculateDaysLeft, parseLocalDate } from "./date-utils";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { calculateDaysLeft } from "./date-utils";
+import { getCurrentGoal, getWritingSessionByDate } from "./data-store";
 import type { Goal } from "./types";
-import dummyData from "./dummy-data.json";
 
 export interface CurrentGoalData {
   todayGoal: number;
   todayProgress: number;
   daysLeft: number;
   currentGoal: Goal | undefined;
+  isLoading: boolean;
 }
 
 export function useCurrentGoal(): CurrentGoalData {
-  // Get today's date
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayString = today.toISOString().split('T')[0];
+  const { data: session } = useSession();
+  const [currentGoal, setCurrentGoal] = useState<Goal | undefined>(undefined);
+  const [todayProgress, setTodayProgress] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Find the current goal (the goal that covers today's date)
-  const currentGoal = (dummyData.goals as Goal[]).find(goal => {
-    const startDate = parseLocalDate(goal.startDate);
-    const endDate = parseLocalDate(goal.endDate);
-    return today >= startDate && today <= endDate;
-  });
+  useEffect(() => {
+    if (!session?.user?.email) {
+      setIsLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
+    async function fetchData() {
+      if (!session?.user?.email) return;
+
+      try {
+        setIsLoading(true);
+        
+        const userId = session.user.email;
+        
+        // Get today's date string
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        // Fetch current goal and today's session in parallel
+        const [goal, todaySession] = await Promise.all([
+          getCurrentGoal(userId),
+          getWritingSessionByDate(userId, todayString),
+        ]);
+
+        if (!mounted) return;
+
+        setCurrentGoal(goal || undefined);
+        setTodayProgress(todaySession?.wordCount || 0);
+      } catch (error) {
+        console.error("Error fetching current goal data:", error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [session]);
 
   const todayGoal = currentGoal?.dailyWordTarget || 0;
-
-  // Find today's writing session
-  const todaySession = dummyData.writingSessions.find(
-    session => session.date === todayString
-  );
-  const todayProgress = todaySession?.wordCount || 0;
-
-  // Calculate days left in current goal
   const daysLeft = currentGoal ? calculateDaysLeft(currentGoal.endDate) : 0;
 
   return {
@@ -38,5 +73,6 @@ export function useCurrentGoal(): CurrentGoalData {
     todayProgress,
     daysLeft,
     currentGoal,
+    isLoading,
   };
 }

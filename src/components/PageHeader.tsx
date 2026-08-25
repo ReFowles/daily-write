@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { formatDateRange } from "@/lib/date-utils";
@@ -7,9 +10,9 @@ import { cn } from "@/lib/class-utils";
 interface PageHeaderProps {
   title: string;
   description: string;
-  dailyGoal: number;
-  daysLeft: number;
-  writtenToday: number;
+  dailyGoal?: number;
+  daysLeft?: number;
+  writtenToday?: number;
   goalStartDate?: string;
   goalEndDate?: string;
   showNewGoalButton?: boolean;
@@ -21,9 +24,9 @@ interface PageHeaderProps {
 export function PageHeader({
   title,
   description,
-  dailyGoal,
-  daysLeft,
-  writtenToday,
+  dailyGoal = 0,
+  daysLeft = 0,
+  writtenToday = 0,
   goalStartDate,
   goalEndDate,
   showNewGoalButton = true,
@@ -31,6 +34,7 @@ export function PageHeader({
   onNewGoalClick,
   newGoalButtonText = "New Goal",
 }: PageHeaderProps) {
+  const { data: session } = useSession();
   const dateRangeText = (!goalStartDate || !goalEndDate) 
     ? "No active goal" 
     : formatDateRange(goalStartDate, goalEndDate);
@@ -47,8 +51,9 @@ export function PageHeader({
         </p>
       </div>
 
-      {/* Stats cards and action buttons */}
-      <div className="flex flex-wrap items-stretch justify-end gap-3">
+      {/* Stats cards and action buttons - only show when authenticated */}
+      {session && (
+        <div className="flex flex-wrap items-stretch justify-end gap-3">
         {/* Today Card */}
         <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
           <div className="text-xs text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
@@ -119,7 +124,8 @@ export function PageHeader({
             </Link>
           )}
         </div>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

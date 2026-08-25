@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to get user email
+    function getUserEmail() {
+      return request.auth.token.email;
+    }
+    
+    // Goals collection - users can only access their own goals
+    match /goals/{goalId} {
+      allow read: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow create: if isAuthenticated() && request.resource.data.userId == getUserEmail();
+      allow update: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow delete: if isAuthenticated() && resource.data.userId == getUserEmail();
+    }
+    
+    // Writing sessions collection - users can only access their own sessions
+    match /writingSessions/{sessionId} {
+      allow read: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow create: if isAuthenticated() && request.resource.data.userId == getUserEmail();
+      allow update: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow delete: if isAuthenticated() && resource.data.userId == getUserEmail();
+    }
+  }
+}

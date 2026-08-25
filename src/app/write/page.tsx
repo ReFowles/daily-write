@@ -1,94 +1,373 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
+import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
+import { toDateString, calculateWordCount } from "@/lib/date-utils";
+import type { GoogleDoc, DocumentTab } from "@/lib/types";
+import GoogleDocsPicker from "@/components/GoogleDocsPicker";
+import DocumentTabs from "@/components/DocumentTabs";
+import dynamic from 'next/dynamic';
+
+const MarkdownEditor = dynamic(() => import('@/components/MarkdownEditor'), {
+  ssr: false,
+  loading: () => <div className="p-4 text-gray-500">Loading editor...</div>
+});
+
+// Auto-save delay in milliseconds
+const AUTO_SAVE_DELAY = 2000;
+// Google Docs save delay (longer to avoid too many API calls)
+const GOOGLE_DOCS_SAVE_DELAY = 3000;
 
 export default function WritePage() {
-  const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const { todayGoal, daysLeft, currentGoal } = useCurrentGoal();
+  const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
+  const [selectedTab, setSelectedTab] = useState<DocumentTab | null>(null);
+  const [showPicker, setShowPicker] = useState(true);
   const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
   const [wordCount, setWordCount] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
+  const [docStartWordCount, setDocStartWordCount] = useState(0);
+  const [sessionStartWordCount, setSessionStartWordCount] = useState(0);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [lastSavedCount, setLastSavedCount] = useState(0);
+  const [lastSavedContent, setLastSavedContent] = useState("");
+  const [docSaveError, setDocSaveError] = useState<string | null>(null);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(true);
+  
+  // Ref to track if we're currently saving to avoid race conditions
+  const isSavingToDoc = useRef(false);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setContent(text);
+  // Track document visibility
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsDocumentVisible(!document.hidden);
+    };
     
-    // Calculate word count
-    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
-    setWordCount(words.length);
+    // Set initial state
+    setIsDocumentVisible(!document.hidden);
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Load today's existing word count from Firestore on mount
+  useEffect(() => {
+    if (!session?.user?.email) return;
+
+    const loadTodaySession = async () => {
+      const today = toDateString(new Date());
+      try {
+        const existingSession = await getWritingSessionByDate(session.user.email!, today);
+        if (existingSession) {
+          setSessionStartWordCount(existingSession.wordCount);
+          setLastSavedCount(existingSession.wordCount);
+        }
+      } catch (error) {
+        console.error('Failed to load today\'s session:', error);
+      }
+    };
+
+    loadTodaySession();
+  }, [session?.user?.email]);
+
+  // Function to save content to Google Docs
+  const saveToGoogleDocs = useCallback(async (docId: string, markdown: string, tabId?: string) => {
+    if (isSavingToDoc.current) return false;
+    
+    isSavingToDoc.current = true;
+    setDocSaveError(null);
+    
+    try {
+      const response = await fetch('/api/google-docs', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documentId: docId, markdown, tabId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save to Google Docs');
+      }
+
+      setLastSavedContent(markdown);
+      return true;
+    } catch (error) {
+      console.error('Error saving to Google Docs:', error);
+      setDocSaveError(error instanceof Error ? error.message : 'Failed to save');
+      return false;
+    } finally {
+      isSavingToDoc.current = false;
+    }
+  }, []);
+
+  const handleSelectDoc = async (doc: GoogleDoc) => {
+    setSelectedDoc(doc);
+    setSelectedTab(null); // Clear tab selection - will be set by DocumentTabs component
+    setShowPicker(false);
+    setLoadingContent(true);
+    setDocSaveError(null);
+    
+    // Note: Content will be loaded when a tab is selected
+    // The DocumentTabs component will auto-select the first tab
+    setContent('');
+    setLastSavedContent('');
+    setWordCount(0);
+    setDocStartWordCount(0);
+    setLoadingContent(false);
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    // TODO: Implement save functionality
-    // This will eventually save to your data store
-    console.log("Saving:", { title, content, wordCount });
+  const handleSelectTab = useCallback(async (tab: DocumentTab) => {
+    // Save current content before switching tabs
+    if (selectedDoc && selectedTab && content !== lastSavedContent) {
+      await saveToGoogleDocs(selectedDoc.id, content, selectedTab.tabId);
+    }
+
+    setSelectedTab(tab);
+    setLoadingContent(true);
+    setDocSaveError(null);
     
-    // Simulate save delay
-    setTimeout(() => {
-      setIsSaving(false);
-      alert("Writing session saved! (This is a placeholder)");
-    }, 500);
-  };
+    if (!selectedDoc) return;
+    
+    // Load the tab content
+    try {
+      const response = await fetch('/api/google-docs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ documentId: selectedDoc.id, tabId: tab.tabId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load tab content');
+      }
+
+      const data = await response.json();
+      const loadedContent = data.markdown || '';
+      setContent(loadedContent);
+      setLastSavedContent(loadedContent);
+      
+      // Calculate initial word count from loaded content
+      const initialCount = calculateWordCount(loadedContent);
+      setWordCount(initialCount);
+      setDocStartWordCount(initialCount);
+    } catch (error) {
+      console.error('Error loading tab content:', error);
+      setContent('');
+      setLastSavedContent('');
+      setDocStartWordCount(0);
+    } finally {
+      setLoadingContent(false);
+    }
+  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs]);
+
+  const handleContentChange = useCallback((markdown: string) => {
+    setContent(markdown);
+    setSaveStatus('unsaved');
+    
+    // Debounce word count calculation slightly to avoid blocking on every keystroke
+    requestAnimationFrame(() => {
+      const currentCount = calculateWordCount(markdown);
+      setWordCount(currentCount);
+    });
+  }, []);
+  
+  // Words added in current document = current - where doc started
+  // This allows deletions to reduce the count if you delete what you just wrote
+  const currentDocWordsAdded = Math.max(0, wordCount - docStartWordCount);
+  
+  // Total words written today = where we started this session + words added in current doc
+  const wordsWrittenToday = sessionStartWordCount + currentDocWordsAdded;
+  
+  // Check if there are unsaved Google Docs changes
+  const hasUnsavedDocChanges = selectedDoc && content !== lastSavedContent && !showPicker;
+  
+  // Check if there are unsaved Firestore changes
+  const hasUnsavedSessionChanges = wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
+
+  // Auto-save to Google Docs when content changes (only when visible and has changes)
+  useEffect(() => {
+    // Don't save if app is not visible or no unsaved changes
+    if (!isDocumentVisible || !hasUnsavedDocChanges) {
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      if (!selectedDoc) return;
+      
+      setSaveStatus('saving');
+      const success = await saveToGoogleDocs(selectedDoc.id, content, selectedTab?.tabId);
+      if (success) {
+        setSaveStatus('saved');
+      } else {
+        setSaveStatus('unsaved');
+      }
+    }, GOOGLE_DOCS_SAVE_DELAY);
+
+    return () => clearTimeout(timeoutId);
+  }, [content, isDocumentVisible, hasUnsavedDocChanges, selectedDoc, selectedTab, saveToGoogleDocs]);
+
+  // Auto-save writing session to Firestore (only when visible and has changes)
+  useEffect(() => {
+    // Don't save if no user, app not visible, or no unsaved changes
+    if (!session?.user?.email || !isDocumentVisible || !hasUnsavedSessionChanges) {
+      return;
+    }
+
+    // Save after delay when user stops typing
+    const timeoutId = setTimeout(async () => {
+      const today = toDateString(new Date());
+      try {
+        await createOrUpdateWritingSession({
+          userId: session.user.email!,
+          date: today,
+          wordCount: wordsWrittenToday,
+        });
+        setLastSavedCount(wordsWrittenToday);
+        setSessionStartWordCount(wordsWrittenToday);
+        // Reset document baseline so we don't double-count these words
+        setDocStartWordCount(wordCount);
+      } catch (error) {
+        console.error('Failed to save writing session:', error);
+      }
+    }, AUTO_SAVE_DELAY);
+
+    return () => clearTimeout(timeoutId);
+  }, [session?.user?.email, wordsWrittenToday, wordCount, isDocumentVisible, hasUnsavedSessionChanges]);
+
+  // Redirect if not authenticated (after all hooks)
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center" role="status" aria-live="polite">
+        <p className="text-lg text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    router.push("/about");
+    return null;
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <main className="h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
+      <div className="mx-auto flex h-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
           title="Write"
           description="Start your daily writing session"
           dailyGoal={todayGoal}
           daysLeft={daysLeft}
-          writtenToday={todayProgress}
+          writtenToday={wordsWrittenToday}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
           showNewGoalButton={false}
           showWriteButton={false}
         />
 
-        {/* Writing Area */}
-        <Card>
-          <div className="border-b border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
-            <input
-              type="text"
-              placeholder="Title your writing session..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border-none bg-transparent text-2xl font-semibold text-zinc-900 placeholder-zinc-400 focus:outline-none dark:text-zinc-50 dark:placeholder-zinc-600 strawberry:text-rose-900 strawberry:placeholder-rose-400 cherry:text-rose-300 cherry:placeholder-rose-600 seafoam:text-cyan-900 seafoam:placeholder-cyan-400 ocean:text-cyan-300 ocean:placeholder-cyan-600"
+        {/* Google Docs Picker */}
+        {showPicker && (
+          <div className="mb-6">
+            <GoogleDocsPicker
+              onSelectDoc={handleSelectDoc}
+              selectedDocId={selectedDoc?.id}
             />
           </div>
-          <div className="p-4">
-            <textarea
-              placeholder="Start writing..."
-              value={content}
-              onChange={handleContentChange}
-              className="min-h-[calc(100vh-400px)] w-full resize-none border-none bg-transparent text-lg text-zinc-900 placeholder-zinc-400 focus:outline-none dark:text-zinc-50 dark:placeholder-zinc-600 strawberry:text-rose-900 strawberry:placeholder-rose-400 cherry:text-rose-300 cherry:placeholder-rose-600 seafoam:text-cyan-900 seafoam:placeholder-cyan-400 ocean:text-cyan-300 ocean:placeholder-cyan-600"
-              autoFocus
-            />
-          </div>
-          <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
-            <div className="text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
-              {wordCount} words
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={(!title && !content) || isSaving}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed strawberry:bg-linear-to-r strawberry:from-rose-500 strawberry:to-pink-500 strawberry:hover:from-rose-600 strawberry:hover:to-pink-600 cherry:bg-linear-to-r cherry:from-rose-700 cherry:to-pink-700 cherry:hover:from-rose-600 cherry:hover:to-pink-600 seafoam:bg-linear-to-r seafoam:from-cyan-500 seafoam:to-blue-500 seafoam:hover:from-cyan-600 seafoam:hover:to-blue-600 ocean:bg-linear-to-r ocean:from-cyan-700 ocean:to-blue-700 ocean:hover:from-cyan-600 ocean:hover:to-blue-600"
-            >
-              {isSaving ? "Saving..." : "Save Session"}
-            </button>
-          </div>
-        </Card>
+        )}
 
-        {/* Tips */}
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950 strawberry:border-pink-300 strawberry:bg-pink-100 cherry:border-rose-900 cherry:bg-rose-950/50 seafoam:border-cyan-300 seafoam:bg-cyan-100 ocean:border-cyan-900 ocean:bg-cyan-950/50">
-          <p className="text-sm text-blue-900 dark:text-blue-100 strawberry:text-rose-900 cherry:text-rose-300 seafoam:text-cyan-900 ocean:text-cyan-300">
-            <strong>Tip:</strong> In the future, this will sync with your Google Docs automatically!
-          </p>
-        </div>
+        {/* Selected Document Info */}
+        {selectedDoc && !showPicker && (
+          <Card className="mb-6 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+                  Writing in:
+                </p>
+                <h3 className="font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
+                  {selectedDoc.name}
+                  {selectedTab && selectedTab.title !== 'Tab 1' && (
+                    <span className="text-sm font-normal text-gray-500 dark:text-gray-400 strawberry:text-rose-500 cherry:text-rose-400 seafoam:text-cyan-500 ocean:text-cyan-400">
+                      {' '}/ {selectedTab.title}
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPicker(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 strawberry:text-rose-600 strawberry:hover:text-rose-700 cherry:text-rose-400 cherry:hover:text-rose-300 seafoam:text-cyan-600 seafoam:hover:text-cyan-700 ocean:text-cyan-400 ocean:hover:text-cyan-300"
+                aria-label="Change selected document"
+              >
+                Change Document
+              </button>
+            </div>
+          </Card>
+        )}
+
+        {/* Markdown Editor */}
+        {selectedDoc && !showPicker && (
+          <Card className="flex flex-1 flex-col overflow-hidden">
+            {/* Document Tabs */}
+            <DocumentTabs
+              documentId={selectedDoc.id}
+              selectedTabId={selectedTab?.tabId}
+              onSelectTab={handleSelectTab}
+            />
+            
+            {loadingContent ? (
+              <div className="flex items-center justify-center p-12" role="status" aria-live="polite">
+                <p className="text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+                  Loading document content...
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 overflow-y-auto">
+                  <MarkdownEditor
+                    key={selectedDoc.id}
+                    markdown={content || ''}
+                    onChange={handleContentChange}
+                    placeholder="Start writing..."
+                  />
+                </div>
+                <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+                  <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+                    <div>
+                      <span className="font-semibold">{wordsWrittenToday}</span> words written today
+                    </div>
+                    <div className="text-zinc-400 dark:text-zinc-600 strawberry:text-rose-500 cherry:text-rose-600 seafoam:text-cyan-500 ocean:text-cyan-600">
+                      {wordCount} total words
+                    </div>
+                  </div>
+                  <div 
+                    className="flex items-center gap-2 text-xs"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    {docSaveError && (
+                      <span className="text-red-500 dark:text-red-400">
+                        Error: {docSaveError}
+                      </span>
+                    )}
+                    <span className="text-zinc-500 dark:text-zinc-500 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500">
+                      {saveStatus === 'saving' && 'Saving to Google Docs...'}
+                      {saveStatus === 'saved' && !docSaveError && 'Saved to Google Docs'}
+                      {saveStatus === 'unsaved' && !docSaveError && 'Unsaved changes'}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
+        )}
       </div>
     </main>
   );

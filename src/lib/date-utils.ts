@@ -28,7 +28,7 @@ export function generateWeekWindow(
   for (let i = -2; i <= 2; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = toDateString(date);
     
     // Find goal for this specific date
     const goal = goals.find(g => isDateInRange(date, g.startDate, g.endDate));
@@ -262,4 +262,43 @@ export function formatDateRange(startDateString: string, endDateString: string):
   }
   
   return `${startFormatted} – ${endFormatted}`;
+}
+
+/**
+ * Calculate word count from markdown text
+ * Strips markdown syntax and counts actual words
+ */
+export function calculateWordCount(markdown: string): number {
+  const plainText = markdown
+    .replace(/[#*_~`\[\]()]/g, '') // Remove markdown chars
+    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+    .replace(/\[.*?\]\(.*?\)/g, '') // Remove links
+    .trim();
+  
+  const words = plainText.split(/\s+/).filter((word: string) => word.length > 0);
+  return words.length;
+}
+
+/**
+ * Format a date as relative time (e.g., "2 hours ago", "yesterday")
+ */
+export function formatDistanceToNow(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffSecs < 60) {
+    return 'just now';
+  } else if (diffMins < 60) {
+    return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+  } else if (diffHours < 24) {
+    return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+  } else if (diffDays < 7) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
 }

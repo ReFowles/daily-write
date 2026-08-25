@@ -4,12 +4,14 @@
 
 export interface Goal {
   id: string;
+  userId: string;
   startDate: string; // YYYY-MM-DD format
   endDate: string; // YYYY-MM-DD format
   dailyWordTarget: number;
 }
 
 export interface WritingSession {
+  userId: string;
   date: string; // YYYY-MM-DD format
   wordCount: number;
 }
@@ -26,4 +28,20 @@ export interface CalendarDay {
   goal: number | null;
   isToday: boolean;
   isFuture: boolean;
+}
+
+export interface GoogleDoc {
+  id: string;
+  name: string;
+  modifiedTime: string;
+  webViewLink: string;
+  ownedByMe: boolean;
+}
+
+export interface DocumentTab {
+  tabId: string;
+  title: string;
+  index: number;
+  nestingLevel: number;
+  parentTabId?: string;
 }

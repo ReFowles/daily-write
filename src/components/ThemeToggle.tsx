@@ -6,20 +6,35 @@ import { Sun, Moon, ChevronDown } from "./icons";
 type Theme = "light" | "dark" | "strawberry" | "cherry" | "seafoam" | "ocean";
 
 export default function ThemeToggle() {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
+  const [currentTheme, setCurrentTheme] = useState<Theme>("light");
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Read initial theme on mount by subscribing to DOM state
+  useEffect(() => {
+    const readTheme = (): Theme => {
       const saved = localStorage.getItem("theme") as Theme;
       if (saved) return saved;
+      
       if (document.documentElement.classList.contains("ocean")) return "ocean";
       if (document.documentElement.classList.contains("seafoam")) return "seafoam";
       if (document.documentElement.classList.contains("cherry")) return "cherry";
       if (document.documentElement.classList.contains("dark")) return "dark";
       if (document.documentElement.classList.contains("strawberry")) return "strawberry";
-    }
-    return "light";
-  });
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+      
+      return "light";
+    };
+
+    // Read theme asynchronously to avoid sync setState in effect
+    const timer = setTimeout(() => {
+      const theme = readTheme();
+      if (theme !== currentTheme) {
+        setCurrentTheme(theme);
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

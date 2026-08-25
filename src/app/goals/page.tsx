@@ -1,10 +1,18 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { GoalsPageClient } from "@/components/GoalsPageClient";
 
-export default function GoalsPage() {
+export default async function GoalsPage() {
+  const session = await auth();
+  
+  if (!session?.user?.email) {
+    redirect("/about");
+  }
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <GoalsPageClient />
+      <GoalsPageClient userId={session.user.email} />
     </Suspense>
   );
 }
