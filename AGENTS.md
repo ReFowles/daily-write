@@ -142,6 +142,69 @@ pnpm format:check  # Prettier check (CI-safe)
 
 **Important: All linting errors must be addressed, not silenced.** Do not use `eslint-disable` comments or suppress warnings unless there is a documented, exceptional reason. Fix the underlying issues instead.
 
+### Testing
+
+```bash
+pnpm test           # Run the suite once (Vitest)
+pnpm test:watch     # Watch mode for local development
+pnpm test:coverage  # Run once with v8 coverage → HTML report in coverage/
+```
+
+Testing stack: **Vitest** + **@testing-library/react** + **@testing-library/jest-dom** + **jsdom**. Config lives in [vitest.config.mts](vitest.config.mts); the global `@testing-library/jest-dom/vitest` matcher setup is in [vitest.setup.ts](vitest.setup.ts).
+
+#### File layout & discovery
+
+- Tests live next to the code they cover: `foo.ts` → `foo.test.ts`, `Foo.tsx` → `Foo.test.tsx`.
+- Vitest picks up `src/**/*.{test,spec}.{ts,tsx}`. Do not create a top-level `__tests__/` directory.
+- Coverage excludes `src/app/**/page.tsx`, `src/app/**/layout.tsx`, and `src/app/theme-init.tsx` — those are exercised at build time by Next.js.
+
+#### What to test
+
+Prioritize behavior that would break the app for a real user or silently return wrong data.
+
+- **Pure utilities** (`src/lib/date-utils.ts`, `class-utils.ts`, etc.): high-value, cheap. Test edge cases (empty input, boundary dates, DST-safe cases).
+- **Data-store functions**: mock `firebase/firestore` and `./firebase`; assert that the right queries are built and results are shaped/sorted correctly.
+- **API routes** (`src/app/api/**/route.ts`): mock `@/lib/auth` and downstream service modules; assert 401/400/500 branches and happy paths.
+- **Hooks with logic**: use `renderHook` + `act` from `@testing-library/react`; assert state transitions and effect side-effects (via mocked dependencies).
+- **Components with logic or user interaction**: forms, calendars, cards that compute values from props. Assert what the user sees (aria-labels, text) and that callbacks fire with the right arguments.
+
+#### What is overkill
+
+Skip tests that only re-verify framework/library behavior or lock in incidental output.
+
+- **Do not** snapshot-test whole components — Tailwind class strings change often and snapshots become noise.
+- **Do not** test presentational-only components that just render props (a `<Card>` with one `className` prop, an icon that returns a static `<svg>` — one smoke test is enough).
+- **Do not** test config files: `src/lib/auth.ts`, `src/lib/firebase.ts`, `next.config.ts`, `tailwind.config.*`. They're wiring, not logic.
+- **Do not** test theme class token maps (`src/lib/theme-utils.ts`) — testing that a constant equals itself has no signal.
+- **Do not** test Next.js `page.tsx`/`layout.tsx` files directly. Test the client components they render instead (e.g. `DashboardClient.tsx`, not `page.tsx`).
+- **Do not** re-test the same branch through multiple components. Test it once at the lowest level that owns the behavior.
+- **Do not** assert on specific Tailwind class strings unless the class is load-bearing (e.g. `bg-green-500` for a completed-goal state). Prefer role/text/aria queries.
+
+#### Writing tests — conventions
+
+- Use `describe` blocks per unit under test; use `it("does X when Y")` for scenarios.
+- Prefer role-based queries: `getByRole("button", { name: /save/i })`, `getByLabelText(/end date/i)`. Fall back to `getByText` only when semantics don't apply.
+- Assert on user-visible signals (aria-labels, text content, form values, callback arguments), not implementation details (state variables, internal function calls).
+- Use `vi.useFakeTimers({ toFake: ["Date"] })` when a hook or effect uses `waitFor`/`setTimeout` internally — faking `Date` only leaves timers real so Testing Library's async helpers still work.
+- Mock at the module boundary with `vi.mock("...", () => ({ ... }))` at the top of the file, then import + `vi.mocked(...)` the specific functions inside `describe`.
+- Reset mocks per test with `beforeEach(() => vi.clearAllMocks())` when using shared mocks.
+- Keep fixtures small and inline — don't build shared factories until the third caller.
+- When a test reveals a real bug, either fix the code or add a `// TODO:` comment above the assertion and open an issue; **never** encode buggy behavior as the expected result.
+
+#### Mocking specific dependencies
+
+- **`firebase/firestore`**: mock the full module with `vi.fn()` for `collection`, `doc`, `query`, `where`, `getDocs`, `getDoc`, `addDoc`, `updateDoc`, `deleteDoc`, and a `Timestamp` stub. See [src/lib/data-store.test.ts](src/lib/data-store.test.ts) for a reference harness including `snapshotFrom` / `docSnapshotFrom` helpers.
+- **`next-auth`'s `auth`**: it's an overloaded function; narrow it in tests with `vi.mocked(auth as unknown as () => Promise<MinimalSession>)`. See [src/app/api/google-docs/route.test.ts](src/app/api/google-docs/route.test.ts).
+- **`next-auth/react`'s `useSession`**: mock the module and return whatever session shape the hook needs; see [src/lib/use-current-goal.test.ts](src/lib/use-current-goal.test.ts).
+- **`next/link`**: mock it to a plain anchor when a component test only needs to assert `href`.
+
+#### When adding a feature
+
+1. If the feature touches `src/lib/` (pure or data-layer): **write a test**.
+2. If it touches an API route: **write a test** covering unauthorized, invalid-input, and success paths.
+3. If it's a new UI component with computed state or user interactions: **write a test** for the interaction.
+4. If it's a purely presentational component (props → JSX with no branches): tests are optional.
+
 ## Architecture & Data Model
 
 ### Type System
@@ -276,7 +339,7 @@ Always commit the updated `pnpm-lock.yaml` file.
 2. **Don't silence linting errors** - Fix them properly
 3. **Don't ignore TypeScript errors** - Address type issues correctly
 4. **Don't mix styling approaches** - Use Tailwind CSS consistently
-5. **Don't skip testing** - Always verify changes work in the browser
+5. **Don't skip testing** - Run `pnpm test` and verify changes in the browser. If your change adds logic to `src/lib/`, an API route, or an interactive component, add a test for it (see [Testing](#testing)).
 
 ## Resources
 

@@ -3,4 +3,5 @@ node_modules
 pnpm-lock.yaml
 out
 build
+coverage
 next-env.d.ts
