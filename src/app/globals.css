@@ -40,9 +40,8 @@ body {
     caret-color: currentColor;
   }
 
-  /* Tiptap placeholder styling — appears on the first empty node. */
-  .editor-root .prose p.is-editor-empty:first-child::before,
-  .editor-root .prose .is-empty::before {
+  /* Tiptap placeholder — only visible when the entire editor is empty. */
+  .editor-root .prose p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
     height: 0;
