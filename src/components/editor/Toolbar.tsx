@@ -17,6 +17,37 @@ interface ToolbarButtonProps {
   style?: 'bold' | 'italic' | 'underline' | 'strike' | 'normal';
 }
 
+const inactiveClasses =
+  'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 ' +
+  'dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 ' +
+  'strawberry:text-rose-700 strawberry:hover:bg-pink-100 strawberry:hover:text-rose-900 ' +
+  'cherry:text-rose-300 cherry:hover:bg-rose-900 cherry:hover:text-rose-100 ' +
+  'seafoam:text-cyan-700 seafoam:hover:bg-cyan-100 seafoam:hover:text-cyan-900 ' +
+  'ocean:text-cyan-300 ocean:hover:bg-cyan-900 ocean:hover:text-cyan-100';
+
+const activeClasses =
+  'bg-zinc-200 text-zinc-900 ' +
+  'dark:bg-zinc-700 dark:text-zinc-50 ' +
+  'strawberry:bg-rose-200 strawberry:text-rose-900 ' +
+  'cherry:bg-rose-700 cherry:text-rose-50 ' +
+  'seafoam:bg-cyan-200 seafoam:text-cyan-900 ' +
+  'ocean:bg-cyan-700 ocean:text-cyan-50';
+
+const toolbarContainerClasses =
+  'flex flex-wrap items-center gap-1 border-b p-2 ' +
+  'border-zinc-200 bg-zinc-50/60 ' +
+  'dark:border-zinc-800 dark:bg-zinc-900/60 ' +
+  'strawberry:border-pink-200 strawberry:bg-pink-50/60 ' +
+  'cherry:border-rose-900 cherry:bg-rose-950/60 ' +
+  'seafoam:border-cyan-200 seafoam:bg-cyan-50/60 ' +
+  'ocean:border-cyan-900 ocean:bg-cyan-950/60';
+
+const dividerClasses =
+  'mx-1 h-6 w-px ' +
+  'bg-zinc-200 dark:bg-zinc-700 ' +
+  'strawberry:bg-pink-200 cherry:bg-rose-900 ' +
+  'seafoam:bg-cyan-200 ocean:bg-cyan-900';
+
 function ToolbarButton({
   label,
   onClick,
@@ -43,9 +74,7 @@ function ToolbarButton({
       className={cn(
         'min-w-[2rem] rounded-md px-2 py-1 text-sm transition-colors',
         styleClass,
-        active
-          ? 'bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50'
-          : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800',
+        active ? activeClasses : inactiveClasses,
         disabled && 'cursor-not-allowed opacity-40'
       )}
     >
@@ -56,11 +85,7 @@ function ToolbarButton({
 
 function ToolbarDivider() {
   return (
-    <span
-      role="separator"
-      aria-orientation="vertical"
-      className="mx-1 h-6 w-px bg-zinc-200 dark:bg-zinc-700"
-    />
+    <span role="separator" aria-orientation="vertical" className={dividerClasses} />
   );
 }
 
@@ -100,7 +125,7 @@ export function Toolbar({ editor }: ToolbarProps) {
       <div
         role="toolbar"
         aria-label="Editor toolbar"
-        className="flex flex-wrap items-center gap-1 border-b border-zinc-200 p-2 dark:border-zinc-800"
+        className={toolbarContainerClasses}
       />
     );
   }
@@ -109,7 +134,7 @@ export function Toolbar({ editor }: ToolbarProps) {
     <div
       role="toolbar"
       aria-label="Editor toolbar"
-      className="flex flex-wrap items-center gap-1 border-b border-zinc-200 p-2 dark:border-zinc-800"
+      className={toolbarContainerClasses}
     >
       <ToolbarButton
         label="Undo"

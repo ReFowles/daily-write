@@ -30,3 +30,77 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer components {
+  .editor-root {
+    @apply overflow-hidden rounded-lg;
+  }
+
+  .editor-root [contenteditable] {
+    caret-color: currentColor;
+  }
+
+  /* Tiptap placeholder styling — appears on the first empty node. */
+  .editor-root .prose p.is-editor-empty:first-child::before,
+  .editor-root .prose .is-empty::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    @apply text-zinc-400 dark:text-zinc-500 strawberry:text-rose-400 cherry:text-rose-500 seafoam:text-cyan-400 ocean:text-cyan-500;
+  }
+
+  /* Themed heading accents inside the editor. */
+  .editor-root .prose :is(h1, h2, h3) {
+    @apply text-zinc-900 dark:text-zinc-50;
+  }
+  :is(.strawberry *) .editor-root .prose :is(h1, h2, h3) {
+    @apply text-rose-900;
+  }
+  :is(.cherry *) .editor-root .prose :is(h1, h2, h3) {
+    @apply text-rose-100;
+  }
+  :is(.seafoam *) .editor-root .prose :is(h1, h2, h3) {
+    @apply text-cyan-900;
+  }
+  :is(.ocean *) .editor-root .prose :is(h1, h2, h3) {
+    @apply text-cyan-100;
+  }
+
+  /* Themed link colors. */
+  .editor-root .prose a {
+    @apply text-blue-600 underline decoration-blue-400/60 underline-offset-2;
+  }
+  :is(.dark *) .editor-root .prose a {
+    @apply text-blue-400 decoration-blue-400/50;
+  }
+  :is(.strawberry *) .editor-root .prose a {
+    @apply text-rose-700 decoration-rose-400/60;
+  }
+  :is(.cherry *) .editor-root .prose a {
+    @apply text-rose-300 decoration-rose-400/60;
+  }
+  :is(.seafoam *) .editor-root .prose a {
+    @apply text-cyan-700 decoration-cyan-400/60;
+  }
+  :is(.ocean *) .editor-root .prose a {
+    @apply text-cyan-300 decoration-cyan-400/60;
+  }
+
+  /* Themed table borders. */
+  .editor-root .prose table {
+    @apply w-full border-collapse;
+  }
+  .editor-root .prose :is(td, th) {
+    @apply border p-2 align-top;
+    @apply border-zinc-300 dark:border-zinc-700 strawberry:border-rose-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900;
+  }
+  .editor-root .prose th {
+    @apply bg-zinc-100 dark:bg-zinc-800 strawberry:bg-rose-100 cherry:bg-rose-900 seafoam:bg-cyan-100 ocean:bg-cyan-900;
+  }
+
+  /* Selection highlight matches theme accent. */
+  .editor-root .prose ::selection {
+    @apply bg-blue-200/70 dark:bg-blue-800/50 strawberry:bg-rose-200/70 cherry:bg-rose-700/50 seafoam:bg-cyan-200/70 ocean:bg-cyan-700/50;
+  }
+}

@@ -47,7 +47,11 @@ export function Editor({ content, onChange, placeholder, className }: EditorProp
     editorProps: {
       attributes: {
         class: cn(
-          'prose dark:prose-invert max-w-none focus:outline-none min-h-[400px] p-4',
+          'prose max-w-none focus:outline-none min-h-[400px] p-4',
+          'dark:prose-invert cherry:prose-invert ocean:prose-invert',
+          'text-zinc-900 dark:text-zinc-100',
+          'strawberry:text-rose-900 cherry:text-rose-100',
+          'seafoam:text-cyan-900 ocean:text-cyan-100',
           className
         ),
       },
