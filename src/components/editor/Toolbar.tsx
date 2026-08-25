@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { Editor } from '@tiptap/react';
+import { useEditorState, type Editor } from '@tiptap/react';
 import { cn } from '@/lib/class-utils';
 
 interface ToolbarProps {
@@ -65,6 +65,24 @@ function ToolbarDivider() {
 }
 
 export function Toolbar({ editor }: ToolbarProps) {
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      canUndo: current?.can().undo() ?? false,
+      canRedo: current?.can().redo() ?? false,
+      isBold: current?.isActive('bold') ?? false,
+      isItalic: current?.isActive('italic') ?? false,
+      isUnderline: current?.isActive('underline') ?? false,
+      isStrike: current?.isActive('strike') ?? false,
+      isH1: current?.isActive('heading', { level: 1 }) ?? false,
+      isH2: current?.isActive('heading', { level: 2 }) ?? false,
+      isH3: current?.isActive('heading', { level: 3 }) ?? false,
+      isBulletList: current?.isActive('bulletList') ?? false,
+      isOrderedList: current?.isActive('orderedList') ?? false,
+      isLink: current?.isActive('link') ?? false,
+    }),
+  });
+
   const promptForLink = useCallback(() => {
     if (!editor) return;
     const previous = editor.getAttributes('link').href as string | undefined;
@@ -77,7 +95,7 @@ export function Toolbar({ editor }: ToolbarProps) {
     editor.chain().focus().setLink({ href: url }).run();
   }, [editor]);
 
-  if (!editor) {
+  if (!editor || !state) {
     return (
       <div
         role="toolbar"
@@ -97,80 +115,80 @@ export function Toolbar({ editor }: ToolbarProps) {
         label="Undo"
         ariaLabel="Undo"
         onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
+        disabled={!state.canUndo}
       />
       <ToolbarButton
         label="Redo"
         ariaLabel="Redo"
         onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
+        disabled={!state.canRedo}
       />
       <ToolbarDivider />
       <ToolbarButton
         label="B"
         ariaLabel="Bold"
         style="bold"
-        active={editor.isActive('bold')}
+        active={state.isBold}
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <ToolbarButton
         label="I"
         ariaLabel="Italic"
         style="italic"
-        active={editor.isActive('italic')}
+        active={state.isItalic}
         onClick={() => editor.chain().focus().toggleItalic().run()}
       />
       <ToolbarButton
         label="U"
         ariaLabel="Underline"
         style="underline"
-        active={editor.isActive('underline')}
+        active={state.isUnderline}
         onClick={() => editor.chain().focus().toggleUnderline().run()}
       />
       <ToolbarButton
         label="S"
         ariaLabel="Strikethrough"
         style="strike"
-        active={editor.isActive('strike')}
+        active={state.isStrike}
         onClick={() => editor.chain().focus().toggleStrike().run()}
       />
       <ToolbarDivider />
       <ToolbarButton
         label="H1"
         ariaLabel="Heading 1"
-        active={editor.isActive('heading', { level: 1 })}
+        active={state.isH1}
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <ToolbarButton
         label="H2"
         ariaLabel="Heading 2"
-        active={editor.isActive('heading', { level: 2 })}
+        active={state.isH2}
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       />
       <ToolbarButton
         label="H3"
         ariaLabel="Heading 3"
-        active={editor.isActive('heading', { level: 3 })}
+        active={state.isH3}
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       />
       <ToolbarDivider />
       <ToolbarButton
         label="• List"
         ariaLabel="Bullet list"
-        active={editor.isActive('bulletList')}
+        active={state.isBulletList}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <ToolbarButton
         label="1. List"
         ariaLabel="Numbered list"
-        active={editor.isActive('orderedList')}
+        active={state.isOrderedList}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
       />
       <ToolbarDivider />
       <ToolbarButton
         label="Link"
         ariaLabel="Insert link"
-        active={editor.isActive('link')}
+        active={state.isLink}
         onClick={promptForLink}
       />
       <ToolbarButton
