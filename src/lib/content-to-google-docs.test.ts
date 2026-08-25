@@ -10,9 +10,9 @@ describe('contentToGoogleDocsRequests', () => {
   it('emits no insertText for an empty document', () => {
     const result = contentToGoogleDocsRequests(doc({ type: 'paragraph' }));
     expect(result.plainText).toBe('\n');
-    expect(result.requests).toEqual([
-      { insertText: { location: { index: 1 }, text: '\n' } },
-    ]);
+    expect(result.requests[0]).toEqual({
+      insertText: { location: { index: 1 }, text: '\n' },
+    });
   });
 
   it('inserts plain paragraphs with newlines', () => {
@@ -54,7 +54,8 @@ describe('contentToGoogleDocsRequests', () => {
     expect(result.plainText).toBe('plain bold end\n');
     const styleRequest = result.requests.find(
       (r): r is { updateTextStyle: { range: { startIndex: number; endIndex: number }; fields: string } } =>
-        'updateTextStyle' in (r as object)
+        'updateTextStyle' in (r as object) &&
+        (r as { updateTextStyle: { fields: string } }).updateTextStyle.fields === 'bold'
     );
     expect(styleRequest).toBeDefined();
     expect(styleRequest!.updateTextStyle.range).toEqual({ startIndex: 7, endIndex: 11 });
@@ -72,12 +73,14 @@ describe('contentToGoogleDocsRequests', () => {
       })
     );
     expect(result.plainText).toBe('a b\n');
-    const [insert, style] = result.requests as [
-      { insertText: { text: string } },
-      { updateTextStyle: { range: { startIndex: number; endIndex: number } } }
-    ];
+    const insert = result.requests[0] as { insertText: { text: string } };
     expect(insert.insertText.text).toBe('a b\n');
-    expect(style.updateTextStyle.range).toEqual({ startIndex: 1, endIndex: 3 });
+    const style = result.requests.find(
+      (r): r is { updateTextStyle: { range: { startIndex: number; endIndex: number }; fields: string } } =>
+        'updateTextStyle' in (r as object) &&
+        (r as { updateTextStyle: { fields: string } }).updateTextStyle.fields === 'bold'
+    );
+    expect(style?.updateTextStyle.range).toEqual({ startIndex: 1, endIndex: 3 });
   });
 
   it('emits link mark as a link textStyle', () => {
@@ -91,7 +94,8 @@ describe('contentToGoogleDocsRequests', () => {
     );
     const style = result.requests.find(
       (r): r is { updateTextStyle: { textStyle: { link: { url: string } }; fields: string } } =>
-        'updateTextStyle' in (r as object)
+        'updateTextStyle' in (r as object) &&
+        (r as { updateTextStyle: { fields: string } }).updateTextStyle.fields === 'link'
     );
     expect(style?.updateTextStyle.textStyle.link).toEqual({ url: 'https://example.com' });
     expect(style?.updateTextStyle.fields).toBe('link');
@@ -107,7 +111,9 @@ describe('contentToGoogleDocsRequests', () => {
     expect(result.plainText).toBe('Title\nSubtitle\n');
     const styles = result.requests.filter(
       (r): r is { updateParagraphStyle: { paragraphStyle: { namedStyleType: string }; range: { startIndex: number; endIndex: number } } } =>
-        'updateParagraphStyle' in (r as object)
+        'updateParagraphStyle' in (r as object) &&
+        (r as { updateParagraphStyle: { paragraphStyle: { namedStyleType: string } } })
+          .updateParagraphStyle.paragraphStyle.namedStyleType !== 'NORMAL_TEXT'
     );
     expect(styles).toHaveLength(2);
     expect(styles[0].updateParagraphStyle.paragraphStyle.namedStyleType).toBe('HEADING_1');
@@ -240,6 +246,37 @@ describe('contentToGoogleDocsRequests', () => {
     );
     expect(inserts).toHaveLength(2);
     expect(inserts[0].insertTable.location.index).toBeGreaterThan(inserts[1].insertTable.location.index);
+  });
+
+  it('resets inherited styles on the inserted range before applying marks', () => {
+    const result = contentToGoogleDocsRequests(
+      doc({
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'plain' }],
+      })
+    );
+    const clearText = result.requests.find(
+      (r): r is { updateTextStyle: { range: { startIndex: number; endIndex: number }; textStyle: object; fields: string } } =>
+        'updateTextStyle' in (r as object) &&
+        (r as { updateTextStyle: { fields: string } }).updateTextStyle.fields ===
+          'bold,italic,underline,strikethrough,link'
+    );
+    expect(clearText?.updateTextStyle.range).toEqual({ startIndex: 1, endIndex: 7 });
+    expect(clearText?.updateTextStyle.textStyle).toEqual({});
+
+    const resetPara = result.requests.find(
+      (r): r is { updateParagraphStyle: { paragraphStyle: { namedStyleType: string } } } =>
+        'updateParagraphStyle' in (r as object) &&
+        (r as { updateParagraphStyle: { paragraphStyle: { namedStyleType: string } } })
+          .updateParagraphStyle.paragraphStyle.namedStyleType === 'NORMAL_TEXT'
+    );
+    expect(resetPara).toBeDefined();
+
+    const deleteBullets = result.requests.find(
+      (r): r is { deleteParagraphBullets: { range: { startIndex: number; endIndex: number } } } =>
+        'deleteParagraphBullets' in (r as object)
+    );
+    expect(deleteBullets?.deleteParagraphBullets.range).toEqual({ startIndex: 1, endIndex: 7 });
   });
 
   it('adds tabId to every location and range when provided', () => {

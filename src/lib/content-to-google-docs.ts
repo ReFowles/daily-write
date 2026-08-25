@@ -188,6 +188,29 @@ export function contentToGoogleDocsRequests(
     requests.push({
       insertText: withTab({ location: { index: 1 }, text: plainText }, tabId, 'location'),
     });
+
+    // Reset inherited styles on the newly inserted range. Without this, Google
+    // Docs will apply whatever paragraph / text style was in effect at the
+    // insertion point (e.g. leftover bold from a previous save) to every
+    // character we just inserted.
+    const fullRange = withTab({ startIndex: 1, endIndex: plainText.length + 1 }, tabId);
+    requests.push({
+      updateTextStyle: {
+        range: fullRange,
+        textStyle: {},
+        fields: 'bold,italic,underline,strikethrough,link',
+      },
+    });
+    requests.push({
+      updateParagraphStyle: {
+        range: fullRange,
+        paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+        fields: 'namedStyleType',
+      },
+    });
+    requests.push({
+      deleteParagraphBullets: { range: fullRange },
+    });
   }
 
   for (const p of paragraphs) {
