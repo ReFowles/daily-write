@@ -42,14 +42,6 @@ export function Editor({ content, onChange, placeholder, className, lineSpacing 
         heading: { levels: [1, 2, 3] },
         link: false,
         underline: false,
-        // Extensions we have no Google Docs mapping for. Leaving them enabled
-        // means a stray `>` or ``` in the editor produces JSON the
-        // canonicalizer silently drops, which then makes the diff planner see
-        // a mismatch and fall back to a full-replace save.
-        blockquote: false,
-        codeBlock: false,
-        horizontalRule: false,
-        code: false,
       }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
@@ -71,7 +63,7 @@ export function Editor({ content, onChange, placeholder, className, lineSpacing 
     editorProps: {
       attributes: {
         class: cn(
-          'prose max-w-none focus:outline-none min-h-[400px] p-4',
+          'prose max-w-none focus:outline-none min-h-[400px] px-20 py-4',
           'dark:prose-invert cherry:prose-invert ocean:prose-invert',
           'text-zinc-900 dark:text-zinc-100',
           'strawberry:text-rose-900 cherry:text-rose-100',
