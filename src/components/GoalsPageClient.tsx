@@ -119,7 +119,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
   if (isLoading) {
     return (
       <main className={cn("min-h-screen", themeClasses.background.page)}>
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
           <div className="flex items-center justify-center py-12">
             <p className={cn("text-lg", themeClasses.text.secondary)}>Loading goals...</p>
           </div>
@@ -130,17 +130,25 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
 
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
         <PageHeader
-          title="Writing Goals"
-          description="Set and track your writing objectives"
+          title="Goals"
+          description={
+            <span className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowCreateForm(!showCreateForm)}
+              >
+                {showCreateForm ? "Cancel" : "New Goal"}
+              </Button>
+            </span>
+          }
           dailyGoal={todayGoal}
           daysLeft={daysLeft}
           writtenToday={todayProgress}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
-          onNewGoalClick={() => setShowCreateForm(!showCreateForm)}
-          newGoalButtonText={showCreateForm ? "Cancel" : "New Goal"}
         />
 
         {/* Create Goal Form */}

@@ -6,12 +6,6 @@ vi.mock("next-auth/react", () => ({
   useSession: () => useSessionMock(),
 }));
 
-vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
-
 import { PageHeader } from "./PageHeader";
 
 describe("PageHeader", () => {
@@ -30,8 +24,6 @@ describe("PageHeader", () => {
         writtenToday={200}
         goalStartDate="2026-06-01"
         goalEndDate="2026-06-30"
-        showNewGoalButton={false}
-        showWriteButton={false}
       />
     );
 
@@ -54,8 +46,6 @@ describe("PageHeader", () => {
         writtenToday={200}
         goalStartDate="2026-06-01"
         goalEndDate="2026-06-30"
-        showNewGoalButton={false}
-        showWriteButton={false}
         hideStats
       />
     );
@@ -64,23 +54,22 @@ describe("PageHeader", () => {
     expect(screen.queryByText("Goal")).not.toBeInTheDocument();
     expect(screen.queryByText("Current")).not.toBeInTheDocument();
     expect(screen.queryByText("Days Left")).not.toBeInTheDocument();
-    expect(screen.getByText("Write")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Write" })).toBeInTheDocument();
     expect(screen.getByText("desc")).toBeInTheDocument();
   });
 
-  it("still renders action buttons when hideStats is true", () => {
+  it("renders a description ReactNode (e.g. an inline action button)", () => {
     render(
       <PageHeader
         title="Goals"
-        description="desc"
-        hideStats
-        showNewGoalButton
-        showWriteButton
+        description={
+          <>
+            <button type="button">New Goal</button>
+          </>
+        }
       />
     );
 
     expect(screen.getByRole("button", { name: /new goal/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^write$/i })).toBeInTheDocument();
-    expect(screen.queryByText("Days Left")).not.toBeInTheDocument();
   });
 });

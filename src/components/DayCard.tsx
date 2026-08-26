@@ -21,7 +21,7 @@ export function DayCard({
 }: DayCardProps) {
   // Empty cell for padding days (compact variant only)
   if (!date) {
-    return <div className={variant === "compact" ? "min-h-[60px]" : ""} />;
+    return <div className={variant === "compact" ? "min-h-12 sm:min-h-15" : ""} />;
   }
 
   const meetsGoal = goal !== null && wordsWritten >= goal;
@@ -35,7 +35,7 @@ export function DayCard({
   // Container styling - unified border and background logic
   const containerClasses = cn(
     "flex flex-col overflow-hidden transition-all",
-    isCompact ? "rounded-md min-h-[60px]" : "rounded-lg",
+    isCompact ? "rounded-md min-h-12 sm:min-h-15" : "rounded-lg",
     // Unified border styling (from expanded)
     isFuture && "border-2 border-dashed border-zinc-300 dark:border-zinc-700 strawberry:border-rose-300 cherry:border-rose-800 seafoam:border-cyan-300 ocean:border-cyan-800 opacity-60",
     !isCompact && isToday && "shadow-lg scale-105",
@@ -48,7 +48,7 @@ export function DayCard({
 
   // Header background styling - unified (from expanded)
   const headerBackgroundClasses = cn(
-    isCompact ? "py-1 px-4" : "py-2 px-4",
+    isCompact ? "py-0.5 px-1 sm:py-1 sm:px-2 md:px-4" : "py-1 px-2 sm:py-2 sm:px-4",
     isFuture && "bg-zinc-200 dark:bg-zinc-800 strawberry:bg-rose-200 cherry:bg-rose-900 seafoam:bg-cyan-200 ocean:bg-cyan-900",
     isToday && meetsGoal && "bg-green-500 dark:bg-green-700 cherry:bg-green-700 ocean:bg-green-700",
     isToday && !meetsGoal && "bg-zinc-200/50 dark:bg-zinc-800/50 strawberry:bg-rose-200/50 cherry:bg-rose-900/50 seafoam:bg-cyan-200/50 ocean:bg-cyan-900/50",
@@ -59,7 +59,7 @@ export function DayCard({
 
   // Header text styling - unified (from expanded)
   const headerTextClasses = cn(
-    isCompact ? "text-sm" : "text-xl",
+    isCompact ? "text-xs sm:text-sm" : "text-base sm:text-xl",
     "font-semibold",
     isFuture && "text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
     isToday && "font-bold",
@@ -91,7 +91,7 @@ export function DayCard({
 
   // Word count text styling - unified (from expanded)
   const wordCountClasses = cn(
-    isCompact ? "text-sm" : "text-2xl",
+    isCompact ? "text-xs sm:text-sm" : "text-lg sm:text-2xl",
     "font-bold",
     isFuture && "font-semibold text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
     !isFuture && isToday && meetsGoal && "text-green-700 dark:text-green-400 cherry:text-green-400 ocean:text-green-400",
@@ -135,7 +135,7 @@ export function DayCard({
       <div 
         className={cn(
           "text-center",
-          isCompact ? "flex-1 flex flex-col justify-end items-center p-1.5 space-y-0" : "py-4 px-4",
+          isCompact ? "flex-1 flex flex-col justify-end items-center p-1 sm:p-1.5 space-y-0" : "py-2 px-2 sm:py-4 sm:px-4",
           bodyBackgroundClasses
         )}
       >
@@ -144,7 +144,7 @@ export function DayCard({
             <>
               <span className={cn(
                 "text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
-                isCompact ? "text-xs" : "text-lg"
+                isCompact ? "text-xs" : "text-sm sm:text-lg"
               )}>
                 / {formatWordCount(goal)}
               </span>
@@ -154,7 +154,7 @@ export function DayCard({
               {formatWordCount(wordsWritten)}{" "}
               <span className={cn(
                 "text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
-                isCompact ? "text-xs" : "text-lg"
+                isCompact ? "text-xs" : "text-sm sm:text-lg"
               )}>
                 / {formatWordCount(goal)}
               </span>

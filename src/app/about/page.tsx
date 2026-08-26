@@ -11,8 +11,8 @@ export default function AboutPage() {
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <PageHeader
-          title="About DailyWrite"
-          description="Learn about DailyWrite's features and functionality"
+          title="About"
+          description="Learn about DailyWrite"
           dailyGoal={todayGoal}
           daysLeft={daysLeft}
           writtenToday={todayProgress}

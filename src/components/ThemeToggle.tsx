@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { LuChevronDown, LuMoon, LuSun } from "react-icons/lu";
+import { cn } from "@/lib/class-utils";
 
 type Theme = "light" | "dark" | "strawberry" | "cherry" | "seafoam" | "ocean";
 
@@ -31,7 +32,11 @@ function ThemeIcon({ kind }: { kind: "light" | "dark" }) {
   return kind === "light" ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />;
 }
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  align?: "left" | "right";
+}
+
+export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) {
   const [currentTheme, setCurrentTheme] = useState<Theme>("light");
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,7 +82,12 @@ export default function ThemeToggle() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-50 mt-2 w-48 rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 strawberry:border-pink-200 strawberry:bg-pink-50 cherry:border-rose-800 cherry:bg-rose-950 seafoam:border-cyan-200 seafoam:bg-cyan-50 ocean:border-cyan-800 ocean:bg-cyan-950">
+        <div
+          className={cn(
+            "absolute z-50 mt-2 w-48 rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 strawberry:border-pink-200 strawberry:bg-pink-50 cherry:border-rose-800 cherry:bg-rose-950 seafoam:border-cyan-200 seafoam:bg-cyan-50 ocean:border-cyan-800 ocean:bg-cyan-950",
+            align === "right" ? "right-0" : "left-0"
+          )}
+        >
           <div className="py-1">
             {THEMES.map((theme) => (
               <button

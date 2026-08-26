@@ -6,7 +6,11 @@ import { useSession } from "next-auth/react";
 import { cn } from "@/lib/class-utils";
 import { themeClasses } from "@/lib/theme-utils";
 
-export default function NavLinks() {
+interface NavLinksProps {
+  orientation?: "horizontal" | "vertical";
+}
+
+export default function NavLinks({ orientation = "horizontal" }: NavLinksProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
 
@@ -21,8 +25,15 @@ export default function NavLinks() {
     (item) => !item.requireAuth || session
   );
 
+  const isVertical = orientation === "vertical";
+
   return (
-    <div className="flex items-center gap-1">
+    <div
+      className={cn(
+        "flex items-center gap-1",
+        isVertical && "flex-col items-stretch gap-1"
+      )}
+    >
       {visibleItems.map((item) => {
         const isActive = pathname === item.href;
         return (
@@ -31,6 +42,7 @@ export default function NavLinks() {
             href={item.href}
             className={cn(
               themeClasses.nav.link,
+              isVertical && "block w-full",
               isActive ? themeClasses.nav.linkActive : themeClasses.nav.linkInactive
             )}
           >

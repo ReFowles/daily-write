@@ -26,7 +26,7 @@ export function CalendarHeader({
 }: CalendarHeaderProps) {
   return (
     <div 
-      className={`flex items-center justify-between gap-4 cursor-pointer ${isExpanded ? "mb-4" : ""}`}
+      className={`flex flex-wrap items-center justify-between gap-2 sm:gap-4 cursor-pointer ${isExpanded ? "mb-4" : ""}`}
       onClick={onToggleExpand}
       role="button"
       tabIndex={0}
@@ -39,8 +39,8 @@ export function CalendarHeader({
       aria-expanded={isExpanded}
       aria-label={isExpanded ? "Collapse calendar" : "Expand calendar"}
     >
-      <div className="flex items-center gap-4">
-        <div className={cn("flex items-center gap-2 text-xl font-semibold", themeClasses.text.primary)}>
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        <div className={cn("flex items-center gap-2 text-base font-semibold sm:text-xl", themeClasses.text.primary)}>
           <LuChevronRight className={cn("h-5 w-5 transition-transform", isExpanded && "rotate-90")} />
           {monthName} {year}
         </div>
@@ -51,7 +51,7 @@ export function CalendarHeader({
 
       {/* Navigation buttons */}
       <div 
-        className="flex items-center gap-2" 
+        className="flex items-center gap-1 sm:gap-2" 
         role="group" 
         aria-label="Calendar navigation"
         onClick={(e) => e.stopPropagation()}
@@ -59,7 +59,7 @@ export function CalendarHeader({
         <Button variant="icon" onClick={onPreviousMonth} aria-label="Previous month">
           <LuChevronLeft className={cn("h-5 w-5", themeClasses.text.link)} />
         </Button>
-        <Button variant="icon" onClick={onToday} aria-label="Go to today" className="px-3">
+        <Button variant="icon" onClick={onToday} aria-label="Go to today" className="px-2 sm:px-3">
           <span className={cn("text-sm", themeClasses.text.link)}>Today</span>
         </Button>
         <Button variant="icon" onClick={onNextMonth} aria-label="Next month">

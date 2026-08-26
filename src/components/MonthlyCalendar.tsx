@@ -41,7 +41,7 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <Card className="p-4">
+    <Card className="p-2 sm:p-4">
       <CalendarHeader
         monthName={getMonthName(currentMonth)}
         year={currentYear}
@@ -55,7 +55,7 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
       {isExpanded && (
         <>
           {/* Day name headers */}
-          <div className="mb-2 grid grid-cols-7 gap-x-4 gap-y-2" role="row">
+          <div className="mb-2 grid grid-cols-7 gap-x-0 gap-y-2 sm:gap-x-4" role="row">
             {dayNames.map((day) => (
               <div
                 key={day}
@@ -69,11 +69,11 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
           </div>
 
           {/* Calendar grid */}
-          <div className="space-y-2" role="grid" aria-label="Monthly calendar view">
+          <div className="space-y-0 sm:space-y-2" role="grid" aria-label="Monthly calendar view">
             {monthGrid.map((week, weekIndex) => (
               <div key={weekIndex} className="relative" role="row">
                 {/* Background layer for goal highlighting - no gaps so colors flow continuously */}
-                <div className="absolute inset-0 flex pointer-events-none">
+                <div className="pointer-events-none absolute inset-0 grid grid-cols-7">
                   {week.map((day, dayIndex) => {
                     const goal = getGoalForDate(day.date);
                     const isGoalStart = goal && day.date ? isSameDate(day.date, goal.startDate) : false;
@@ -94,11 +94,11 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                     const nextGoalStarts = nextGoal && !hasSameNextGoal && nextGoal !== goal;
 
                     if (!goal) {
-                      return <div key={dayIndex} className="flex-1" />;
+                      return <div key={dayIndex} />;
                     }
 
                     return (
-                      <div key={dayIndex} className="flex-1 h-full relative">
+                      <div key={dayIndex} className="relative h-full">
                         <div
                           className={cn(
                             "absolute inset-0",
@@ -123,12 +123,12 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                 </div>
 
                 {/* Calendar days layer */}
-                <div className="relative flex">
+                <div className="relative grid grid-cols-7">
                   {week.map((day, dayIndex) => {
                     const goal = getGoalForDate(day.date);
 
                     return (
-                      <div key={dayIndex} className="flex-1 px-4 py-3">
+                      <div key={dayIndex} className="min-w-0 px-0.5 py-0.5 sm:px-2 sm:py-2 md:px-4 md:py-3">
                         <DayCard
                           variant="compact"
                           date={day.date}

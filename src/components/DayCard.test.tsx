@@ -9,7 +9,7 @@ describe("DayCard", () => {
     const { container } = render(
       <DayCard variant="compact" date={null} wordsWritten={0} goal={null} isToday={false} isFuture={false} />
     );
-    expect(container.firstChild).toHaveClass("min-h-[60px]");
+    expect(container.firstChild).toHaveClass("min-h-12", "sm:min-h-15");
   });
 
   it("renders empty non-compact placeholder as an empty div when date is null", () => {

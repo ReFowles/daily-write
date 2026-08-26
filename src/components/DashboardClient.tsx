@@ -26,10 +26,10 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
 
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
         <PageHeader
           title="DailyWrite"
-          description="Make goals and track your daily writing progress"
+          description="Make goals, track your progress"
           dailyGoal={todayGoal}
           daysLeft={daysLeft}
           writtenToday={todayProgress}

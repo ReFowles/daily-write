@@ -14,11 +14,11 @@ export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) 
   const days = generateWeekWindow(goals, writingSessions);
 
   return (
-    <Card className="p-6">
-      <h2 className={cn("mb-6 text-xl font-semibold", themeClasses.text.primary)}>
+    <Card className="p-3 sm:p-6">
+      <h2 className={cn("mb-4 text-lg font-semibold sm:mb-6 sm:text-xl", themeClasses.text.primary)}>
         This Week
       </h2>
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-5 gap-1 sm:gap-3">
         {days.map((day, index) => (
           <DayCard
             key={index}

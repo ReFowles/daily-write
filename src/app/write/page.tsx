@@ -426,7 +426,7 @@ export default function WritePage() {
 
   return (
     <main className="h-[calc(100vh-4rem)] overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
-      <div className="mx-auto flex h-full max-w-5xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-full max-w-5xl flex-col px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
         <PageHeader
           title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
           description={
@@ -449,8 +449,6 @@ export default function WritePage() {
           writtenToday={wordsWrittenToday}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
-          showNewGoalButton={false}
-          showWriteButton={false}
           hideStats={focusMode}
         />
 
@@ -492,8 +490,8 @@ export default function WritePage() {
                     paragraphIndent={paragraphIndent}
                   />
                 </div>
-                <div className="flex items-center justify-between border-t border-zinc-200 p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
-                  <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 p-3 sm:p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                     <button
                       type="button"
                       onClick={() => setFocusMode((v) => !v)}
