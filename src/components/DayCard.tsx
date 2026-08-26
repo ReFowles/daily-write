@@ -1,5 +1,6 @@
 import { cn } from "@/lib/class-utils";
 import { formatDayOfWeek, formatMonthDay } from "@/lib/date-utils";
+import { formatWordCount } from "@/lib/format-utils";
 
 interface DayCardProps {
   variant?: "compact" | "expanded";
@@ -114,7 +115,7 @@ export function DayCard({
     <div
       className={containerClasses}
       role="gridcell"
-      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${goal ? `, goal: ${goal} words` : ""}${!isFuture ? `, written: ${wordsWritten} words` : ""}`}
+      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${goal ? `, goal: ${formatWordCount(goal)} words` : ""}${!isFuture ? `, written: ${formatWordCount(wordsWritten)} words` : ""}`}
     >
       {/* Date Header */}
       <div className={headerBackgroundClasses}>
@@ -145,26 +146,26 @@ export function DayCard({
                 "text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
                 isCompact ? "text-xs" : "text-lg"
               )}>
-                / {goal}
+                / {formatWordCount(goal)}
               </span>
             </>
           ) : !isFuture && hasGoal ? (
             <>
-              {wordsWritten}{" "}
+              {formatWordCount(wordsWritten)}{" "}
               <span className={cn(
                 "text-zinc-500 dark:text-zinc-400 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500",
                 isCompact ? "text-xs" : "text-lg"
               )}>
-                / {goal}
+                / {formatWordCount(goal)}
               </span>
             </>
           ) : (
-            wordsWritten
+            formatWordCount(wordsWritten)
           )}
         </div>
         {showDifference && difference !== 0 && (
           <div className={cn("mt-1", differenceClasses)}>
-            {difference > 0 ? '+' : ''}{difference}
+            {difference > 0 ? '+' : ''}{formatWordCount(difference)}
           </div>
         )}
       </div>

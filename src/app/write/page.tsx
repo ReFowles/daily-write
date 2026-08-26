@@ -10,6 +10,7 @@ import { useCurrentGoal } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
 import { toDateString, calculateWordCount } from "@/lib/date-utils";
 import { cn } from "@/lib/class-utils";
+import { formatWordCount } from "@/lib/format-utils";
 import type { GoogleDoc, DocumentTab } from "@/lib/types";
 import type { DocumentContent } from "@/lib/document-content";
 import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
@@ -530,10 +531,10 @@ export default function WritePage() {
                     {!focusMode && (
                       <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
                         <div>
-                          <span className="font-semibold">{wordsWrittenToday}</span> Words Today
+                          <span className="font-semibold">{formatWordCount(wordsWrittenToday)}</span> Words Today
                         </div>
                         <div className="text-zinc-400 dark:text-zinc-600 strawberry:text-rose-500 cherry:text-rose-600 seafoam:text-cyan-500 ocean:text-cyan-600">
-                          {wordCount} Words in Doc
+                          {formatWordCount(wordCount)} Words in Doc
                         </div>
                       </div>
                     )}

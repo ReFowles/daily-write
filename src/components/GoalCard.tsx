@@ -7,6 +7,7 @@ import { LuChevronDown, LuTrash2 } from "react-icons/lu";
 import { useToggle } from "@/lib/use-toggle";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
+import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 
@@ -75,7 +76,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               )}
             </div>
             <p className={cn("mt-1 text-sm", themeClasses.text.secondary)}>
-              {goal.dailyWordTarget} words/day for {totalDays} days
+              {formatWordCount(goal.dailyWordTarget)} words/day for {totalDays} days
             </p>
           </div>
           <Button
@@ -92,7 +93,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
         <div>
           <div className="mb-2 flex items-center justify-between text-sm">
             <span className={cn("font-medium", themeClasses.text.primary)}>
-              {totalWordsWritten.toLocaleString()} / {targetTotalWords.toLocaleString()} words • Avg: {averageWordsPerDay} words/day
+              {formatWordCount(totalWordsWritten)} / {formatWordCount(targetTotalWords)} words • Avg: {formatWordCount(averageWordsPerDay)} words/day
             </span>
             <span className={themeClasses.text.secondary}>
               {Math.round(progress)}%
@@ -125,7 +126,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
                       }`}
                     >
                       <div className="font-medium">{formatDate(date)}</div>
-                      <div className="text-xs opacity-75">{words.toLocaleString()} words</div>
+                      <div className="text-xs opacity-75">{formatWordCount(words)} words</div>
                     </div>
                   ))}
               </div>

@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Button } from "./ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { formatDateRange } from "@/lib/date-utils";
+import { formatWordCount } from "@/lib/format-utils";
 import { cn } from "@/lib/class-utils";
 
 interface PageHeaderProps {
@@ -70,13 +71,13 @@ export function PageHeader({
   const stats: HeaderStat[] = [
     {
       label: "Today",
-      value: writtenToday,
+      value: formatWordCount(writtenToday),
       emphasize: true,
       valueClassName: todayHitGoal
         ? "text-green-700 dark:text-green-400 strawberry:text-green-700 cherry:text-green-400 seafoam:text-green-700 ocean:text-green-400"
         : undefined,
     },
-    { label: "Goal", value: dailyGoal },
+    { label: "Goal", value: formatWordCount(dailyGoal) },
     { label: "Current", value: dateRangeText },
     { label: "Days Left", value: daysLeft },
   ];

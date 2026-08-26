@@ -72,7 +72,7 @@ describe("DashboardClient", () => {
     expect(screen.getByText("Current Streak").nextElementSibling).toHaveTextContent("3");
     expect(screen.getByText("Total Days Written").nextElementSibling).toHaveTextContent("7");
     expect(screen.getByText("Avg Words/Session").nextElementSibling).toHaveTextContent("300");
-    expect(screen.getByText("Total Words").nextElementSibling).toHaveTextContent("12345");
+    expect(screen.getByText("Total Words").nextElementSibling).toHaveTextContent("12,345");
   });
 
   it("renders the ProgressCard fallback when no goal exists", () => {

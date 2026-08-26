@@ -6,6 +6,7 @@ import { WeeklyCalendar } from "@/components/WeeklyCalendar";
 import { PageHeader } from "@/components/PageHeader";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
+import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 
@@ -52,9 +53,9 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
             goal={todayGoal}
             message={
               todayGoal - todayProgress > 0
-                ? `${
+                ? `${formatWordCount(
                     todayGoal - todayProgress
-                  } words remaining to reach your goal`
+                  )} words remaining to reach your goal`
                 : "Goal achieved! 🎉"
             }
           />
@@ -70,12 +71,12 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
           />
           <StatsCard
             label="Avg Words/Session"
-            value={stats.averageWordsPerDay}
+            value={formatWordCount(stats.averageWordsPerDay)}
             subtitle="words"
           />
           <StatsCard
             label="Total Words"
-            value={stats.totalWords}
+            value={formatWordCount(stats.totalWords)}
             subtitle="all time"
           />
         </div>
