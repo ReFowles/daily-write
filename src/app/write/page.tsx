@@ -15,8 +15,12 @@ import type { DocumentContent } from "@/lib/document-content";
 import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
 import GoogleDocsPicker from "@/components/GoogleDocsPicker";
 import DocumentTabs from "@/components/DocumentTabs";
-import { Eye, EyeOff, LineSpacing, ParagraphIndent } from "@/components/icons";
+import { LuBaseline, LuEye, LuEyeOff, LuIndentIncrease } from "react-icons/lu";
 import type { LineSpacing as LineSpacingValue } from "@/components/editor";
+import {
+  booleanFromLocalStorage,
+  useLocalStorageState,
+} from "@/lib/use-local-storage-state";
 import dynamic from 'next/dynamic';
 
 const FOCUS_MODE_STORAGE_KEY = "daily-write:focus-mode";
@@ -29,6 +33,9 @@ const LINE_SPACING_LABEL: Record<LineSpacingValue, string> = {
   relaxed: 'Relaxed',
   spacious: 'Spacious',
 };
+
+const lineSpacingFromLocalStorage = (raw: string): LineSpacingValue | undefined =>
+  (LINE_SPACING_CYCLE as readonly string[]).includes(raw) ? (raw as LineSpacingValue) : undefined;
 
 const Editor = dynamic(() => import('@/components/editor').then((m) => m.Editor), {
   ssr: false,
@@ -59,57 +66,31 @@ export default function WritePage() {
   const [driftBlocked, setDriftBlocked] = useState(false);
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [focusMode, setFocusMode] = useState(false);
-  const [lineSpacing, setLineSpacing] = useState<LineSpacingValue>('normal');
-  const [paragraphIndent, setParagraphIndent] = useState(false);
-  
+  const [focusMode, setFocusMode] = useLocalStorageState(
+    FOCUS_MODE_STORAGE_KEY,
+    false,
+    booleanFromLocalStorage
+  );
+  const [lineSpacing, setLineSpacing] = useLocalStorageState<LineSpacingValue>(
+    LINE_SPACING_STORAGE_KEY,
+    'normal',
+    lineSpacingFromLocalStorage
+  );
+  const [paragraphIndent, setParagraphIndent] = useLocalStorageState(
+    PARAGRAPH_INDENT_STORAGE_KEY,
+    false,
+    booleanFromLocalStorage
+  );
+
   // Ref to track if we're currently saving to avoid race conditions
   const isSavingToDoc = useRef(false);
-
-  // Hydrate focus mode from localStorage after mount to avoid SSR hydration mismatch.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(FOCUS_MODE_STORAGE_KEY) === "true") {
-      setFocusMode(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(FOCUS_MODE_STORAGE_KEY, String(focusMode));
-  }, [focusMode]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(LINE_SPACING_STORAGE_KEY);
-    if (stored && (LINE_SPACING_CYCLE as readonly string[]).includes(stored)) {
-      setLineSpacing(stored as LineSpacingValue);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(LINE_SPACING_STORAGE_KEY, lineSpacing);
-  }, [lineSpacing]);
 
   const cycleLineSpacing = useCallback(() => {
     setLineSpacing((current) => {
       const idx = LINE_SPACING_CYCLE.indexOf(current);
       return LINE_SPACING_CYCLE[(idx + 1) % LINE_SPACING_CYCLE.length];
     });
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(PARAGRAPH_INDENT_STORAGE_KEY) === "true") {
-      setParagraphIndent(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(PARAGRAPH_INDENT_STORAGE_KEY, String(paragraphIndent));
-  }, [paragraphIndent]);
+  }, [setLineSpacing]);
 
   // Track document visibility
   useEffect(() => {
@@ -513,7 +494,7 @@ export default function WritePage() {
                       title={focusMode ? "Exit focus mode" : "Enter focus mode"}
                       className="cursor-pointer rounded p-1 text-zinc-500 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
                     >
-                      {focusMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {focusMode ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
                     </button>
                     <button
                       type="button"
@@ -522,7 +503,7 @@ export default function WritePage() {
                       title={`Line spacing: ${LINE_SPACING_LABEL[lineSpacing]}`}
                       className="cursor-pointer rounded p-1 text-zinc-500 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
                     >
-                      <LineSpacing className="h-4 w-4" />
+                      <LuBaseline className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
@@ -537,7 +518,7 @@ export default function WritePage() {
                           : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
                       )}
                     >
-                      <ParagraphIndent className="h-4 w-4" />
+                      <LuIndentIncrease className="h-4 w-4" />
                     </button>
                     {!focusMode && (
                       <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">

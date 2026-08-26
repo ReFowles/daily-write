@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronLeft } from "./icons";
+import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import { Button } from "./ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
@@ -41,7 +41,7 @@ export function CalendarHeader({
     >
       <div className="flex items-center gap-4">
         <div className={cn("flex items-center gap-2 text-xl font-semibold", themeClasses.text.primary)}>
-          <ChevronRight className={`transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+          <LuChevronRight className={cn("h-5 w-5 transition-transform", isExpanded && "rotate-90")} />
           {monthName} {year}
         </div>
         
@@ -57,13 +57,13 @@ export function CalendarHeader({
         onClick={(e) => e.stopPropagation()}
       >
         <Button variant="icon" onClick={onPreviousMonth} aria-label="Previous month">
-          <ChevronLeft className={themeClasses.text.link} />
+          <LuChevronLeft className={cn("h-5 w-5", themeClasses.text.link)} />
         </Button>
         <Button variant="icon" onClick={onToday} aria-label="Go to today" className="px-3">
           <span className={cn("text-sm", themeClasses.text.link)}>Today</span>
         </Button>
         <Button variant="icon" onClick={onNextMonth} aria-label="Next month">
-          <ChevronRight className={themeClasses.text.link} />
+          <LuChevronRight className={cn("h-5 w-5", themeClasses.text.link)} />
         </Button>
       </div>
     </div>

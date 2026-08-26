@@ -23,6 +23,30 @@ interface PageHeaderProps {
   hideStats?: boolean;
 }
 
+interface HeaderStat {
+  label: string;
+  value: ReactNode;
+  valueClassName?: string;
+  emphasize?: boolean;
+}
+
+function HeaderStatCard({ label, value, valueClassName, emphasize }: HeaderStat) {
+  return (
+    <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
+      <div className={cn("text-xs", themeClasses.text.secondary)}>{label}</div>
+      <div
+        className={cn(
+          "flex flex-1 items-center justify-center font-semibold",
+          emphasize ? "text-2xl" : "text-lg",
+          valueClassName ?? themeClasses.text.primary
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export function PageHeader({
   title,
   description,
@@ -38,9 +62,24 @@ export function PageHeader({
   hideStats = false,
 }: PageHeaderProps) {
   const { data: session } = useSession();
-  const dateRangeText = (!goalStartDate || !goalEndDate) 
-    ? "No active goal" 
+  const dateRangeText = (!goalStartDate || !goalEndDate)
+    ? "No active goal"
     : formatDateRange(goalStartDate, goalEndDate);
+
+  const todayHitGoal = writtenToday >= dailyGoal;
+  const stats: HeaderStat[] = [
+    {
+      label: "Today",
+      value: writtenToday,
+      emphasize: true,
+      valueClassName: todayHitGoal
+        ? "text-green-700 dark:text-green-400 strawberry:text-green-700 cherry:text-green-400 seafoam:text-green-700 ocean:text-green-400"
+        : undefined,
+    },
+    { label: "Goal", value: dailyGoal },
+    { label: "Current", value: dateRangeText },
+    { label: "Days Left", value: daysLeft },
+  ];
 
   return (
     <div className="mb-8 flex items-start justify-between gap-6">
@@ -57,60 +96,14 @@ export function PageHeader({
       {/* Stats cards and action buttons - only show when authenticated */}
       {session && (!hideStats || showNewGoalButton || showWriteButton) && (
         <div className="flex flex-wrap items-stretch justify-end gap-3">
-        {!hideStats && (
-          <>
-        {/* Today Card */}
-        <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
-          <div className="text-xs text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
-            Today
-          </div>
-          <div className={cn(
-            "flex flex-1 items-center justify-center text-2xl font-semibold",
-            writtenToday >= dailyGoal
-              ? "text-green-700 dark:text-green-400 strawberry:text-green-700 cherry:text-green-400 seafoam:text-green-700 ocean:text-green-400"
-              : themeClasses.text.primary
-          )}>
-            {writtenToday}
-          </div>
-        </div>
+          {!hideStats && stats.map((stat) => (
+            <HeaderStatCard key={stat.label} {...stat} />
+          ))}
 
-        {/* Today's Goal Card */}
-        <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
-          <div className={cn("text-xs", themeClasses.text.secondary)}>
-            Goal
-          </div>
-          <div className={cn("flex flex-1 items-center justify-center text-lg font-semibold", themeClasses.text.primary)}>
-            {dailyGoal}
-          </div>
-        </div>
-
-        {/* Current Goal Period Card */}
-        <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
-          <div className={cn("text-xs", themeClasses.text.secondary)}>
-            Current
-          </div>
-          <div className={cn("flex flex-1 items-center justify-center text-lg font-semibold", themeClasses.text.primary)}>
-            {dateRangeText}
-          </div>
-        </div>
-
-        {/* Days Left Card */}
-        <div className={cn("flex flex-col rounded-lg border px-4 py-2 text-center", themeClasses.border.card, themeClasses.background.card)}>
-          <div className={cn("text-xs", themeClasses.text.secondary)}>
-            Days Left
-          </div>
-          <div className={cn("flex flex-1 items-center justify-center text-lg font-semibold", themeClasses.text.primary)}>
-            {daysLeft}
-          </div>
-        </div>
-          </>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-2">
-          {showNewGoalButton && (
-            <>
-              {onNewGoalClick ? (
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2">
+            {showNewGoalButton && (
+              onNewGoalClick ? (
                 <Button variant="secondary" onClick={onNewGoalClick} className="w-full">
                   {newGoalButtonText}
                 </Button>
@@ -120,17 +113,16 @@ export function PageHeader({
                     {newGoalButtonText}
                   </Button>
                 </Link>
-              )}
-            </>
-          )}
-          {showWriteButton && (
-            <Link href="/write" className="w-full">
-              <Button variant="primary" className="w-full">
-                Write
-              </Button>
-            </Link>
-          )}
-        </div>
+              )
+            )}
+            {showWriteButton && (
+              <Link href="/write" className="w-full">
+                <Button variant="primary" className="w-full">
+                  Write
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </div>

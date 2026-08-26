@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { calculateDaysLeft } from "./date-utils";
+import { calculateDaysLeft, toDateString } from "./date-utils";
 import { getCurrentGoal, getWritingSessionByDate } from "./data-store";
 import type { Goal } from "./types";
 
@@ -37,7 +37,7 @@ export function useCurrentGoal(): CurrentGoalData {
         // Get today's date string
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const todayString = toDateString(today);
 
         // Fetch current goal and today's session in parallel
         const [goal, todaySession] = await Promise.all([

@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
-import { Trash, ChevronDown } from "@/components/icons";
+import { LuChevronDown, LuTrash2 } from "react-icons/lu";
 import { useToggle } from "@/lib/use-toggle";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
@@ -84,7 +84,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
             className="text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
             aria-label="Delete goal"
           >
-            <Trash />
+            <LuTrash2 className="h-5 w-5" />
           </Button>
         </div>
 
@@ -109,7 +109,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               className={cn("mb-2 flex w-full items-center justify-between text-sm font-medium transition-colors", themeClasses.text.primary, "hover:opacity-70")}
             >
               <span>Logged Days ({daysLogged})</span>
-              <ChevronDown className={`h-3 w-3 transition-transform ${showLoggedDays ? "rotate-180" : ""}`} />
+              <LuChevronDown className={cn("h-3 w-3 transition-transform", showLoggedDays && "rotate-180")} />
             </button>
             {showLoggedDays && (
               <div className="flex flex-wrap gap-2">

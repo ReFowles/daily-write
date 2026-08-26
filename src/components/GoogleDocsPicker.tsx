@@ -5,19 +5,17 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { formatDistanceToNow } from '@/lib/date-utils';
-
-interface GoogleDoc {
-  id: string;
-  name: string;
-  modifiedTime: string;
-  webViewLink: string;
-  ownedByMe: boolean;
-}
+import { themeClasses } from '@/lib/theme-utils';
+import { cn } from '@/lib/class-utils';
+import type { GoogleDoc } from '@/lib/types';
 
 interface GoogleDocsPickerProps {
   onSelectDoc: (doc: GoogleDoc) => void;
   selectedDocId?: string;
 }
+
+const errorTextClasses =
+  'text-red-600 dark:text-red-400 strawberry:text-red-700 cherry:text-red-300 seafoam:text-red-600 ocean:text-red-300';
 
 export default function GoogleDocsPicker({
   onSelectDoc,
@@ -40,7 +38,7 @@ export default function GoogleDocsPicker({
       setLoading(true);
       setError(null);
       const response = await fetch('/api/google-docs');
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch documents');
       }
@@ -56,7 +54,7 @@ export default function GoogleDocsPicker({
 
   const handleCreateDoc = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newDocTitle.trim()) {
       setCreateError('Please enter a title for your document');
       return;
@@ -65,7 +63,7 @@ export default function GoogleDocsPicker({
     try {
       setCreating(true);
       setCreateError(null);
-      
+
       const response = await fetch('/api/google-docs', {
         method: 'POST',
         headers: {
@@ -80,8 +78,7 @@ export default function GoogleDocsPicker({
       }
 
       const data = await response.json();
-      
-      // Add the new doc to the list and select it
+
       setDocs((prevDocs) => [data.doc, ...prevDocs]);
       setShowCreateForm(false);
       setNewDocTitle('');
@@ -96,7 +93,7 @@ export default function GoogleDocsPicker({
   if (loading) {
     return (
       <Card className="p-6">
-        <p className="text-center text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+        <p className={cn('text-center', themeClasses.text.secondary)}>
           Loading your Google Docs...
         </p>
       </Card>
@@ -106,9 +103,7 @@ export default function GoogleDocsPicker({
   if (error) {
     return (
       <Card className="p-6">
-        <p className="text-center text-red-600 dark:text-red-400 mb-4 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-red-600 ocean:text-red-400">
-          {error}
-        </p>
+        <p className={cn('text-center mb-4', errorTextClasses)}>{error}</p>
         <Button onClick={fetchDocs} variant="secondary" className="mx-auto">
           Try Again
         </Button>
@@ -122,7 +117,7 @@ export default function GoogleDocsPicker({
       {showCreateForm ? (
         <Card className="p-4">
           <form onSubmit={handleCreateDoc} className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
+            <h3 className={cn('text-sm font-semibold', themeClasses.text.primary)}>
               Create New Document
             </h3>
             <Input
@@ -134,9 +129,7 @@ export default function GoogleDocsPicker({
               autoFocus
             />
             {createError && (
-              <p className="text-sm text-red-600 dark:text-red-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-red-600 ocean:text-red-400">
-                {createError}
-              </p>
+              <p className={cn('text-sm', errorTextClasses)}>{createError}</p>
             )}
             <div className="flex gap-2">
               <Button type="submit" disabled={creating}>
@@ -160,9 +153,9 @@ export default function GoogleDocsPicker({
       ) : (
         <button
           onClick={() => setShowCreateForm(true)}
-          className="w-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50 dark:hover:border-blue-400 dark:hover:bg-blue-950 strawberry:border-pink-300 strawberry:hover:border-rose-500 strawberry:hover:bg-rose-100 cherry:border-rose-800 cherry:hover:border-rose-500 cherry:hover:bg-rose-950 seafoam:border-cyan-300 seafoam:hover:border-cyan-500 seafoam:hover:bg-cyan-100 ocean:border-cyan-800 ocean:hover:border-cyan-500 ocean:hover:bg-cyan-950"
+          className="w-full rounded-lg border-2 border-dashed border-zinc-300 dark:border-zinc-600 p-4 text-center transition-colors hover:border-blue-500 hover:bg-blue-50 dark:hover:border-blue-400 dark:hover:bg-blue-950 strawberry:border-pink-300 strawberry:hover:border-rose-500 strawberry:hover:bg-rose-100 cherry:border-rose-800 cherry:hover:border-rose-500 cherry:hover:bg-rose-950 seafoam:border-cyan-300 seafoam:hover:border-cyan-500 seafoam:hover:bg-cyan-100 ocean:border-cyan-800 ocean:hover:border-cyan-500 ocean:hover:bg-cyan-950"
         >
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+          <span className={cn('text-sm font-medium', themeClasses.text.secondary)}>
             + Create New Document
           </span>
         </button>
@@ -171,34 +164,38 @@ export default function GoogleDocsPicker({
       {/* Document List */}
       {docs.length === 0 ? (
         <Card className="p-6">
-          <p className="text-center text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+          <p className={cn('text-center', themeClasses.text.secondary)}>
             No Google Docs found. Create one above to get started!
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
+          <h2 className={cn('text-base font-semibold', themeClasses.text.primary)}>
             Recent Documents
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {docs.map((doc) => {
               const isSelected = doc.id === selectedDocId;
               const modifiedDate = new Date(doc.modifiedTime);
-              
+
               return (
                 <button
                   key={doc.id}
                   onClick={() => onSelectDoc(doc)}
-                  className={`text-left p-3 rounded-lg border transition-all ${
+                  className={cn(
+                    'text-left p-3 rounded-lg border transition-all',
                     isSelected
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 strawberry:border-rose-500 strawberry:bg-rose-100 cherry:border-rose-500 cherry:bg-rose-950 seafoam:border-cyan-500 seafoam:bg-cyan-100 ocean:border-cyan-500 ocean:bg-cyan-950'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 strawberry:border-pink-200 strawberry:hover:border-pink-300 cherry:border-rose-900 cherry:hover:border-rose-800 seafoam:border-cyan-200 seafoam:hover:border-cyan-300 ocean:border-cyan-900 ocean:hover:border-cyan-800'
-                  }`}
+                      : cn(
+                          themeClasses.border.card,
+                          'hover:border-zinc-300 dark:hover:border-zinc-600 strawberry:hover:border-pink-300 cherry:hover:border-rose-800 seafoam:hover:border-cyan-300 ocean:hover:border-cyan-800'
+                        )
+                  )}
                 >
-                  <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate strawberry:text-rose-900 cherry:text-rose-100 seafoam:text-cyan-900 ocean:text-cyan-100">
+                  <h3 className={cn('text-sm font-medium truncate', themeClasses.text.primary)}>
                     {doc.name}
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+                  <p className={cn('text-xs mt-1', themeClasses.text.secondary)}>
                     {formatDistanceToNow(modifiedDate)}
                   </p>
                 </button>

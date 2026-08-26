@@ -1,40 +1,45 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Sun, Moon, ChevronDown } from "./icons";
+import { LuChevronDown, LuMoon, LuSun } from "react-icons/lu";
 
 type Theme = "light" | "dark" | "strawberry" | "cherry" | "seafoam" | "ocean";
+
+const THEMES: ReadonlyArray<{ value: Theme; label: string; kind: "light" | "dark" }> = [
+  { value: "light", label: "Light", kind: "light" },
+  { value: "dark", label: "Dark", kind: "dark" },
+  { value: "strawberry", label: "Strawberry", kind: "light" },
+  { value: "cherry", label: "Cherry", kind: "dark" },
+  { value: "seafoam", label: "Seafoam", kind: "light" },
+  { value: "ocean", label: "Ocean", kind: "dark" },
+];
+
+const THEME_VALUES = THEMES.map((t) => t.value);
+
+// Reads the theme applied by ThemeInit. Must run only in the browser.
+function readTheme(): Theme {
+  const saved = localStorage.getItem("theme") as Theme | null;
+  if (saved && (THEME_VALUES as string[]).includes(saved)) return saved;
+
+  const applied = THEMES.find(
+    (t) => t.value !== "light" && document.documentElement.classList.contains(t.value)
+  );
+  return applied?.value ?? "light";
+}
+
+function ThemeIcon({ kind }: { kind: "light" | "dark" }) {
+  return kind === "light" ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />;
+}
 
 export default function ThemeToggle() {
   const [currentTheme, setCurrentTheme] = useState<Theme>("light");
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Read initial theme on mount by subscribing to DOM state
   useEffect(() => {
-    const readTheme = (): Theme => {
-      const saved = localStorage.getItem("theme") as Theme;
-      if (saved) return saved;
-      
-      if (document.documentElement.classList.contains("ocean")) return "ocean";
-      if (document.documentElement.classList.contains("seafoam")) return "seafoam";
-      if (document.documentElement.classList.contains("cherry")) return "cherry";
-      if (document.documentElement.classList.contains("dark")) return "dark";
-      if (document.documentElement.classList.contains("strawberry")) return "strawberry";
-      
-      return "light";
-    };
-
-    // Read theme asynchronously to avoid sync setState in effect
-    const timer = setTimeout(() => {
-      const theme = readTheme();
-      if (theme !== currentTheme) {
-        setCurrentTheme(theme);
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // Defer to a microtask so setState doesn't happen synchronously in the effect body.
+    queueMicrotask(() => setCurrentTheme(readTheme()));
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -48,29 +53,16 @@ export default function ThemeToggle() {
   }, []);
 
   const applyTheme = (theme: Theme) => {
-    // Remove all theme classes
     document.documentElement.classList.remove("dark", "strawberry", "cherry", "seafoam", "ocean");
-    
-    // Apply new theme
     if (theme !== "light") {
       document.documentElement.classList.add(theme);
     }
-    
     localStorage.setItem("theme", theme);
     setCurrentTheme(theme);
     setIsOpen(false);
   };
 
-  const themes: Array<{ value: Theme; label: string; icon: React.ReactNode }> = [
-    { value: "light", label: "Light", icon: <Sun /> },
-    { value: "dark", label: "Dark", icon: <Moon /> },
-    { value: "strawberry", label: "Strawberry", icon: <Sun /> },
-    { value: "cherry", label: "Cherry", icon: <Moon /> },
-    { value: "seafoam", label: "Seafoam", icon: <Sun /> },
-    { value: "ocean", label: "Ocean", icon: <Moon /> },
-  ];
-
-  const currentThemeData = themes.find((t) => t.value === currentTheme) || themes[0];
+  const currentThemeData = THEMES.find((t) => t.value === currentTheme) ?? THEMES[0];
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -79,15 +71,15 @@ export default function ThemeToggle() {
         className="flex items-center gap-2 rounded-md p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 strawberry:text-pink-600 strawberry:hover:bg-pink-100 cherry:text-rose-400 cherry:hover:bg-rose-950 seafoam:text-cyan-600 seafoam:hover:bg-cyan-100 ocean:text-cyan-400 ocean:hover:bg-cyan-950"
         aria-label="Change theme"
       >
-        {currentThemeData.icon}
+        <ThemeIcon kind={currentThemeData.kind} />
         <span className="text-sm font-medium">{currentThemeData.label}</span>
-        <ChevronDown />
+        <LuChevronDown className="h-4 w-4" />
       </button>
 
       {isOpen && (
         <div className="absolute right-0 z-50 mt-2 w-48 rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 strawberry:border-pink-200 strawberry:bg-pink-50 cherry:border-rose-800 cherry:bg-rose-950 seafoam:border-cyan-200 seafoam:bg-cyan-50 ocean:border-cyan-800 ocean:bg-cyan-950">
           <div className="py-1">
-            {themes.map((theme) => (
+            {THEMES.map((theme) => (
               <button
                 key={theme.value}
                 onClick={() => applyTheme(theme.value)}
@@ -97,7 +89,7 @@ export default function ThemeToggle() {
                     : "text-zinc-700 dark:text-zinc-300 strawberry:text-pink-700 cherry:text-rose-300 seafoam:text-cyan-700 ocean:text-cyan-300"
                 }`}
               >
-                {theme.icon}
+                <ThemeIcon kind={theme.kind} />
                 {theme.label}
               </button>
             ))}

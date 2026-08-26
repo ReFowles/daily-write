@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useToggle } from "@/lib/use-toggle";
-import { ChevronRight } from "@/components/icons";
+import { LuChevronRight } from "react-icons/lu";
 import { Button } from "@/components/ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
@@ -194,7 +194,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
                     aria-expanded={showCompletedGoals}
                     aria-label={showCompletedGoals ? "Collapse completed goals" : "Expand completed goals"}
                   >
-                    <ChevronRight className={`transition-transform ${showCompletedGoals ? "rotate-90" : ""}`} />
+                    <LuChevronRight className={cn("h-5 w-5 transition-transform", showCompletedGoals && "rotate-90")} />
                     Completed Goals ({completedGoals.length})
                   </button>
                   {showCompletedGoals && (
@@ -223,7 +223,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
                     aria-expanded={showUpcomingGoals}
                     aria-label={showUpcomingGoals ? "Collapse upcoming goals" : "Expand upcoming goals"}
                   >
-                    <ChevronRight className={`transition-transform ${showUpcomingGoals ? "rotate-90" : ""}`} />
+                    <LuChevronRight className={cn("h-5 w-5 transition-transform", showUpcomingGoals && "rotate-90")} />
                     Upcoming Goals ({upcomingGoals.length})
                   </button>
                   {showUpcomingGoals && (
