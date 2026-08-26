@@ -12,7 +12,7 @@ vi.mock("./data-store", () => ({
 }));
 
 import { getCurrentGoal, getWritingSessionByDate } from "./data-store";
-import { useCurrentGoal } from "./use-current-goal";
+import { invalidateCurrentGoalCache, useCurrentGoal } from "./use-current-goal";
 
 const getCurrentGoalMock = vi.mocked(getCurrentGoal);
 const getSessionByDateMock = vi.mocked(getWritingSessionByDate);
@@ -23,6 +23,7 @@ describe("useCurrentGoal", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(2026, 5, 15));
     vi.clearAllMocks();
+    invalidateCurrentGoalCache();
   });
 
   afterEach(() => {

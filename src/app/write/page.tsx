@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/PageHeader";
-import { useCurrentGoal } from "@/lib/use-current-goal";
+import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
 import { toDateString, calculateWordCount } from "@/lib/date-utils";
 import { cn } from "@/lib/class-utils";
@@ -57,7 +57,7 @@ const GOOGLE_DOCS_SAVE_DELAY = 3000;
 export default function WritePage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const { todayGoal, daysLeft, currentGoal } = useCurrentGoal();
+  const { todayGoal, daysLeft, currentGoal, isLoading: isGoalLoading } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
   const [selectedTab, setSelectedTab] = useState<DocumentTab | null>(null);
   const [showPicker, setShowPicker] = useState(true);
@@ -402,6 +402,8 @@ export default function WritePage() {
         setSessionStartWordCount(wordsWrittenToday);
         // Reset document baseline so we don't double-count these words
         setDocStartWordCount(wordCount);
+        // Drop the cached goal snapshot so other pages refetch today's progress on next mount.
+        invalidateCurrentGoalCache(session.user.email!);
       } catch (error) {
         console.error('Failed to save writing session:', error);
       }
@@ -450,6 +452,7 @@ export default function WritePage() {
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
           hideStats={focusMode}
+          isLoading={isGoalLoading}
         />
 
         {/* Google Docs Picker */}

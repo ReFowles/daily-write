@@ -108,7 +108,10 @@ pnpm lint         # Run ESLint
 - Tooltip on document tabs not working?
 - Update About page with more limitation information
   - Can't create or delete document tabs (read-only)
-  - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs.
+  - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs. (Is this still true?)
+  - Goals can't overlap
+  - Once a goal is created, it can be deleted but not changed
+  - Currently only one type of goal available: daily word count over a period of time. Other types of goals, such as project-based due-date goals may be implemented later.
 - Preserve Google-Docs-only features on paragraphs edited in the app
   - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
 - Reflect preserved Google Docs presets visually in the editor

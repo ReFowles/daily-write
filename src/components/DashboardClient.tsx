@@ -22,7 +22,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ goals, writingSessions, stats }: DashboardClientProps) {
-  const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+  const { todayGoal, todayProgress, daysLeft, currentGoal, isLoading } = useCurrentGoal();
 
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
@@ -35,6 +35,7 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
           writtenToday={todayProgress}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
+          isLoading={isLoading}
         />
 
         {/* Weekly Calendar */}

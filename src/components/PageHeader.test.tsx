@@ -72,4 +72,25 @@ describe("PageHeader", () => {
 
     expect(screen.getByRole("button", { name: /new goal/i })).toBeInTheDocument();
   });
+
+  it("renders `…` placeholders in goal-derived stat cards while isLoading", () => {
+    render(
+      <PageHeader
+        title="Write"
+        description="desc"
+        dailyGoal={500}
+        daysLeft={7}
+        writtenToday={0}
+        goalStartDate="2026-06-01"
+        goalEndDate="2026-06-30"
+        isLoading
+      />
+    );
+
+    // Goal, Current, Days Left should all be placeholders while loading.
+    expect(screen.getAllByText("\u2026")).toHaveLength(3);
+    // The real goal value should not be rendered.
+    expect(screen.queryByText("500")).not.toBeInTheDocument();
+    expect(screen.queryByText("7")).not.toBeInTheDocument();
+  });
 });

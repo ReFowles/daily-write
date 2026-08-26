@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
 
 export default function AboutPage() {
-  const { todayGoal, todayProgress, daysLeft, currentGoal } = useCurrentGoal();
+  const { todayGoal, todayProgress, daysLeft, currentGoal, isLoading } = useCurrentGoal();
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
@@ -18,6 +18,7 @@ export default function AboutPage() {
           writtenToday={todayProgress}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
+          isLoading={isLoading}
         />
 
         <div className="mt-8 columns-1 gap-6 space-y-6 lg:columns-2">

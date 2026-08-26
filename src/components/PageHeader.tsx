@@ -16,7 +16,14 @@ interface PageHeaderProps {
   goalStartDate?: string;
   goalEndDate?: string;
   hideStats?: boolean;
+  /**
+   * When true, goal-derived stat values render as `…` so the header doesn't
+   * flash zeros before the current-goal fetch resolves.
+   */
+  isLoading?: boolean;
 }
+
+const LOADING_PLACEHOLDER = "\u2026";
 
 interface HeaderStat {
   label: string;
@@ -59,13 +66,14 @@ export function PageHeader({
   goalStartDate,
   goalEndDate,
   hideStats = false,
+  isLoading = false,
 }: PageHeaderProps) {
   const { data: session } = useSession();
   const dateRangeText = (!goalStartDate || !goalEndDate)
     ? "No active goal"
     : formatDateRange(goalStartDate, goalEndDate);
 
-  const todayHitGoal = writtenToday >= dailyGoal;
+  const todayHitGoal = !isLoading && writtenToday >= dailyGoal;
   const stats: HeaderStat[] = [
     {
       label: "Today",
@@ -75,9 +83,9 @@ export function PageHeader({
         ? "text-green-700 dark:text-green-400 strawberry:text-green-700 cherry:text-green-400 seafoam:text-green-700 ocean:text-green-400"
         : undefined,
     },
-    { label: "Goal", value: formatWordCount(dailyGoal) },
-    { label: "Current", value: dateRangeText },
-    { label: "Days Left", value: daysLeft },
+    { label: "Goal", value: isLoading ? LOADING_PLACEHOLDER : formatWordCount(dailyGoal) },
+    { label: "Current", value: isLoading ? LOADING_PLACEHOLDER : dateRangeText },
+    { label: "Days Left", value: isLoading ? LOADING_PLACEHOLDER : daysLeft },
   ];
 
   // A plain-string description is hidden in the sm range so stat cards can
