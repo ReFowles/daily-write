@@ -301,4 +301,89 @@ describe('contentToGoogleDocsRequests', () => {
     );
     expect(para?.updateParagraphStyle.range.tabId).toBe('tab-123');
   });
+
+  it('emits updateParagraphStyle with preserved fields for a docStyle attr', () => {
+    const result = contentToGoogleDocsRequests(
+      doc({
+        type: 'paragraph',
+        attrs: {
+          docStyle: {
+            lineSpacing: 150,
+            indentFirstLine: { magnitude: 36, unit: 'PT' },
+            alignment: 'JUSTIFIED',
+          },
+        },
+        content: [{ type: 'text', text: 'body' }],
+      })
+    );
+    const paraUpdates = result.requests.filter(
+      (r): r is { updateParagraphStyle: { paragraphStyle: Record<string, unknown>; fields: string } } =>
+        'updateParagraphStyle' in (r as object)
+    );
+    const preserved = paraUpdates.find((r) => 'lineSpacing' in r.updateParagraphStyle.paragraphStyle);
+    expect(preserved).toBeDefined();
+    expect(preserved!.updateParagraphStyle.paragraphStyle).toEqual({
+      lineSpacing: 150,
+      indentFirstLine: { magnitude: 36, unit: 'PT' },
+      alignment: 'JUSTIFIED',
+    });
+    const fields = preserved!.updateParagraphStyle.fields.split(',').sort();
+    expect(fields).toEqual(['alignment', 'indentFirstLine', 'lineSpacing']);
+  });
+
+  it('emits updateTextStyle with preserved fields for a docStyle mark on a run', () => {
+    const result = contentToGoogleDocsRequests(
+      doc({
+        type: 'paragraph',
+        content: [
+          {
+            type: 'text',
+            text: 'styled',
+            marks: [
+              { type: 'bold' },
+              {
+                type: 'docStyle',
+                attrs: {
+                  style: {
+                    weightedFontFamily: { fontFamily: 'Georgia', weight: 400 },
+                    fontSize: { magnitude: 14, unit: 'PT' },
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      })
+    );
+    const textUpdates = result.requests.filter(
+      (r): r is { updateTextStyle: { textStyle: Record<string, unknown>; fields: string; range: { startIndex: number; endIndex: number } } } =>
+        'updateTextStyle' in (r as object)
+    );
+    const preservedRun = textUpdates.find((r) => 'weightedFontFamily' in r.updateTextStyle.textStyle);
+    expect(preservedRun).toBeDefined();
+    expect(preservedRun!.updateTextStyle.textStyle).toEqual({
+      weightedFontFamily: { fontFamily: 'Georgia', weight: 400 },
+      fontSize: { magnitude: 14, unit: 'PT' },
+    });
+    expect(preservedRun!.updateTextStyle.fields.split(',').sort()).toEqual(['fontSize', 'weightedFontFamily']);
+    // Preserved fields should be applied over the run's range, not the whole doc.
+    expect(preservedRun!.updateTextStyle.range).toEqual({ startIndex: 1, endIndex: 7 });
+  });
+
+  it('does not emit preserved-style requests when there is no docStyle', () => {
+    const result = contentToGoogleDocsRequests(
+      doc({
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'plain' }],
+      })
+    );
+    const preservedParagraphUpdates = result.requests.filter((r) => {
+      if (!('updateParagraphStyle' in (r as object))) return false;
+      const style = (r as { updateParagraphStyle: { paragraphStyle: Record<string, unknown> } })
+        .updateParagraphStyle.paragraphStyle;
+      // The one paragraph-style reset we always emit sets namedStyleType only.
+      return Object.keys(style).some((k) => k !== 'namedStyleType');
+    });
+    expect(preservedParagraphUpdates).toHaveLength(0);
+  });
 });

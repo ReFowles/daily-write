@@ -6,3 +6,5 @@ export { Moon } from "./Moon";
 export { Trash } from "./Trash";
 export { Eye } from "./Eye";
 export { EyeOff } from "./EyeOff";
+export { LineSpacing } from "./LineSpacing";
+export { ParagraphIndent } from "./ParagraphIndent";

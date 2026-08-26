@@ -219,6 +219,7 @@ describe("google-docs API route", () => {
         success: true,
         wordCount: 2,
         revisionId: "rev-next",
+        saveMode: "diff",
       });
 
       const res = await PUT(
@@ -242,6 +243,7 @@ describe("google-docs API route", () => {
         success: true,
         wordCount: 2,
         revisionId: "rev-next",
+        saveMode: "diff",
       });
     });
 
@@ -251,6 +253,8 @@ describe("google-docs API route", () => {
         success: true,
         wordCount: 2,
         revisionId: "rev-next",
+        saveMode: "replace",
+        replaceReason: "no prevContent baseline",
       });
 
       const res = await PUT(

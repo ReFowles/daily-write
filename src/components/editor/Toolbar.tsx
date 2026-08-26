@@ -48,13 +48,13 @@ const activeClasses =
   'ocean:bg-cyan-700 ocean:text-cyan-50';
 
 const toolbarContainerClasses =
-  'flex flex-wrap items-center gap-1 border-b p-2 ' +
-  'border-zinc-200 bg-zinc-50/60 ' +
-  'dark:border-zinc-800 dark:bg-zinc-900/60 ' +
-  'strawberry:border-pink-200 strawberry:bg-pink-50/60 ' +
-  'cherry:border-rose-900 cherry:bg-rose-950/60 ' +
-  'seafoam:border-cyan-200 seafoam:bg-cyan-50/60 ' +
-  'ocean:border-cyan-900 ocean:bg-cyan-950/60';
+  'sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b p-2 ' +
+  'border-zinc-200 bg-zinc-50 ' +
+  'dark:border-zinc-800 dark:bg-zinc-900 ' +
+  'strawberry:border-pink-200 strawberry:bg-pink-50 ' +
+  'cherry:border-rose-900 cherry:bg-rose-950 ' +
+  'seafoam:border-cyan-200 seafoam:bg-cyan-50 ' +
+  'ocean:border-cyan-900 ocean:bg-cyan-950';
 
 const dividerClasses =
   'mx-1 h-6 w-px ' +

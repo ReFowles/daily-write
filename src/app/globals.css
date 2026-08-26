@@ -33,7 +33,7 @@ body {
 
 @layer components {
   .editor-root {
-    @apply overflow-hidden rounded-lg;
+    @apply rounded-lg;
   }
 
   .editor-root [contenteditable] {
@@ -64,6 +64,20 @@ body {
   }
   :is(.ocean *) .editor-root .prose :is(h1, h2, h3) {
     @apply text-cyan-100;
+  }
+
+  /* Distinct heading sizes/weights — Tailwind's preflight strips defaults. */
+  .editor-root .prose h1 {
+    @apply mt-6 mb-3 text-3xl font-bold leading-tight;
+  }
+  .editor-root .prose h2 {
+    @apply mt-5 mb-2 text-2xl font-semibold leading-snug;
+  }
+  .editor-root .prose h3 {
+    @apply mt-4 mb-2 text-xl font-semibold leading-snug;
+  }
+  .editor-root .prose :is(h1, h2, h3):first-child {
+    @apply mt-0;
   }
 
   /* Themed link colors. */

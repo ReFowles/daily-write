@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canonicalizeContent,
   contentsEqual,
   emptyDocument,
   getPlainText,
@@ -154,5 +155,120 @@ describe('contentsEqual', () => {
 
   it('returns true when both sides are null', () => {
     expect(contentsEqual(null, null)).toBe(true);
+  });
+
+  it('treats null and missing docStyle attrs as equivalent', () => {
+    const a: DocumentContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', attrs: { docStyle: null }, content: [{ type: 'text', text: 'hi' }] }],
+    };
+    const b: DocumentContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hi' }] }],
+    };
+    expect(contentsEqual(a, b)).toBe(true);
+  });
+
+  it('distinguishes documents whose preserved paragraph docStyle differs', () => {
+    const a: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { docStyle: { lineSpacing: 150 } },
+          content: [{ type: 'text', text: 'hi' }],
+        },
+      ],
+    };
+    const b: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { docStyle: { lineSpacing: 200 } },
+          content: [{ type: 'text', text: 'hi' }],
+        },
+      ],
+    };
+    expect(contentsEqual(a, b)).toBe(false);
+  });
+});
+
+describe('canonicalizeContent', () => {
+  it('strips null and empty paragraph docStyle attrs', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', attrs: { docStyle: null }, content: [{ type: 'text', text: 'a' }] },
+        { type: 'paragraph', attrs: { docStyle: {} }, content: [{ type: 'text', text: 'b' }] },
+      ],
+    };
+    expect(canonicalizeContent(input)).toEqual({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'a' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'b' }] },
+      ],
+    });
+  });
+
+  it('keeps non-empty docStyle attrs on paragraphs and headings', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { docStyle: { indentFirstLine: { magnitude: 36, unit: 'PT' } } },
+          content: [{ type: 'text', text: 'a' }],
+        },
+        {
+          type: 'heading',
+          attrs: { level: 2, docStyle: { alignment: 'CENTER' } },
+          content: [{ type: 'text', text: 'b' }],
+        },
+      ],
+    };
+    expect(canonicalizeContent(input)).toEqual(input);
+  });
+
+  it('drops empty docStyle marks and keeps non-empty ones', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'plain', marks: [{ type: 'docStyle', attrs: { style: {} } }] },
+            {
+              type: 'text',
+              text: 'fancy',
+              marks: [
+                { type: 'bold' },
+                { type: 'docStyle', attrs: { style: { weightedFontFamily: { fontFamily: 'Georgia' } } } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(canonicalizeContent(input)).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'plain' },
+            {
+              type: 'text',
+              text: 'fancy',
+              marks: [
+                { type: 'bold' },
+                { type: 'docStyle', attrs: { style: { weightedFontFamily: { fontFamily: 'Georgia' } } } },
+              ],
+            },
+          ],
+        },
+      ],
+    });
   });
 });

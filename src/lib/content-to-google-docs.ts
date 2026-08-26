@@ -1,4 +1,4 @@
-import type { BlockNode, DocumentContent, Mark } from './document-content';
+import type { BlockNode, DocStyle, DocumentContent, Mark } from './document-content';
 import { buildDocIndex, type BlockIndexEntry } from './document-content-index';
 
 // Second-pass description of a table's cell content. The updater applies this
@@ -58,9 +58,31 @@ export function marksToTextStyle(
         textStyle.link = { url: mark.attrs.href };
         fields.push('link');
         break;
+      case 'docStyle':
+        // Preserved textStyle from Google Docs is applied via
+        // extractRunDocStyle so its fields end up on a separate request with
+        // their real field mask; skip it here.
+        break;
     }
   }
   return { textStyle, fields };
+}
+
+// Pulls the preserved Google Docs textStyle back out of a run's marks. The
+// diff planner and full-replace writer emit a dedicated updateTextStyle for
+// this so the field mask matches the exact keys the user's document had.
+export function extractRunDocStyle(marks: Mark[]): DocStyle | null {
+  for (const mark of marks) {
+    if (mark.type === 'docStyle') {
+      const keys = Object.keys(mark.attrs.style);
+      if (keys.length > 0) return mark.attrs.style;
+    }
+  }
+  return null;
+}
+
+export function docStyleFields(style: DocStyle): string[] {
+  return Object.keys(style);
 }
 
 export function contentToGoogleDocsRequests(
@@ -160,6 +182,46 @@ export function contentToGoogleDocsRequests(
           listType === 'ordered'
             ? 'NUMBERED_DECIMAL_ALPHA_ROMAN'
             : 'BULLET_DISC_CIRCLE_SQUARE',
+      },
+    });
+  }
+
+  // Reapply Google Docs textStyle fields we're preserving through the editor
+  // (font family, size, colors, etc.) — one request per run so the field mask
+  // matches the exact keys.
+  for (const block of blocks) {
+    for (const run of block.runs) {
+      if (run.startIndex === run.endIndex) continue;
+      const preserved = extractRunDocStyle(run.marks);
+      if (!preserved) continue;
+      requests.push({
+        updateTextStyle: {
+          range: withTab({ startIndex: run.startIndex, endIndex: run.endIndex }, tabId),
+          textStyle: preserved,
+          fields: docStyleFields(preserved).join(','),
+        },
+      });
+    }
+  }
+
+  // Reapply Google Docs paragraphStyle fields (line spacing, spacing before/
+  // after, first-line indent, alignment, ...). Runs after heading/list
+  // conversion so the two updates operate on independent field masks.
+  for (const block of blocks) {
+    if (!block.docStyle) continue;
+    const fields = docStyleFields(block.docStyle);
+    if (fields.length === 0) continue;
+    requests.push({
+      updateParagraphStyle: {
+        range: withTab(
+          {
+            startIndex: block.startIndex,
+            endIndex: Math.max(block.endIndex, block.startIndex + 1),
+          },
+          tabId
+        ),
+        paragraphStyle: block.docStyle,
+        fields: fields.join(','),
       },
     });
   }

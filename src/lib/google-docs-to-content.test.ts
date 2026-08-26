@@ -321,4 +321,172 @@ describe('googleDocsToContent', () => {
       content: [{ type: 'text', text: 'child' }],
     });
   });
+
+  it('preserves paragraphStyle fields it does not model as docStyle on the block', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [{ textRun: { content: 'body\n', textStyle: {} } }],
+              paragraphStyle: {
+                namedStyleType: 'NORMAL_TEXT',
+                lineSpacing: 150,
+                spaceAbove: { magnitude: 12, unit: 'PT' },
+                indentFirstLine: { magnitude: 36, unit: 'PT' },
+                alignment: 'JUSTIFIED',
+              },
+              bullet: null,
+            },
+          },
+        ],
+      },
+    };
+    const result = googleDocsToContent(doc);
+    expect(result.content[0]).toMatchObject({
+      type: 'paragraph',
+      attrs: {
+        docStyle: {
+          lineSpacing: 150,
+          spaceAbove: { magnitude: 12, unit: 'PT' },
+          indentFirstLine: { magnitude: 36, unit: 'PT' },
+          alignment: 'JUSTIFIED',
+        },
+      },
+    });
+    // namedStyleType shouldn't leak into docStyle — it's the mechanism we
+    // already use to decide heading/paragraph.
+    const attrs = (result.content[0] as { attrs?: { docStyle?: Record<string, unknown> } }).attrs;
+    expect(attrs?.docStyle).not.toHaveProperty('namedStyleType');
+  });
+
+  it('preserves textStyle fields it does not model as a docStyle mark on the run', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [
+                {
+                  textRun: {
+                    content: 'styled\n',
+                    textStyle: {
+                      bold: true,
+                      weightedFontFamily: { fontFamily: 'Georgia', weight: 400 },
+                      fontSize: { magnitude: 14, unit: 'PT' },
+                      foregroundColor: { color: { rgbColor: { red: 0.1, green: 0.2, blue: 0.3 } } },
+                    },
+                  },
+                },
+              ],
+              paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+              bullet: null,
+            },
+          },
+        ],
+      },
+    };
+    const result = googleDocsToContent(doc);
+    const para = result.content[0];
+    expect(para.type).toBe('paragraph');
+    if (para.type !== 'paragraph') throw new Error('unreachable');
+    const [run] = para.content ?? [];
+    expect(run).toBeDefined();
+    if (!run || run.type !== 'text') throw new Error('unreachable');
+    expect(run.marks).toEqual(
+      expect.arrayContaining([
+        { type: 'bold' },
+        {
+          type: 'docStyle',
+          attrs: {
+            style: {
+              weightedFontFamily: { fontFamily: 'Georgia', weight: 400 },
+              fontSize: { magnitude: 14, unit: 'PT' },
+              foregroundColor: { color: { rgbColor: { red: 0.1, green: 0.2, blue: 0.3 } } },
+            },
+          },
+        },
+      ])
+    );
+  });
+
+  it('does not attach a docStyle mark or attr when no preserved fields are present', () => {
+    const doc: GoogleDocsDocument = {
+      body: { content: [paragraph('plain')] },
+    };
+    const result = googleDocsToContent(doc);
+    expect(result.content[0]).toEqual({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'plain' }],
+    });
+  });
+
+  it('drops paragraph style fields outside the safe allowlist', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [{ textRun: { content: 'body\n', textStyle: {} } }],
+              paragraphStyle: {
+                namedStyleType: 'NORMAL_TEXT',
+                lineSpacing: 150,
+                borderBetween: { color: { color: { rgbColor: {} } }, width: {}, padding: {}, dashStyle: 'SOLID' },
+                tabStops: [{ offset: { magnitude: 36, unit: 'PT' }, alignment: 'START' }],
+                headingId: 'h.abc',
+              },
+              bullet: null,
+            },
+          },
+        ],
+      },
+    };
+    const result = googleDocsToContent(doc);
+    const attrs = (result.content[0] as { attrs?: { docStyle?: Record<string, unknown> } }).attrs;
+    expect(attrs?.docStyle).toEqual({ lineSpacing: 150 });
+    expect(attrs?.docStyle).not.toHaveProperty('borderBetween');
+    expect(attrs?.docStyle).not.toHaveProperty('tabStops');
+    expect(attrs?.docStyle).not.toHaveProperty('headingId');
+    expect(attrs?.docStyle).not.toHaveProperty('namedStyleType');
+  });
+
+  it('drops text style fields outside the safe allowlist', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [
+                {
+                  textRun: {
+                    content: 'x\n',
+                    textStyle: {
+                      weightedFontFamily: { fontFamily: 'Georgia' },
+                      // Unknown / unsupported field that would previously have
+                      // been echoed back and rejected by Google Docs.
+                      wackyExperimental: { nope: true },
+                    } as unknown as Record<string, unknown>,
+                  },
+                },
+              ],
+              paragraphStyle: { namedStyleType: 'NORMAL_TEXT' },
+              bullet: null,
+            },
+          },
+        ],
+      },
+    };
+    const result = googleDocsToContent(doc);
+    const para = result.content[0];
+    if (para.type !== 'paragraph') throw new Error('unreachable');
+    const [run] = para.content ?? [];
+    if (!run || run.type !== 'text') throw new Error('unreachable');
+    const docStyleMark = run.marks?.find((m) => m.type === 'docStyle');
+    expect(docStyleMark).toBeDefined();
+    if (!docStyleMark || docStyleMark.type !== 'docStyle') throw new Error('unreachable');
+    expect(docStyleMark.attrs.style).toEqual({
+      weightedFontFamily: { fontFamily: 'Georgia' },
+    });
+    expect(docStyleMark.attrs.style).not.toHaveProperty('wackyExperimental');
+  });
 });

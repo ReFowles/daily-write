@@ -16,12 +16,13 @@ interface DocsTextStyle {
   underline?: boolean;
   strikethrough?: boolean;
   link?: { url?: string | null } | null;
+  [key: string]: unknown;
 }
 
 interface SimParagraph {
   text: string;
   styles: DocsTextStyle[];
-  paragraphStyle: { namedStyleType?: string };
+  paragraphStyle: { namedStyleType?: string; [key: string]: unknown };
   bullet?: { listId: string; nestingLevel: number };
 }
 
@@ -445,6 +446,55 @@ describe('DocumentContent round-trip through Google Docs converters', () => {
       const cast = request as { insertText?: { location: { tabId?: string } } };
       if (cast.insertText) expect(cast.insertText.location.tabId).toBe('tab-1');
     }
+  });
+
+  it('preserves paragraph docStyle across a full-replace round-trip', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: {
+            docStyle: {
+              lineSpacing: 150,
+              indentFirstLine: { magnitude: 36, unit: 'PT' },
+              alignment: 'JUSTIFIED',
+            },
+          },
+          content: [{ type: 'text', text: 'body copy' }],
+        },
+      ],
+    };
+    expect(roundTrip(input)).toEqual(input);
+  });
+
+  it('preserves run docStyle across a full-replace round-trip', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'styled',
+              marks: [
+                {
+                  type: 'docStyle',
+                  attrs: {
+                    style: {
+                      weightedFontFamily: { fontFamily: 'Georgia', weight: 400 },
+                      fontSize: { magnitude: 14, unit: 'PT' },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(roundTrip(input)).toEqual(input);
   });
 });
 

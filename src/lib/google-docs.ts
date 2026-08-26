@@ -273,6 +273,13 @@ export interface UpdateGoogleDocResult {
   success: boolean;
   wordCount: number;
   revisionId: string;
+  // 'diff' means we sent a minimal batchUpdate; 'replace' means the whole doc
+  // was deleted and re-inserted. Surfaced so the client can log / display it
+  // and so we can detect regressions where diff silently degrades to replace.
+  saveMode: 'diff' | 'replace';
+  // Populated when saveMode === 'replace' so we can see why we bailed
+  // (planner reason, diff-batch error, or missing baseline).
+  replaceReason?: string;
 }
 
 // Writes DocumentContent back to a Google Doc. When prevContent and
@@ -310,7 +317,6 @@ export async function updateGoogleDocFromContent(
   const diffPlan = canDiff ? diffDocumentContent(prevContent, content, tabId) : null;
   const diffIsUsable = diffPlan?.mode === 'diff';
   const diffRequests = diffIsUsable ? diffPlan.requests : null;
-  const fullReplaceRequests = buildFullReplaceRequests(currentDoc.data, content, tabId);
 
   const runBatch = async (requests: object[]): Promise<void> => {
     if (requests.length === 0) return;
@@ -320,20 +326,31 @@ export async function updateGoogleDocFromContent(
     });
   };
 
+  let saveMode: 'diff' | 'replace' = 'diff';
+  let replaceReason: string | undefined;
+
   if (diffRequests) {
     try {
       await runBatch(diffRequests);
     } catch (error) {
-      // Diff planner produced requests Google Docs rejected. Fall back so the
-      // user's save still lands, and surface the underlying error for triage.
-      console.error(
-        'Diff-based save failed; retrying with full replace.',
-        error instanceof Error ? error.message : error
-      );
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Diff-based save failed; retrying with full replace.', message);
+      const fullReplaceRequests = buildFullReplaceRequests(currentDoc.data, content, tabId);
       await runBatch(fullReplaceRequests);
+      saveMode = 'replace';
+      replaceReason = `diff batch rejected by Google Docs: ${message}`;
     }
   } else {
+    const fullReplaceRequests = buildFullReplaceRequests(currentDoc.data, content, tabId);
     await runBatch(fullReplaceRequests);
+    saveMode = 'replace';
+    if (!canDiff) {
+      replaceReason = prevContent == null
+        ? 'no prevContent baseline'
+        : 'no baseRevisionId baseline';
+    } else if (diffPlan?.mode === 'replace') {
+      replaceReason = `diff planner bailed: ${diffPlan.reason}`;
+    }
   }
 
   const postDoc = await docs.documents.get({ documentId });
@@ -344,7 +361,9 @@ export async function updateGoogleDocFromContent(
     .split(/\s+/)
     .filter((word) => word.length > 0).length;
 
-  return { success: true, wordCount, revisionId };
+  const result: UpdateGoogleDocResult = { success: true, wordCount, revisionId, saveMode };
+  if (replaceReason) result.replaceReason = replaceReason;
+  return result;
 }
 
 interface DocsBodyElement {

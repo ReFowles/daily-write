@@ -111,6 +111,8 @@ pnpm lint         # Run ESLint
   - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs.
 - Preserve Google-Docs-only features on paragraphs edited in the app
   - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
+- Reflect preserved Google Docs presets visually in the editor
+  - Preset `paragraphStyle` and `textStyle` fields (font family, font size, line spacing, paragraph spacing, first-line indent, text/background color, paragraph alignment) already round-trip via `attrs.docStyle` and the `docStyle` mark. They are not rendered in the editor today, so the writing view still uses Tailwind `prose` defaults. Follow-up: swap the passthrough extensions' `renderHTML` for translations to inline `style` (e.g. `lineSpacing: 150` → `line-height: 1.5`, `weightedFontFamily` → `font-family`, `foregroundColor` → `color`) and add toolbar controls that mutate the passthrough attrs/marks so users can see and edit the presets.
 - First-class table structural edits
   - Add/remove row and column ops (`insertTableRow`, `deleteTableRow`, column equivalents) instead of the current table-scoped delete + `insertTable` fallback. Requires the round-trip test harness to grow support for those requests first.
 

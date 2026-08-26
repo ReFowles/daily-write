@@ -1,6 +1,7 @@
 import type {
   BlockNode,
   BulletListNode,
+  DocStyle,
   DocumentContent,
   HeadingLevel,
   InlineNode,
@@ -8,10 +9,12 @@ import type {
   Mark,
   OrderedListNode,
   ParagraphNode,
+  HeadingNode,
   TableNode,
   TableRowNode,
   TextNode,
 } from './document-content';
+import { isNonEmptyDocStyle } from './document-content';
 
 // Minimal shape of the Google Docs API response that we actually consume. The
 // googleapis types are broad and frequently out of date; we cast at the entry
@@ -23,6 +26,8 @@ interface DocsTextStyle {
   underline?: boolean;
   strikethrough?: boolean;
   link?: { url?: string | null } | null;
+  // Arbitrary preserved fields (weightedFontFamily, fontSize, foregroundColor, ...).
+  [key: string]: unknown;
 }
 
 interface DocsTextRun {
@@ -41,6 +46,8 @@ interface DocsBullet {
 
 interface DocsParagraphStyle {
   namedStyleType?: string | null;
+  // Arbitrary preserved fields (lineSpacing, spaceAbove, indentFirstLine, ...).
+  [key: string]: unknown;
 }
 
 interface DocsParagraph {
@@ -152,7 +159,64 @@ function textStyleToMarks(style: DocsTextStyle | null | undefined): Mark[] {
   if (style.underline) marks.push({ type: 'underline' });
   if (style.strikethrough) marks.push({ type: 'strike' });
   if (style.link?.url) marks.push({ type: 'link', attrs: { href: style.link.url } });
+  const preserved = extractPreservedTextStyle(style);
+  if (preserved) marks.push({ type: 'docStyle', attrs: { style: preserved } });
   return marks;
+}
+
+// Fields the Google Docs response exposes that are safe to write back via
+// updateTextStyle. Anything outside this list is dropped so we never echo
+// output-only or oddly-shaped fields back and get the whole diff rejected.
+const PRESERVED_TEXT_STYLE_FIELDS = new Set([
+  'weightedFontFamily',
+  'fontSize',
+  'foregroundColor',
+  'backgroundColor',
+  'baselineOffset',
+  'smallCaps',
+]);
+
+function extractPreservedTextStyle(style: DocsTextStyle): DocStyle | null {
+  const preserved: DocStyle = {};
+  for (const key of PRESERVED_TEXT_STYLE_FIELDS) {
+    const value = style[key];
+    if (value === undefined || value === null) continue;
+    preserved[key] = value;
+  }
+  return isNonEmptyDocStyle(preserved) ? preserved : null;
+}
+
+// Same rationale for paragraphStyle. Border and tabStops fields are omitted;
+// they round-trip poorly in practice and aren't relevant to the common preset
+// use cases (font, spacing, indent, alignment).
+const PRESERVED_PARAGRAPH_STYLE_FIELDS = new Set([
+  'alignment',
+  'lineSpacing',
+  'direction',
+  'spacingMode',
+  'spaceAbove',
+  'spaceBelow',
+  'indentFirstLine',
+  'indentStart',
+  'indentEnd',
+  'keepLinesTogether',
+  'keepWithNext',
+  'avoidWidowAndOrphan',
+  'pageBreakBefore',
+  'shading',
+]);
+
+function extractPreservedParagraphStyle(
+  style: DocsParagraphStyle | null | undefined
+): DocStyle | null {
+  if (!style) return null;
+  const preserved: DocStyle = {};
+  for (const key of PRESERVED_PARAGRAPH_STYLE_FIELDS) {
+    const value = style[key];
+    if (value === undefined || value === null) continue;
+    preserved[key] = value;
+  }
+  return isNonEmptyDocStyle(preserved) ? preserved : null;
 }
 
 function paragraphToInlines(paragraph: DocsParagraph): InlineNode[] {
@@ -184,17 +248,24 @@ function headingLevelFromStyle(style: DocsParagraphStyle | null | undefined): He
   return 3;
 }
 
-function paragraphToBlock(paragraph: DocsParagraph): ParagraphNode | BlockNode {
+function paragraphToBlock(paragraph: DocsParagraph): ParagraphNode | HeadingNode {
   const level = headingLevelFromStyle(paragraph.paragraphStyle);
   const inlines = paragraphToInlines(paragraph);
+  const preservedStyle = extractPreservedParagraphStyle(paragraph.paragraphStyle);
   if (level !== null) {
+    const attrs: HeadingNode['attrs'] = { level };
+    if (preservedStyle) attrs.docStyle = preservedStyle;
     return inlines.length > 0
-      ? { type: 'heading', attrs: { level }, content: inlines }
-      : { type: 'heading', attrs: { level } };
+      ? { type: 'heading', attrs, content: inlines }
+      : { type: 'heading', attrs };
   }
-  return inlines.length > 0
-    ? { type: 'paragraph', content: inlines }
-    : { type: 'paragraph' };
+  const attrs: ParagraphNode['attrs'] | undefined = preservedStyle
+    ? { docStyle: preservedStyle }
+    : undefined;
+  const node: ParagraphNode = { type: 'paragraph' };
+  if (attrs) node.attrs = attrs;
+  if (inlines.length > 0) node.content = inlines;
+  return node;
 }
 
 function isOrderedList(bullet: DocsBullet, lists: Record<string, DocsList>): boolean {

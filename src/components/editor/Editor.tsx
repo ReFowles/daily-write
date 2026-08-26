@@ -11,23 +11,45 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { cn } from '@/lib/class-utils';
-import { contentsEqual, type DocumentContent } from '@/lib/document-content';
+import { canonicalizeContent, contentsEqual, type DocumentContent } from '@/lib/document-content';
 import { Toolbar } from './Toolbar';
+import { DocParagraphStylePassthrough, DocTextStyleMark } from './doc-style-passthrough';
 
 export interface EditorProps {
   content: DocumentContent | null;
   onChange: (content: DocumentContent) => void;
   placeholder?: string;
   className?: string;
+  lineSpacing?: LineSpacing;
+  paragraphIndent?: boolean;
 }
 
-export function Editor({ content, onChange, placeholder, className }: EditorProps) {
+export type LineSpacing = 'normal' | 'relaxed' | 'spacious';
+
+// Descendant-selector classes; prose uses :where() so any direct selector wins.
+const LINE_SPACING_CLASSES: Record<LineSpacing, string> = {
+  normal: '',
+  relaxed: '[&_p]:leading-loose [&_li]:leading-loose',
+  spacious: '[&_p]:leading-[2.5] [&_li]:leading-[2.5]',
+};
+
+const PARAGRAPH_INDENT_CLASS = '[&_p]:indent-8';
+
+export function Editor({ content, onChange, placeholder, className, lineSpacing = 'normal', paragraphIndent = false }: EditorProps) {
   const extensions = useMemo(
     () => [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         link: false,
         underline: false,
+        // Extensions we have no Google Docs mapping for. Leaving them enabled
+        // means a stray `>` or ``` in the editor produces JSON the
+        // canonicalizer silently drops, which then makes the diff planner see
+        // a mismatch and fall back to a full-replace save.
+        blockquote: false,
+        codeBlock: false,
+        horizontalRule: false,
+        code: false,
       }),
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
@@ -36,6 +58,8 @@ export function Editor({ content, onChange, placeholder, className }: EditorProp
       TableRow,
       TableHeader,
       TableCell,
+      DocParagraphStylePassthrough,
+      DocTextStyleMark,
     ],
     [placeholder]
   );
@@ -57,7 +81,7 @@ export function Editor({ content, onChange, placeholder, className }: EditorProp
       },
     },
     onUpdate: ({ editor: current }) => {
-      onChange(current.getJSON() as DocumentContent);
+      onChange(canonicalizeContent(current.getJSON() as DocumentContent));
     },
   });
 
@@ -72,7 +96,9 @@ export function Editor({ content, onChange, placeholder, className }: EditorProp
   return (
     <div className="editor-root">
       <Toolbar editor={editor} />
-      <EditorContent editor={editor} />
+      <div className={cn(LINE_SPACING_CLASSES[lineSpacing], paragraphIndent && PARAGRAPH_INDENT_CLASS)}>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 }

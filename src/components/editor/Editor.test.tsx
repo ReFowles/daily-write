@@ -58,4 +58,55 @@ describe('<Editor />', () => {
     const last = onChange.mock.calls[onChange.mock.calls.length - 1][0] as DocumentContent;
     expect(last.content[0]).toMatchObject({ type: 'bulletList' });
   });
+
+  it('preserves paragraph docStyle attrs and text docStyle marks across a Tiptap round-trip', async () => {
+    const onChange = vi.fn();
+    const withStyles: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          attrs: { docStyle: { lineSpacing: 150, indentFirstLine: { magnitude: 36, unit: 'PT' } } },
+          content: [
+            {
+              type: 'text',
+              text: 'styled',
+              marks: [
+                {
+                  type: 'docStyle',
+                  attrs: { style: { weightedFontFamily: { fontFamily: 'Georgia', weight: 400 } } },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    render(<Editor content={withStyles} onChange={onChange} />);
+    // Trigger any editor mutation (H2 toggle) so onChange fires with the
+    // Tiptap-serialized content; the preserved attrs/marks should still be
+    // present after canonicalization.
+    const h2Button = await screen.findByRole('button', { name: 'Heading 2' });
+    act(() => {
+      h2Button.click();
+    });
+
+    const emitted = onChange.mock.calls[onChange.mock.calls.length - 1][0] as DocumentContent;
+    const block = emitted.content[0];
+    if (block.type !== 'heading' && block.type !== 'paragraph') {
+      throw new Error(`unexpected block type ${block.type}`);
+    }
+    expect(block.attrs).toMatchObject({
+      docStyle: { lineSpacing: 150, indentFirstLine: { magnitude: 36, unit: 'PT' } },
+    });
+    const run = block.content?.[0];
+    expect(run?.marks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'docStyle',
+          attrs: { style: { weightedFontFamily: { fontFamily: 'Georgia', weight: 400 } } },
+        }),
+      ])
+    );
+  });
 });

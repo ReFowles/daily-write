@@ -1,11 +1,13 @@
 import type {
   BlockNode,
+  DocStyle,
   DocumentContent,
   HeadingLevel,
   InlineNode,
   ListItemNode,
   Mark,
 } from './document-content';
+import { isNonEmptyDocStyle } from './document-content';
 
 export type ParagraphKind = 'paragraph' | 'heading' | 'listItem';
 
@@ -25,6 +27,9 @@ export interface BlockIndexEntry {
   listType?: 'bullet' | 'ordered';
   runs: RunEntry[];
   text: string;
+  // Preserved Google Docs paragraphStyle fields (line spacing, indent, etc.)
+  // that we don't model as first-class editor state.
+  docStyle?: DocStyle;
   // Traversal path into DocumentContent.content — used by the diff planner as a
   // structural hint, not for uniqueness (list items inside a list share prefixes).
   sourcePath: number[];
@@ -60,7 +65,11 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
     inlines: Array<{ text: string; marks: Mark[] }>,
     kind: ParagraphKind,
     sourcePath: number[],
-    opts: { headingLevel?: HeadingLevel; listType?: 'bullet' | 'ordered' } = {}
+    opts: {
+      headingLevel?: HeadingLevel;
+      listType?: 'bullet' | 'ordered';
+      docStyle?: DocStyle | null;
+    } = {}
   ) => {
     const startIndex = plainText.length + 1;
     const runs: RunEntry[] = [];
@@ -80,7 +89,7 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
     }
     const endIndex = plainText.length + 1;
     plainText += '\n';
-    blocks.push({
+    const entry: BlockIndexEntry = {
       startIndex,
       endIndex,
       kind,
@@ -89,7 +98,9 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
       runs,
       text,
       sourcePath,
-    });
+    };
+    if (isNonEmptyDocStyle(opts.docStyle)) entry.docStyle = opts.docStyle;
+    blocks.push(entry);
   };
 
   const collectInlines = (
@@ -115,6 +126,7 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
     if (first?.type === 'paragraph' || first?.type === 'heading') {
       appendBlock(collectInlines(first.content), 'listItem', sourcePath, {
         listType,
+        docStyle: first.attrs?.docStyle,
       });
     } else {
       appendBlock([], 'listItem', sourcePath, { listType });
@@ -130,11 +142,14 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
       const path = [...parentPath, idx];
       switch (node.type) {
         case 'paragraph':
-          appendBlock(collectInlines(node.content), 'paragraph', path);
+          appendBlock(collectInlines(node.content), 'paragraph', path, {
+            docStyle: node.attrs?.docStyle,
+          });
           break;
         case 'heading':
           appendBlock(collectInlines(node.content), 'heading', path, {
             headingLevel: node.attrs.level,
+            docStyle: node.attrs.docStyle,
           });
           break;
         case 'bulletList':

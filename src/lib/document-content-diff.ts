@@ -1,5 +1,5 @@
 import fastDiff from 'fast-diff';
-import type { DocumentContent, Mark } from './document-content';
+import type { DocStyle, DocumentContent, Mark } from './document-content';
 import {
   buildDocIndex,
   blockSignature,
@@ -7,6 +7,8 @@ import {
   type RunEntry,
 } from './document-content-index';
 import {
+  docStyleFields,
+  extractRunDocStyle,
   marksToTextStyle,
   withTab,
   type PendingTable,
@@ -186,6 +188,34 @@ function markStructureEqual(prevRuns: RunEntry[], nextRuns: RunEntry[]): boolean
   return true;
 }
 
+function docStyleEqual(a: DocStyle | undefined, b: DocStyle | undefined): boolean {
+  const aEmpty = !a || Object.keys(a).length === 0;
+  const bEmpty = !b || Object.keys(b).length === 0;
+  if (aEmpty && bEmpty) return true;
+  if (aEmpty || bEmpty) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function runDocStyleEqual(prevRuns: RunEntry[], nextRuns: RunEntry[]): boolean {
+  if (prevRuns.length !== nextRuns.length) return false;
+  for (let i = 0; i < prevRuns.length; i++) {
+    const prevStyle = extractRunDocStyle(prevRuns[i].marks) ?? undefined;
+    const nextStyle = extractRunDocStyle(nextRuns[i].marks) ?? undefined;
+    if (!docStyleEqual(prevStyle, nextStyle)) return false;
+  }
+  return true;
+}
+
+function unionRunDocStyleFields(runs: RunEntry[]): string[] {
+  const fields = new Set<string>();
+  for (const run of runs) {
+    const style = extractRunDocStyle(run.marks);
+    if (!style) continue;
+    for (const key of Object.keys(style)) fields.add(key);
+  }
+  return [...fields];
+}
+
 function emitStyleRequests(
   prevBlocks: BlockIndexEntry[],
   nextBlocks: BlockIndexEntry[],
@@ -201,12 +231,18 @@ function emitStyleRequests(
     const aligned = prevBlock !== undefined;
     const markStructurePreserved =
       aligned && markStructureEqual(prevBlock.runs, block.runs);
+    const runStyleUnchanged =
+      aligned && runDocStyleEqual(prevBlock.runs, block.runs);
+    const paragraphStyleUnchanged =
+      aligned && docStyleEqual(prevBlock.docStyle, block.docStyle);
     const hasTextRange = block.startIndex < block.endIndex;
 
-    if (aligned && markStructurePreserved) {
-      // Signature and per-run mark structure preserved: any text edits inside
-      // the block are handled by the plain text-diff, and Google Docs will
-      // inherit the correct marks for inserted characters.
+    if (
+      aligned &&
+      markStructurePreserved &&
+      runStyleUnchanged &&
+      paragraphStyleUnchanged
+    ) {
       continue;
     }
 
@@ -215,14 +251,31 @@ function emitStyleRequests(
       tabId
     );
 
-    if (hasTextRange) {
-      requests.push({
-        updateTextStyle: {
-          range,
-          textStyle: {},
-          fields: 'bold,italic,underline,strikethrough,link',
-        },
-      });
+    const needsMarkReset = !aligned || !markStructurePreserved;
+    const needsRunStyleReset = !aligned || !runStyleUnchanged;
+
+    if (hasTextRange && (needsMarkReset || needsRunStyleReset)) {
+      const resetFields = new Set<string>();
+      if (needsMarkReset) {
+        for (const field of ['bold', 'italic', 'underline', 'strikethrough', 'link']) {
+          resetFields.add(field);
+        }
+      }
+      if (needsRunStyleReset) {
+        const prevRunFields = aligned ? unionRunDocStyleFields(prevBlock.runs) : [];
+        const nextRunFields = unionRunDocStyleFields(block.runs);
+        for (const f of prevRunFields) resetFields.add(f);
+        for (const f of nextRunFields) resetFields.add(f);
+      }
+      if (resetFields.size > 0) {
+        requests.push({
+          updateTextStyle: {
+            range,
+            textStyle: {},
+            fields: [...resetFields].join(','),
+          },
+        });
+      }
     }
 
     if (!aligned) {
@@ -242,18 +295,46 @@ function emitStyleRequests(
 
     if (hasTextRange) {
       for (const run of block.runs) {
-        if (run.marks.length === 0) continue;
         if (run.startIndex === run.endIndex) continue;
         const { textStyle, fields } = marksToTextStyle(run.marks);
-        if (fields.length === 0) continue;
+        if (fields.length > 0) {
+          requests.push({
+            updateTextStyle: {
+              range: withTab(
+                { startIndex: run.startIndex, endIndex: run.endIndex },
+                tabId
+              ),
+              textStyle,
+              fields: fields.join(','),
+            },
+          });
+        }
+        const preservedRunStyle = extractRunDocStyle(run.marks);
+        if (preservedRunStyle) {
+          requests.push({
+            updateTextStyle: {
+              range: withTab(
+                { startIndex: run.startIndex, endIndex: run.endIndex },
+                tabId
+              ),
+              textStyle: preservedRunStyle,
+              fields: docStyleFields(preservedRunStyle).join(','),
+            },
+          });
+        }
+      }
+    }
+
+    if (!paragraphStyleUnchanged || !aligned) {
+      const prevParaFields = aligned && prevBlock.docStyle ? docStyleFields(prevBlock.docStyle) : [];
+      const nextParaFields = block.docStyle ? docStyleFields(block.docStyle) : [];
+      const paraFieldSet = new Set<string>([...prevParaFields, ...nextParaFields]);
+      if (paraFieldSet.size > 0 && hasTextRange) {
         requests.push({
-          updateTextStyle: {
-            range: withTab(
-              { startIndex: run.startIndex, endIndex: run.endIndex },
-              tabId
-            ),
-            textStyle,
-            fields: fields.join(','),
+          updateParagraphStyle: {
+            range,
+            paragraphStyle: block.docStyle ?? {},
+            fields: [...paraFieldSet].join(','),
           },
         });
       }

@@ -280,4 +280,120 @@ describe('diffDocumentContent', () => {
       (insert as unknown as { insertText: { text: string } }).insertText.text
     ).toContain('second');
   });
+
+  it('emits no updateParagraphStyle when text edit leaves preserved docStyle intact', () => {
+    const attrs = {
+      docStyle: {
+        lineSpacing: 150,
+        indentFirstLine: { magnitude: 36, unit: 'PT' },
+      },
+    };
+    const prev = doc({
+      type: 'paragraph',
+      attrs,
+      content: [{ type: 'text', text: 'hello' }],
+    });
+    const next = doc({
+      type: 'paragraph',
+      attrs,
+      content: [{ type: 'text', text: 'hello world' }],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    expect(findAll(plan.requests, 'updateParagraphStyle')).toHaveLength(0);
+    expect(findAll(plan.requests, 'updateTextStyle')).toHaveLength(0);
+  });
+
+  it('emits updateParagraphStyle covering the union of prev+next fields when preserved paragraph style changes', () => {
+    const prev = doc({
+      type: 'paragraph',
+      attrs: { docStyle: { lineSpacing: 150 } },
+      content: [{ type: 'text', text: 'hi' }],
+    });
+    const next = doc({
+      type: 'paragraph',
+      attrs: { docStyle: { alignment: 'CENTER' } },
+      content: [{ type: 'text', text: 'hi' }],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    const paraUpdates = findAll(plan.requests, 'updateParagraphStyle') as Array<{
+      updateParagraphStyle: { paragraphStyle: Record<string, unknown>; fields: string };
+    }>;
+    const preserved = paraUpdates.find((r) =>
+      r.updateParagraphStyle.fields.split(',').some((f) => f === 'lineSpacing' || f === 'alignment')
+    );
+    expect(preserved).toBeDefined();
+    expect(preserved!.updateParagraphStyle.paragraphStyle).toEqual({ alignment: 'CENTER' });
+    expect(preserved!.updateParagraphStyle.fields.split(',').sort()).toEqual(['alignment', 'lineSpacing']);
+  });
+
+  it('emits a paragraph docStyle update for a newly inserted paragraph', () => {
+    const prev = doc({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'first' }],
+    });
+    const next = doc(
+      { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+      {
+        type: 'paragraph',
+        attrs: { docStyle: { alignment: 'RIGHT' } },
+        content: [{ type: 'text', text: 'second' }],
+      }
+    );
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    const paraUpdates = findAll(plan.requests, 'updateParagraphStyle') as Array<{
+      updateParagraphStyle: { paragraphStyle: Record<string, unknown>; fields: string };
+    }>;
+    expect(
+      paraUpdates.some(
+        (r) => r.updateParagraphStyle.paragraphStyle.alignment === 'RIGHT'
+      )
+    ).toBe(true);
+  });
+
+  it('emits updateTextStyle covering union of prev+next fields when run docStyle changes', () => {
+    const prev = doc({
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'hi',
+          marks: [
+            {
+              type: 'docStyle',
+              attrs: { style: { weightedFontFamily: { fontFamily: 'Georgia' } } },
+            },
+          ],
+        },
+      ],
+    });
+    const next = doc({
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'hi',
+          marks: [
+            {
+              type: 'docStyle',
+              attrs: { style: { fontSize: { magnitude: 14, unit: 'PT' } } },
+            },
+          ],
+        },
+      ],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    const textUpdates = findAll(plan.requests, 'updateTextStyle') as Array<{
+      updateTextStyle: { textStyle: Record<string, unknown>; fields: string };
+    }>;
+    // The reset covers both fields so the removed one gets cleared.
+    const resetFields = textUpdates
+      .flatMap((r) => r.updateTextStyle.fields.split(','))
+      .filter((f) => f === 'weightedFontFamily' || f === 'fontSize');
+    expect(resetFields).toContain('weightedFontFamily');
+    expect(resetFields).toContain('fontSize');
+    // The reapply applies fontSize to the run.
+    const reapply = textUpdates.find((r) => 'fontSize' in r.updateTextStyle.textStyle);
+    expect(reapply).toBeDefined();
+    expect(reapply!.updateTextStyle.textStyle).toEqual({ fontSize: { magnitude: 14, unit: 'PT' } });
+  });
 });
