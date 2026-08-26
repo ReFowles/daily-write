@@ -21,6 +21,12 @@ import {
   booleanFromLocalStorage,
   useLocalStorageState,
 } from "@/lib/use-local-storage-state";
+import { classifyGoogleDocsSaveResponse } from "@/lib/google-docs-save-response";
+import {
+  computeWordsWrittenToday,
+  hasUnsavedDocChanges,
+  hasUnsavedSessionChanges,
+} from "@/lib/write-session-math";
 import dynamic from 'next/dynamic';
 
 const FOCUS_MODE_STORAGE_KEY = "daily-write:focus-mode";
@@ -132,10 +138,10 @@ export default function WritePage() {
 
   const saveToGoogleDocs = useCallback(async (docId: string, docContent: DocumentContent, tabId?: string) => {
     if (isSavingToDoc.current) return false;
-    
+
     isSavingToDoc.current = true;
     setDocSaveError(null);
-    
+
     try {
       const { lastSavedContent: prevContent, baseRevisionId: baseline } = saveStateRef.current;
       const response = await fetch('/api/google-docs', {
@@ -152,33 +158,26 @@ export default function WritePage() {
         }),
       });
 
-      if (response.status === 409) {
-        const errorData = await response.json().catch(() => ({}));
-        if (errorData?.code === 'DOCUMENT_DRIFT') {
-          setDriftBlocked(true);
-          setDocSaveError('This document was edited elsewhere. Reload the tab to continue writing.');
-          return false;
-        }
+      const outcome = await classifyGoogleDocsSaveResponse(response);
+
+      if (outcome.kind === 'drift') {
+        setDriftBlocked(true);
+        setDocSaveError(outcome.message);
+        return false;
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const detail =
-          typeof errorData?.details === 'string' && errorData.details.length > 0
-            ? `${errorData.error ?? 'Failed to save to Google Docs'}: ${errorData.details}`
-            : errorData?.error;
-        throw new Error(detail || 'Failed to save to Google Docs');
+      if (outcome.kind === 'error') {
+        throw new Error(outcome.message);
       }
 
-      const data = await response.json().catch(() => ({}));
       setLastSavedContent(docContent);
-      if (typeof data?.revisionId === 'string' && data.revisionId.length > 0) {
-        setBaseRevisionId(data.revisionId);
+      if (outcome.revisionId) {
+        setBaseRevisionId(outcome.revisionId);
       }
-      if (data?.saveMode === 'replace') {
+      if (outcome.saveMode === 'replace') {
         console.warn(
           '[google-docs] save fell back to full-replace:',
-          data.replaceReason ?? 'unknown reason'
+          outcome.replaceReason ?? 'unknown reason'
         );
       }
       return true;
@@ -270,31 +269,39 @@ export default function WritePage() {
   
   // Words added in current document = current - where doc started
   // This allows deletions to reduce the count if you delete what you just wrote
-  const currentDocWordsAdded = Math.max(0, wordCount - docStartWordCount);
-  
-  // Total words written today = where we started this session + words added in current doc
-  const wordsWrittenToday = sessionStartWordCount + currentDocWordsAdded;
-  
+  const wordsWrittenToday = computeWordsWrittenToday({
+    sessionStartWordCount,
+    wordCount,
+    docStartWordCount,
+  });
+
   // Check if there are unsaved Google Docs changes
-  const hasUnsavedDocChanges = Boolean(
-    selectedDoc && content && !contentsEqual(content, lastSavedContent) && !showPicker
-  );
-  
+  const hasUnsavedDocChangesFlag = hasUnsavedDocChanges({
+    selectedDoc,
+    content,
+    lastSavedContent,
+    showPicker,
+    contentsEqual,
+  });
+
   // Check if there are unsaved Firestore changes
-  const hasUnsavedSessionChanges = wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
+  const hasUnsavedSessionChangesFlag = hasUnsavedSessionChanges(
+    wordsWrittenToday,
+    lastSavedCount
+  );
 
   // Snapshot of state read inside the visibility-refresh effect below without
   // adding those values to the effect's dep list.
   const refreshStateRef = useRef({
     selectedDoc,
     selectedTab,
-    hasUnsavedDocChanges,
+    hasUnsavedDocChanges: hasUnsavedDocChangesFlag,
     lastSavedContent,
   });
   refreshStateRef.current = {
     selectedDoc,
     selectedTab,
-    hasUnsavedDocChanges,
+    hasUnsavedDocChanges: hasUnsavedDocChangesFlag,
     lastSavedContent,
   };
 
@@ -355,7 +362,7 @@ export default function WritePage() {
   useEffect(() => {
     // Don't save if app is not visible, no unsaved changes, or the server told
     // us the doc drifted (user must reload the tab to unblock).
-    if (!isDocumentVisible || !hasUnsavedDocChanges || driftBlocked) {
+    if (!isDocumentVisible || !hasUnsavedDocChangesFlag || driftBlocked) {
       return;
     }
 
@@ -372,12 +379,12 @@ export default function WritePage() {
     }, GOOGLE_DOCS_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [content, isDocumentVisible, hasUnsavedDocChanges, driftBlocked, selectedDoc, selectedTab, saveToGoogleDocs]);
+  }, [content, isDocumentVisible, hasUnsavedDocChangesFlag, driftBlocked, selectedDoc, selectedTab, saveToGoogleDocs]);
 
   // Auto-save writing session to Firestore (only when visible and has changes)
   useEffect(() => {
     // Don't save if no user, app not visible, or no unsaved changes
-    if (!session?.user?.email || !isDocumentVisible || !hasUnsavedSessionChanges) {
+    if (!session?.user?.email || !isDocumentVisible || !hasUnsavedSessionChangesFlag) {
       return;
     }
 
@@ -400,7 +407,7 @@ export default function WritePage() {
     }, AUTO_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [session?.user?.email, wordsWrittenToday, wordCount, isDocumentVisible, hasUnsavedSessionChanges]);
+  }, [session?.user?.email, wordsWrittenToday, wordCount, isDocumentVisible, hasUnsavedSessionChangesFlag]);
 
   // Redirect if not authenticated (after all hooks)
   if (status === "loading") {
