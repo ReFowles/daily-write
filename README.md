@@ -92,23 +92,14 @@ pnpm lint         # Run ESLint
 ## TODO:
 
 - Automatically use curly quotes/apostrophies
-- How to handle multiple doc tabs
-- Check for word count updates/changes from Docs on return to app
-- Figure out highlight > delete doesn't affect word count
 - Add images to About page
-- "Full screen" text editor
-- Any final markdown/formatting bugs
-  - Spaces at end of line
-  - Escaping characters
 - New goal types?
-  - Set total word count by deadline, recalculate number of words per day every day
+  - Set total word count by deadline, recalculate number of words per day every day (live goal) or keep unchanged (static goal)
 - Change dashboard wording from "Session" to "Day"
 - Refreshing the write page takes you back to the doc, not the choice screen (slug support)
-- Dark themes text editor toolbar selected icons too bright
 - Tooltip on document tabs not working?
 - Update About page with more limitation information
   - Can't create or delete document tabs (read-only)
-  - Preexisting tables in documents will get overwritten as "_[Table Content]_" and must be restored through the Revision History in Google Docs. (Is this still true?)
   - Goals can't overlap
   - Once a goal is created, it can be deleted but not changed
   - Currently only one type of goal available: daily word count over a period of time. Other types of goals, such as project-based due-date goals may be implemented later.
