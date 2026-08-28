@@ -41,7 +41,6 @@ src/
 │       └── google-docs/           # Google Docs CRUD proxy
 │           └── route.ts
 ├── components/                     # React components
-│   ├── ActivityOverlay.tsx        # Overlay showing recent activity
 │   ├── CalendarHeader.tsx         # Calendar header with month navigation
 │   ├── CreateGoalForm.tsx         # Goal creation form
 │   ├── DashboardClient.tsx        # Client wrapper for the dashboard

@@ -4,7 +4,6 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/Navigation";
 import ThemeInit from "./theme-init";
-import ActivityOverlay from "@/components/ActivityOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +33,8 @@ export default function RootLayout({
       >
         <SessionProvider>
           <ThemeInit />
-          <ActivityOverlay />
           <Navigation />
-          {children}
+          <div className="pt-16">{children}</div>
         </SessionProvider>
       </body>
     </html>

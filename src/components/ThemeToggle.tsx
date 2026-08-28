@@ -3,30 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { LuChevronDown, LuMoon, LuSun } from "react-icons/lu";
 import { cn } from "@/lib/class-utils";
-
-type Theme = "light" | "dark" | "strawberry" | "cherry" | "seafoam" | "ocean";
-
-const THEMES: ReadonlyArray<{ value: Theme; label: string; kind: "light" | "dark" }> = [
-  { value: "light", label: "Light", kind: "light" },
-  { value: "dark", label: "Dark", kind: "dark" },
-  { value: "strawberry", label: "Strawberry", kind: "light" },
-  { value: "cherry", label: "Cherry", kind: "dark" },
-  { value: "seafoam", label: "Seafoam", kind: "light" },
-  { value: "ocean", label: "Ocean", kind: "dark" },
-];
-
-const THEME_VALUES = THEMES.map((t) => t.value);
-
-// Reads the theme applied by ThemeInit. Must run only in the browser.
-function readTheme(): Theme {
-  const saved = localStorage.getItem("theme") as Theme | null;
-  if (saved && (THEME_VALUES as string[]).includes(saved)) return saved;
-
-  const applied = THEMES.find(
-    (t) => t.value !== "light" && document.documentElement.classList.contains(t.value)
-  );
-  return applied?.value ?? "light";
-}
+import { THEMES, useAppliedTheme, type Theme } from "@/lib/use-applied-theme";
 
 function ThemeIcon({ kind }: { kind: "light" | "dark" }) {
   return kind === "light" ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />;
@@ -37,14 +14,9 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) {
-  const [currentTheme, setCurrentTheme] = useState<Theme>("light");
+  const [currentTheme, applyTheme] = useAppliedTheme();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Defer to a microtask so setState doesn't happen synchronously in the effect body.
-    queueMicrotask(() => setCurrentTheme(readTheme()));
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,13 +29,8 @@ export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const applyTheme = (theme: Theme) => {
-    document.documentElement.classList.remove("dark", "strawberry", "cherry", "seafoam", "ocean");
-    if (theme !== "light") {
-      document.documentElement.classList.add(theme);
-    }
-    localStorage.setItem("theme", theme);
-    setCurrentTheme(theme);
+  const selectTheme = (theme: Theme) => {
+    applyTheme(theme);
     setIsOpen(false);
   };
 
@@ -92,7 +59,7 @@ export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) 
             {THEMES.map((theme) => (
               <button
                 key={theme.value}
-                onClick={() => applyTheme(theme.value)}
+                onClick={() => selectTheme(theme.value)}
                 className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-700 strawberry:hover:bg-pink-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900 ${
                   currentTheme === theme.value
                     ? "bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50 strawberry:bg-pink-100 strawberry:text-pink-900 cherry:bg-rose-900 cherry:text-rose-100 seafoam:bg-cyan-100 seafoam:text-cyan-900 ocean:bg-cyan-900 ocean:text-cyan-100"

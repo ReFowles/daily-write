@@ -92,17 +92,11 @@ pnpm lint         # Run ESLint
 ## TODO:
 
 - Automatically use curly quotes/apostrophies
-- Add images to About page
 - New goal types?
   - Set total word count by deadline, recalculate number of words per day every day (live goal) or keep unchanged (static goal)
 - Change dashboard wording from "Session" to "Day"
 - Refreshing the write page takes you back to the doc, not the choice screen (slug support)
 - Tooltip on document tabs not working?
-- Update About page with more limitation information
-  - Can't create or delete document tabs (read-only)
-  - Goals can't overlap
-  - Once a goal is created, it can be deleted but not changed
-  - Currently only one type of goal available: daily word count over a period of time. Other types of goals, such as project-based due-date goals may be implemented later.
 - Preserve Google-Docs-only features on paragraphs edited in the app
   - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
 - Reflect preserved Google Docs presets visually in the editor

@@ -18,7 +18,7 @@ export default async function Navigation() {
   return (
     <nav
       className={cn(
-        "relative border-b",
+        "fixed inset-x-0 top-0 z-40 border-b",
         themeClasses.border.navBar,
         themeClasses.background.navBar
       )}
