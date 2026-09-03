@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { GoalsPageClient } from "@/components/GoalsPageClient";
+import { GoalsPageClient } from "@/components/goals/GoalsPageClient";
 
 export default async function GoalsPage() {
   const session = await auth();

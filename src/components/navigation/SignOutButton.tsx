@@ -1,5 +1,5 @@
 import { signOut } from "@/lib/auth";
-import { Button } from "./ui/Button";
+import { Button } from "@/components/ui/Button";
 
 export default function SignOutButton() {
   return (

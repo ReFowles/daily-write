@@ -1,5 +1,5 @@
-import { Card } from "./ui/Card";
-import { DayCard } from "./DayCard";
+import { Card } from "@/components/ui/Card";
+import { DayCard } from "@/components/DayCard";
 import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";

@@ -1,4 +1,4 @@
-import { Card } from "./ui/Card";
+import { Card } from "@/components/ui/Card";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 

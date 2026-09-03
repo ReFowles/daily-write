@@ -9,7 +9,7 @@ import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
-import { formatDate, parseLocalDate } from "@/lib/date-utils";
+import { formatDate, parseLocalDate, toDateString } from "@/lib/date-utils";
 
 interface GoalCardProps {
   goal: Goal;
@@ -37,13 +37,27 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
     return sessionDate >= startDate && sessionDate <= endDate;
   });
 
-  // Create a map of date -> wordCount for logged days display
+  // Build a per-day word count map that includes every prior day within the
+  // goal window — including days with 0 words — so users can see the full
+  // history at a glance. Upcoming goals get an empty list.
   const wordsByDate: Record<string, number> = {};
   goalSessions.forEach((session) => {
     wordsByDate[session.date] = session.wordCount;
   });
 
-  const daysLogged = goalSessions.length;
+  const lastVisibleDay = endDate < now ? endDate : now;
+  if (startDate <= lastVisibleDay) {
+    for (
+      let cursor = new Date(startDate);
+      cursor.getTime() <= lastVisibleDay.getTime();
+      cursor.setDate(cursor.getDate() + 1)
+    ) {
+      const key = toDateString(cursor);
+      if (!(key in wordsByDate)) wordsByDate[key] = 0;
+    }
+  }
+
+  const displayedDayCount = Object.keys(wordsByDate).length;
   const totalWordsWritten = goalSessions.reduce((sum, session) => sum + session.wordCount, 0);
   const targetTotalWords = totalDays * goal.dailyWordTarget;
   const progress = Math.min((totalWordsWritten / targetTotalWords) * 100, 100);
@@ -53,7 +67,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
   const elapsedDays = goalIsInPast 
     ? totalDays 
     : Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-  const averageWordsPerDay = daysLogged > 0 ? Math.round(totalWordsWritten / elapsedDays) : 0;
+  const averageWordsPerDay = goalSessions.length > 0 ? Math.round(totalWordsWritten / elapsedDays) : 0;
 
   return (
     <Card className={`p-6 ${isCompleted ? "opacity-75" : ""}`}>
@@ -103,13 +117,13 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
         </div>
 
         {/* Logged Days */}
-        {daysLogged > 0 && (
+        {displayedDayCount > 0 && (
           <div className={cn("border-t pt-4", themeClasses.border.divider)}>
             <button
               onClick={toggleLoggedDays}
               className={cn("mb-2 flex w-full items-center justify-between text-sm font-medium transition-colors", themeClasses.text.primary, "hover:opacity-70")}
             >
-              <span>Logged Days ({daysLogged})</span>
+              <span>Logged Days ({displayedDayCount})</span>
               <LuChevronDown className={cn("h-3 w-3 transition-transform", showLoggedDays && "rotate-180")} />
             </button>
             {showLoggedDays && (

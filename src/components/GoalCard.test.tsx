@@ -59,11 +59,16 @@ describe("GoalCard", () => {
       { userId: "u1", date: "2026-06-05", wordCount: 400 },
     ];
     render(<GoalCard goal={activeGoal} writingSessions={sessions} onDelete={vi.fn()} />);
-    const toggle = screen.getByRole("button", { name: /logged days \(1\)/i });
+    // activeGoal spans 30 days, all of which are prior to the current test date,
+    // so every day is shown — even ones with 0 words.
+    const toggle = screen.getByRole("button", { name: /logged days \(30\)/i });
     // Collapsed by default: date chip is not visible.
     expect(screen.queryByText("Jun 5, 2026")).not.toBeInTheDocument();
     fireEvent.click(toggle);
     expect(screen.getByText("Jun 5, 2026")).toBeInTheDocument();
     expect(screen.getByText(/400 words/)).toBeInTheDocument();
+    // A day with no session shows up as 0 words.
+    expect(screen.getByText("Jun 1, 2026")).toBeInTheDocument();
+    expect(screen.getAllByText(/0 words/).length).toBeGreaterThan(0);
   });
 });

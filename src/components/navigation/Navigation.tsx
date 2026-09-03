@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import ThemeToggle from "./ThemeToggle";
-import iconSvg from "../app/icon.svg";
+import iconSvg from "../../app/icon.svg";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import { auth } from "@/lib/auth";

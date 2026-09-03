@@ -36,7 +36,7 @@ vi.mock("@/lib/data-store", () => ({
 }));
 
 // MonthlyCalendar is heavy and unrelated to the logic under test.
-vi.mock("@/components/MonthlyCalendar", () => ({
+vi.mock("@/components/goals/MonthlyCalendar", () => ({
   MonthlyCalendar: () => null,
 }));
 

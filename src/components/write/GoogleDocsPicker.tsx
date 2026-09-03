@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button } from './ui/Button';
-import { Card } from './ui/Card';
-import { Input } from './ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
 import { formatDistanceToNow } from '@/lib/date-utils';
 import { themeClasses } from '@/lib/theme-utils';
 import { cn } from '@/lib/class-utils';

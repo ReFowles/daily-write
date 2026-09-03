@@ -6,6 +6,9 @@ import { refreshGoogleAccessToken } from "./google-oauth";
 const REFRESH_LEEWAY_SECONDS = 60;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Self-hosted behind Nginx: trust the forwarded Host header instead of
+  // Auth.js's default deny. Vercel deployments set this automatically.
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,

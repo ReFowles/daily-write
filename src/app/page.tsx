@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { DashboardClient } from "@/components/DashboardClient";
+import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import { getAllGoals, getAllWritingSessions, getWritingStats } from "@/lib/data-store";
 
 export default async function Dashboard() {

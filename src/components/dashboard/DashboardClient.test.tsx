@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent } from "@testing-library/react";
 import { DashboardClient } from "./DashboardClient";
 import type { Goal, WritingSession } from "@/lib/types";
 import type { CurrentGoalData } from "@/lib/use-current-goal";
@@ -102,5 +103,57 @@ describe("DashboardClient", () => {
     // Rendered inside PageHeader's "Current" stat card.
     expect(screen.getByText(/1\/1 – 1\/31/)).toBeInTheDocument();
     expect(screen.getByText("Days Left").nextElementSibling).toHaveTextContent("5");
+  });
+
+  it("renders a Current Goal tracker card when an active goal exists", () => {
+    const goal: Goal = {
+      id: "g1",
+      userId: "u",
+      startDate: "2026-01-01",
+      endDate: "2026-01-31",
+      dailyWordTarget: 500,
+    };
+    setGoal({
+      todayGoal: 500,
+      todayProgress: 0,
+      daysLeft: 5,
+      currentGoal: goal,
+    });
+    render(
+      <DashboardClient goals={[goal]} writingSessions={[]} stats={emptyStats} />
+    );
+    // The GoalCard renders a delete button and shows the goal's date range.
+    expect(screen.getByRole("button", { name: /delete goal/i })).toBeInTheDocument();
+    expect(screen.getByText(/Jan 1, 2026 - Jan 31, 2026/i)).toBeInTheDocument();
+  });
+
+  it("does not render the Current Goal tracker card when no active goal exists", () => {
+    setGoal({ currentGoal: undefined });
+    render(<DashboardClient goals={[]} writingSessions={[]} stats={emptyStats} />);
+    expect(screen.queryByRole("button", { name: /delete goal/i })).not.toBeInTheDocument();
+  });
+
+  it("locks rearranging by default so no drag handles are visible", () => {
+    setGoal({ todayGoal: 100, todayProgress: 0 });
+    localStorage.removeItem("dashboard-rearrange-locked");
+    render(<DashboardClient goals={[]} writingSessions={[]} stats={emptyStats} />);
+    expect(screen.queryAllByRole("button", { name: /reorder card/i })).toHaveLength(0);
+    // The Rearrange button reads as "Unlock" when locked.
+    expect(
+      screen.getByRole("button", { name: /unlock card rearranging/i })
+    ).toBeInTheDocument();
+  });
+
+  it("reveals drag handles after clicking the Rearrange button", () => {
+    setGoal({ todayGoal: 100, todayProgress: 0 });
+    localStorage.removeItem("dashboard-rearrange-locked");
+    render(<DashboardClient goals={[]} writingSessions={[]} stats={emptyStats} />);
+    fireEvent.click(screen.getByRole("button", { name: /unlock card rearranging/i }));
+    // One handle per top-level card (progress + stats) plus four inside the
+    // stats grid = at least 5 handles.
+    expect(screen.getAllByRole("button", { name: /reorder card/i }).length).toBeGreaterThan(1);
+    expect(
+      screen.getByRole("button", { name: /lock card rearranging/i })
+    ).toBeInTheDocument();
   });
 });

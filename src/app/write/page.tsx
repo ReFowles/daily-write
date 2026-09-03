@@ -14,10 +14,10 @@ import { formatWordCount } from "@/lib/format-utils";
 import type { GoogleDoc, DocumentTab } from "@/lib/types";
 import type { DocumentContent } from "@/lib/document-content";
 import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
-import GoogleDocsPicker from "@/components/GoogleDocsPicker";
-import DocumentTabs from "@/components/DocumentTabs";
+import GoogleDocsPicker from "@/components/write/GoogleDocsPicker";
+import DocumentTabs from "@/components/write/DocumentTabs";
 import { LuBaseline, LuEye, LuEyeOff, LuIndentIncrease } from "react-icons/lu";
-import type { LineSpacing as LineSpacingValue } from "@/components/editor";
+import type { LineSpacing as LineSpacingValue } from "@/components/write/editor";
 import {
   booleanFromLocalStorage,
   useLocalStorageState,
@@ -44,7 +44,7 @@ const LINE_SPACING_LABEL: Record<LineSpacingValue, string> = {
 const lineSpacingFromLocalStorage = (raw: string): LineSpacingValue | undefined =>
   (LINE_SPACING_CYCLE as readonly string[]).includes(raw) ? (raw as LineSpacingValue) : undefined;
 
-const Editor = dynamic(() => import('@/components/editor').then((m) => m.Editor), {
+const Editor = dynamic(() => import('@/components/write/editor').then((m) => m.Editor), {
   ssr: false,
   loading: () => <div className="p-4 text-gray-500">Loading editor...</div>
 });

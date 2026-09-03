@@ -70,6 +70,17 @@ pnpm dev
 
 See [AGENTS.md](./AGENTS.md) for detailed project structure and development guidelines.
 
+## Deployment
+`pnpm build`'s type-check phase needs real CPU/RAM — running it on your own machine sidesteps the droplet's memory ceiling entirely. This works cleanly because `.next/` build output is plain JS/manifests with no native binaries baked in; the only architecture-specific piece is `node_modules` (SWC, `sharp`), which you still install **on the droplet** so it gets the correct Linux/x64 binaries via the lockfile.
+
+This is all handled using the [deploy-dailywrite](scripts/deploy-dailywrite.sh) script locally **after syncing `main`** and with **no pending changes**. (Note: Script relies on specific local directory locations and may need to be updated. It may also potentially only run for allowed SSHs on the droplet.)
+
+**Important Notes:**
+
+- The code on the droplet (via `git pull`) must exactly match what you built locally, or you'll ship a mismatched `.next/` against a different `src/`. Commit and push before building, and `git pull` on the droplet before rsyncing `.next/` over.
+- Running the `rsync` command in the script can take around 12 minutes to complete.
+- Check logs in the Droplet with `journalctl -u dailywrite --since '1 hour ago'`
+
 ## Development
 
 ### Commands

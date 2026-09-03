@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Card } from "./ui/Card";
-import { ProgressBar } from "./ui/ProgressBar";
-import { Button } from "./ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { Button } from "@/components/ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 

@@ -1,5 +1,5 @@
 import { LuChevronLeft, LuChevronRight } from "react-icons/lu";
-import { Button } from "./ui/Button";
+import { Button } from "@/components/ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 

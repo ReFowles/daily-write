@@ -40,39 +40,40 @@ src/
 │       │   └── route.ts
 │       └── google-docs/           # Google Docs CRUD proxy
 │           └── route.ts
-├── components/                     # React components
-│   ├── CalendarHeader.tsx         # Calendar header with month navigation
-│   ├── CreateGoalForm.tsx         # Goal creation form
-│   ├── DashboardClient.tsx        # Client wrapper for the dashboard
-│   ├── DayCard.tsx                # Day display card
-│   ├── DocumentTabs.tsx           # Google Docs tab selector
-│   ├── GoalCard.tsx               # Goal display card
-│   ├── GoalsPageClient.tsx        # Client-side goals page logic
-│   ├── GoogleDocsPicker.tsx       # Picker for selecting a Google Doc
-│   ├── MonthlyCalendar.tsx        # Monthly calendar view
-│   ├── Navigation.tsx             # Main navigation shell
-│   ├── NavLinks.tsx               # Nav link list
-│   ├── PageHeader.tsx             # Reusable page header
-│   ├── ProgressCard.tsx           # Progress display card
-│   ├── SignInButton.tsx           # Google sign-in button
-│   ├── SignOutButton.tsx          # Sign-out button
-│   ├── StatsCard.tsx              # Statistics display card
-│   ├── ThemeToggle.tsx            # Theme switcher
-│   ├── WeeklyCalendar.tsx         # Weekly calendar view
-│   ├── WritingStatsHeader.tsx     # Stats header component
-│   ├── editor/                    # Tiptap-backed Editor (implementation isolated here)
-│   │   ├── Editor.tsx
-│   │   ├── Toolbar.tsx
-│   │   └── index.ts
-│   ├── icons/                     # Icon components (see icons/index.ts)
-│   │   ├── ChevronDown.tsx
-│   │   ├── ChevronLeft.tsx
-│   │   ├── ChevronRight.tsx
-│   │   ├── Moon.tsx
-│   │   ├── Sun.tsx
-│   │   ├── Trash.tsx
-│   │   └── index.ts
-│   └── ui/                        # UI primitives
+├── components/                     # React components (grouped by route; shared at root)
+│   ├── DayCard.tsx                # Day display card (shared: dashboard + goals calendars)
+│   ├── GoalCard.tsx               # Goal display card (shared: dashboard + goals)
+│   ├── PageHeader.tsx             # Reusable page header (shared: all routes)
+│   ├── about/                     # /about route
+│   │   └── AboutPageClient.tsx
+│   ├── dashboard/                 # / (home) route
+│   │   ├── DashboardClient.tsx
+│   │   ├── ProgressCard.tsx
+│   │   ├── SortableCards.tsx
+│   │   ├── StatsCard.tsx
+│   │   └── WeeklyCalendar.tsx
+│   ├── goals/                     # /goals route
+│   │   ├── CalendarHeader.tsx
+│   │   ├── CreateGoalForm.tsx
+│   │   ├── GoalsPageClient.tsx
+│   │   └── MonthlyCalendar.tsx
+│   ├── navigation/                # Navigation shell mounted in layout.tsx
+│   │   ├── MobileNavMenu.tsx
+│   │   ├── NavLinks.tsx
+│   │   ├── NavShortcuts.tsx
+│   │   ├── Navigation.tsx
+│   │   ├── SignInButton.tsx       # Also used directly on /about
+│   │   ├── SignOutButton.tsx
+│   │   └── ThemeToggle.tsx
+│   ├── write/                     # /write route
+│   │   ├── DocumentTabs.tsx
+│   │   ├── GoogleDocsPicker.tsx
+│   │   └── editor/                # Tiptap-backed Editor (implementation isolated here)
+│   │       ├── Editor.tsx
+│   │       ├── Toolbar.tsx
+│   │       ├── doc-style-passthrough.ts
+│   │       └── index.ts
+│   └── ui/                        # UI primitives (shared)
 │       ├── Button.tsx
 │       ├── Card.tsx
 │       ├── Input.tsx
@@ -254,16 +255,54 @@ These hooks encapsulate business logic and make components cleaner and more focu
 
 #### Component Organization
 
-Components are organized into three categories:
+Components are organized **by route**. Anything used by exactly one route lives in that route's folder; anything used across routes (or by `layout.tsx`) lives at the components root.
 
-1. **Feature Components** (`src/components/`): Domain-specific components like `GoalCard`, `WeeklyCalendar`, `CreateGoalForm`
-2. **UI Primitives** (`src/components/ui/`): Reusable base components like `Button`, `Card`, `Input`, `ProgressBar`
-3. **Icons** (`src/components/icons/`): SVG icon components with consistent sizing and theming
+Folders:
 
-When creating new components:
-- Place domain-specific components in the root components folder
-- Place reusable UI primitives in the `ui/` folder
-- Place icon components in the `icons/` folder and export from `icons/index.ts`
+1. **Shared feature components** (`src/components/`): Used by 2+ routes. Currently `PageHeader`, `GoalCard`, `DayCard`.
+2. **Route folders** (`src/components/{dashboard,goals,write,about}/`): Components used only by that route, including its `*PageClient.tsx`.
+3. **Navigation** (`src/components/navigation/`): The `Navigation` shell (mounted in `layout.tsx`) and its children. Grouped rather than kept at the root to reduce clutter.
+4. **UI primitives** (`src/components/ui/`): Reusable base components (`Button`, `Card`, `Input`, `ProgressBar`).
+
+When creating or moving a component:
+- If only one route imports it → put it in that route's folder.
+- If a second route starts importing it → promote it to the components root and update the usage table below.
+- If it's a low-level primitive (styled `<button>`, `<input>`, etc.) → `ui/`.
+
+Import conventions inside `src/components/`:
+- Same-folder siblings: relative (`./StatsCard`).
+- Anything else (shared components, `ui/`, `@/lib/*`): absolute alias (`@/components/PageHeader`, `@/components/ui/Button`).
+
+##### Component usage table
+
+Keep this table in sync when a component's scope changes. If a route stops importing a component, or a shared component drops to a single caller, move the file and update the row.
+
+| Component | Location | Used by |
+| --- | --- | --- |
+| `PageHeader` | `components/PageHeader.tsx` | `/`, `/goals`, `/write`, `/about` |
+| `GoalCard` | `components/GoalCard.tsx` | `/` (via `DashboardClient`), `/goals` (via `GoalsPageClient`) |
+| `DayCard` | `components/DayCard.tsx` | `WeeklyCalendar` (dashboard), `MonthlyCalendar` (goals) |
+| `DashboardClient` | `components/dashboard/` | `src/app/page.tsx` |
+| `StatsCard` | `components/dashboard/` | `DashboardClient` |
+| `ProgressCard` | `components/dashboard/` | `DashboardClient` |
+| `WeeklyCalendar` | `components/dashboard/` | `DashboardClient` |
+| `SortableCards` | `components/dashboard/` | `DashboardClient` |
+| `GoalsPageClient` | `components/goals/` | `src/app/goals/page.tsx` |
+| `CreateGoalForm` | `components/goals/` | `GoalsPageClient` |
+| `MonthlyCalendar` | `components/goals/` | `GoalsPageClient` |
+| `CalendarHeader` | `components/goals/` | `MonthlyCalendar` |
+| `GoogleDocsPicker` | `components/write/` | `src/app/write/page.tsx` |
+| `DocumentTabs` | `components/write/` | `src/app/write/page.tsx` |
+| `editor/` (Tiptap) | `components/write/editor/` | `src/app/write/page.tsx` |
+| `AboutPageClient` | `components/about/` | `src/app/about/page.tsx` |
+| `Navigation` | `components/navigation/` | `src/app/layout.tsx` |
+| `NavLinks` | `components/navigation/` | `Navigation` |
+| `NavShortcuts` | `components/navigation/` | `Navigation` |
+| `MobileNavMenu` | `components/navigation/` | `Navigation` |
+| `ThemeToggle` | `components/navigation/` | `Navigation` |
+| `SignInButton` | `components/navigation/` | `Navigation`, `src/app/about/page.tsx` |
+| `SignOutButton` | `components/navigation/` | `Navigation` |
+| `ui/*` | `components/ui/` | Many; treat as always-shared |
 
 ### File Naming
 
@@ -301,11 +340,15 @@ Users can toggle between themes using the theme selector in the navigation.
 
 #### Adding a New Component
 
-1. Create the component file in `src/components/`
+1. Decide the folder (see [Component Organization](#component-organization)):
+   - Used by exactly one route → `src/components/{route}/`
+   - Used by 2+ routes or by `layout.tsx` → `src/components/` (root)
+   - Reusable primitive → `src/components/ui/`
 2. Use TypeScript with proper prop types
 3. Apply Tailwind classes for styling
 4. Export the component as default or named export
-5. Run linting to ensure code quality
+5. If the component is shared (or its scope later widens), add/update its row in the component usage table
+6. Run linting to ensure code quality
 
 #### Adding a New Page
 

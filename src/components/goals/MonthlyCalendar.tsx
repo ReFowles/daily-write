@@ -1,7 +1,7 @@
 "use client";
 
-import { Card } from "./ui/Card";
-import { DayCard } from "./DayCard";
+import { Card } from "@/components/ui/Card";
+import { DayCard } from "@/components/DayCard";
 import { CalendarHeader } from "./CalendarHeader";
 import type { Goal, WritingSession } from "@/lib/types";
 import {
