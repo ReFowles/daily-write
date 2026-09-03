@@ -64,7 +64,8 @@ src/
 │   │   ├── Navigation.tsx
 │   │   ├── SignInButton.tsx       # Also used directly on /about
 │   │   ├── SignOutButton.tsx
-│   │   └── ThemeToggle.tsx
+│   │   ├── ThemeToggle.tsx
+│   │   └── UnverifiedAppNotice.tsx
 │   ├── write/                     # /write route
 │   │   ├── DocumentTabs.tsx
 │   │   ├── GoogleDocsPicker.tsx
@@ -301,6 +302,7 @@ Keep this table in sync when a component's scope changes. If a route stops impor
 | `MobileNavMenu` | `components/navigation/` | `Navigation` |
 | `ThemeToggle` | `components/navigation/` | `Navigation` |
 | `SignInButton` | `components/navigation/` | `Navigation`, `src/app/about/page.tsx` |
+| `UnverifiedAppNotice` | `components/navigation/` | `SignInButton` |
 | `SignOutButton` | `components/navigation/` | `Navigation` |
 | `ui/*` | `components/ui/` | Many; treat as always-shared |
 

@@ -606,6 +606,19 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
       </p>
     ),
   },
+  {
+    q: "Why does Google warn that this app isn't verified?",
+    a: (
+      <p>
+        DailyWrite requests Google Drive and Docs access, which Google classifies as sensitive.
+        Full verification requires a paid security review that isn&apos;t worth it yet for a small
+        app, so you&apos;ll see a &quot;Google hasn&apos;t verified this app&quot; screen when
+        signing in. Click <strong>Advanced</strong>, then{" "}
+        <strong>Go to DailyWrite (unsafe)</strong> to continue — this is expected, and your data
+        stays private to your own Google account.
+      </p>
+    ),
+  },
 ];
 
 function Limitations({ className }: { className?: string }) {
