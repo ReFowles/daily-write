@@ -26,19 +26,23 @@ vi.mock("firebase/firestore", () => {
   const deleteDoc = vi.fn();
   const Timestamp = { now: vi.fn(() => ({ __ts: "now" })) };
 
-  return { collection, doc, where, query, getDocs, getDoc, addDoc, updateDoc, deleteDoc, Timestamp };
+  return {
+    collection,
+    doc,
+    where,
+    query,
+    getDocs,
+    getDoc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    Timestamp,
+  };
 });
 
+import { addDoc, deleteDoc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import {
-  addDoc,
-  deleteDoc,
-  getDoc,
-  getDocs,
-  query,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import {
+  addFavoriteDoc,
   createGoal,
   createOrUpdateWritingSession,
   deleteGoal,
@@ -46,10 +50,12 @@ import {
   getAllGoals,
   getAllWritingSessions,
   getCurrentGoal,
+  getFavoriteDocIds,
   getGoalById,
   getWritingSessionByDate,
   getWritingSessionsInRange,
   getWritingStats,
+  removeFavoriteDoc,
   updateGoal,
 } from "./data-store";
 
@@ -358,6 +364,58 @@ describe("data-store", () => {
         averageWordsPerDay: 0,
         currentStreak: 0,
       });
+    });
+  });
+
+  describe("doc favorites", () => {
+    it("getFavoriteDocIds returns the docIds stored for the user", async () => {
+      getDocsMock.mockResolvedValueOnce(
+        snapshotFrom([
+          { userId: "u1", docId: "a" },
+          { userId: "u1", docId: "b" },
+        ])
+      );
+      const ids = await getFavoriteDocIds("u1");
+      expect(whereMock).toHaveBeenCalledWith("userId", "==", "u1");
+      expect(ids).toEqual(["a", "b"]);
+    });
+
+    it("addFavoriteDoc is a no-op when the favorite already exists", async () => {
+      getDocsMock.mockResolvedValueOnce(
+        snapshotFrom([{ id: "existing", userId: "u1", docId: "doc-1" }])
+      );
+      await addFavoriteDoc("u1", "doc-1");
+      expect(addDocMock).not.toHaveBeenCalled();
+    });
+
+    it("addFavoriteDoc writes a new favorite when missing", async () => {
+      getDocsMock.mockResolvedValueOnce(snapshotFrom([]));
+      addDocMock.mockResolvedValueOnce({ id: "new" } as unknown as Awaited<
+        ReturnType<typeof addDoc>
+      >);
+
+      await addFavoriteDoc("u1", "doc-1");
+      expect(addDocMock).toHaveBeenCalledTimes(1);
+      const [, payload] = addDocMock.mock.calls[0];
+      expect(payload).toMatchObject({ userId: "u1", docId: "doc-1" });
+    });
+
+    it("removeFavoriteDoc deletes each matching entry", async () => {
+      getDocsMock.mockResolvedValueOnce(
+        snapshotFrom([
+          { id: "f1", userId: "u1", docId: "doc-1" },
+          { id: "f2", userId: "u1", docId: "doc-1" },
+        ])
+      );
+      deleteDocMock.mockResolvedValue(undefined);
+      await removeFavoriteDoc("u1", "doc-1");
+      expect(deleteDocMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("removeFavoriteDoc is a no-op when nothing matches", async () => {
+      getDocsMock.mockResolvedValueOnce(snapshotFrom([]));
+      await removeFavoriteDoc("u1", "doc-1");
+      expect(deleteDocMock).not.toHaveBeenCalled();
     });
   });
 });

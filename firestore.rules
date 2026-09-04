@@ -26,5 +26,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() && resource.data.userId == getUserEmail();
       allow delete: if isAuthenticated() && resource.data.userId == getUserEmail();
     }
+
+    // Google Doc favorites - users can only access their own favorites
+    match /docFavorites/{favoriteId} {
+      allow read: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow create: if isAuthenticated() && request.resource.data.userId == getUserEmail();
+      allow update: if isAuthenticated() && resource.data.userId == getUserEmail();
+      allow delete: if isAuthenticated() && resource.data.userId == getUserEmail();
+    }
   }
 }

@@ -5,9 +5,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/google-docs", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/google-docs")>(
-    "@/lib/google-docs"
-  );
+  const actual = await vi.importActual<typeof import("@/lib/google-docs")>("@/lib/google-docs");
   return {
     ...actual,
     listGoogleDocs: vi.fn(),
@@ -15,6 +13,8 @@ vi.mock("@/lib/google-docs", async () => {
     updateGoogleDocFromContent: vi.fn(),
     createGoogleDoc: vi.fn(),
     getDocumentTabs: vi.fn(),
+    searchGoogleDocs: vi.fn(),
+    getGoogleDocsByIds: vi.fn(),
   };
 });
 
@@ -23,7 +23,9 @@ import {
   createGoogleDoc,
   getDocumentTabs,
   getGoogleDocAsContent,
+  getGoogleDocsByIds,
   listGoogleDocs,
+  searchGoogleDocs,
   updateGoogleDocFromContent,
   DocumentDriftError,
 } from "@/lib/google-docs";
@@ -39,6 +41,8 @@ const createGoogleDocMock = vi.mocked(createGoogleDoc);
 const getDocumentTabsMock = vi.mocked(getDocumentTabs);
 const getGoogleDocAsContentMock = vi.mocked(getGoogleDocAsContent);
 const updateGoogleDocFromContentMock = vi.mocked(updateGoogleDocFromContent);
+const searchGoogleDocsMock = vi.mocked(searchGoogleDocs);
+const getGoogleDocsByIdsMock = vi.mocked(getGoogleDocsByIds);
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost/api/google-docs", {
@@ -52,9 +56,7 @@ const authenticatedSession: MinimalSession = { accessToken: "test-token" };
 
 const sampleContent: DocumentContent = {
   type: "doc",
-  content: [
-    { type: "paragraph", content: [{ type: "text", text: "hello world!" }] },
-  ],
+  content: [{ type: "paragraph", content: [{ type: "text", text: "hello world!" }] }],
 };
 
 describe("google-docs API route", () => {
@@ -170,6 +172,56 @@ describe("google-docs API route", () => {
         content: sampleContent,
         revisionId: "rev-abc",
       });
+    });
+
+    it("search rejects when query is missing", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "search" }));
+      expect(res.status).toBe(400);
+      expect(searchGoogleDocsMock).not.toHaveBeenCalled();
+    });
+
+    it("search forwards the query and returns docs", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      searchGoogleDocsMock.mockResolvedValueOnce([
+        {
+          id: "s1",
+          name: "Search Hit",
+          modifiedTime: "2026-01-01T00:00:00Z",
+          webViewLink: "https://example.com",
+          ownedByMe: true,
+        },
+      ]);
+
+      const res = await POST(makeRequest({ action: "search", query: "dragon" }));
+      expect(res.status).toBe(200);
+      expect(searchGoogleDocsMock).toHaveBeenCalledWith("test-token", "dragon");
+      const body = (await res.json()) as { docs: unknown[] };
+      expect(body.docs).toHaveLength(1);
+    });
+
+    it("getByIds rejects a non-array ids payload", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "getByIds", ids: "not-array" }));
+      expect(res.status).toBe(400);
+      expect(getGoogleDocsByIdsMock).not.toHaveBeenCalled();
+    });
+
+    it("getByIds returns docs when ids is an array of strings", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      getGoogleDocsByIdsMock.mockResolvedValueOnce([
+        {
+          id: "a",
+          name: "By Id",
+          modifiedTime: "2026-01-01T00:00:00Z",
+          webViewLink: "https://example.com",
+          ownedByMe: true,
+        },
+      ]);
+
+      const res = await POST(makeRequest({ action: "getByIds", ids: ["a", "b"] }));
+      expect(res.status).toBe(200);
+      expect(getGoogleDocsByIdsMock).toHaveBeenCalledWith("test-token", ["a", "b"]);
     });
   });
 

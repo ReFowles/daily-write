@@ -427,8 +427,18 @@ export default function WritePage() {
   }
 
   return (
-    <main className="h-[calc(100vh-4rem)] overflow-hidden bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950">
-      <div className="mx-auto flex h-full max-w-5xl flex-col px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+    <main
+      className={cn(
+        "bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950",
+        showPicker ? "min-h-[calc(100vh-4rem)] overflow-y-auto" : "h-[calc(100vh-4rem)] overflow-hidden",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex max-w-5xl flex-col px-3 py-4 sm:px-6 sm:py-8 lg:px-8",
+          showPicker ? "min-h-full" : "h-full",
+        )}
+      >
         <PageHeader
           title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
           description={

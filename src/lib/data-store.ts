@@ -21,6 +21,7 @@ import type { Goal, WritingSession } from "./types";
 
 const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
+const DOC_FAVORITES_COLLECTION = "docFavorites";
 
 /**
  * Goals CRUD Operations
@@ -29,17 +30,17 @@ const SESSIONS_COLLECTION = "writingSessions";
 export async function getAllGoals(userId: string): Promise<Goal[]> {
   const db = getFirebaseDb();
   const goalsRef = collection(db, GOALS_COLLECTION);
-  const q = query(
-    goalsRef,
-    where("userId", "==", userId)
-  );
+  const q = query(goalsRef, where("userId", "==", userId));
   const snapshot = await getDocs(q);
-  
-  const goals = snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  } as Goal));
-  
+
+  const goals = snapshot.docs.map(
+    (doc) =>
+      ({
+        id: doc.id,
+        ...doc.data(),
+      }) as Goal
+  );
+
   // Sort client-side to avoid needing a composite index
   return goals.sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
@@ -48,28 +49,26 @@ export async function getGoalById(goalId: string): Promise<Goal | null> {
   const db = getFirebaseDb();
   const goalRef = doc(db, GOALS_COLLECTION, goalId);
   const goalDoc = await getDoc(goalRef);
-  
+
   if (!goalDoc.exists()) {
     return null;
   }
-  
+
   return {
     id: goalDoc.id,
     ...goalDoc.data(),
   } as Goal;
 }
 
-export async function createGoal(
-  goalData: Omit<Goal, "id">
-): Promise<Goal> {
+export async function createGoal(goalData: Omit<Goal, "id">): Promise<Goal> {
   const db = getFirebaseDb();
   const goalsRef = collection(db, GOALS_COLLECTION);
-  
+
   const docRef = await addDoc(goalsRef, {
     ...goalData,
     createdAt: Timestamp.now(),
   });
-  
+
   return {
     id: docRef.id,
     ...goalData,
@@ -82,7 +81,7 @@ export async function updateGoal(
 ): Promise<void> {
   const db = getFirebaseDb();
   const goalRef = doc(db, GOALS_COLLECTION, goalId);
-  
+
   await updateDoc(goalRef, {
     ...updates,
     updatedAt: Timestamp.now(),
@@ -97,14 +96,12 @@ export async function deleteGoal(goalId: string): Promise<void> {
 
 export async function getCurrentGoal(userId: string): Promise<Goal | null> {
   const today = toDateString(new Date());
-  
+
   // Fetch all goals and filter client-side to avoid needing a composite index
   const allGoals = await getAllGoals(userId);
-  
-  const currentGoal = allGoals.find(
-    (goal) => goal.startDate <= today && goal.endDate >= today
-  );
-  
+
+  const currentGoal = allGoals.find((goal) => goal.startDate <= today && goal.endDate >= today);
+
   return currentGoal || null;
 }
 
@@ -115,14 +112,11 @@ export async function getCurrentGoal(userId: string): Promise<Goal | null> {
 export async function getAllWritingSessions(userId: string): Promise<WritingSession[]> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(
-    sessionsRef,
-    where("userId", "==", userId)
-  );
+  const q = query(sessionsRef, where("userId", "==", userId));
   const snapshot = await getDocs(q);
-  
+
   const sessions = snapshot.docs.map((doc) => doc.data() as WritingSession);
-  
+
   // Sort client-side to avoid needing a composite index
   return sessions.sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -133,17 +127,13 @@ export async function getWritingSessionByDate(
 ): Promise<WritingSession | null> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(
-    sessionsRef,
-    where("userId", "==", userId),
-    where("date", "==", date)
-  );
+  const q = query(sessionsRef, where("userId", "==", userId), where("date", "==", date));
   const snapshot = await getDocs(q);
-  
+
   if (snapshot.empty) {
     return null;
   }
-  
+
   return snapshot.docs[0].data() as WritingSession;
 }
 
@@ -154,18 +144,16 @@ export async function getWritingSessionsInRange(
 ): Promise<WritingSession[]> {
   // Fetch all sessions for user and filter client-side to avoid composite index
   const allSessions = await getAllWritingSessions(userId);
-  
+
   return allSessions
-    .filter(session => session.date >= startDate && session.date <= endDate)
+    .filter((session) => session.date >= startDate && session.date <= endDate)
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function createOrUpdateWritingSession(
-  session: WritingSession
-): Promise<void> {
+export async function createOrUpdateWritingSession(session: WritingSession): Promise<void> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  
+
   // Check if session already exists for this date and user
   const q = query(
     sessionsRef,
@@ -173,7 +161,7 @@ export async function createOrUpdateWritingSession(
     where("date", "==", session.date)
   );
   const snapshot = await getDocs(q);
-  
+
   if (snapshot.empty) {
     // Create new session
     await addDoc(sessionsRef, {
@@ -193,13 +181,9 @@ export async function createOrUpdateWritingSession(
 export async function deleteWritingSession(userId: string, date: string): Promise<void> {
   const db = getFirebaseDb();
   const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(
-    sessionsRef,
-    where("userId", "==", userId),
-    where("date", "==", date)
-  );
+  const q = query(sessionsRef, where("userId", "==", userId), where("date", "==", date));
   const snapshot = await getDocs(q);
-  
+
   if (!snapshot.empty) {
     const sessionDoc = snapshot.docs[0];
     await deleteDoc(doc(db, SESSIONS_COLLECTION, sessionDoc.id));
@@ -217,21 +201,21 @@ export async function getWritingStats(userId: string): Promise<{
   currentStreak: number;
 }> {
   const sessions = await getAllWritingSessions(userId);
-  
+
   const totalWords = sessions.reduce((sum, session) => sum + session.wordCount, 0);
   const totalDaysWritten = sessions.filter((session) => session.wordCount > 0).length;
   const averageWordsPerDay = totalDaysWritten > 0 ? Math.round(totalWords / totalDaysWritten) : 0;
-  
+
   // Calculate current streak
   let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const checkDate = new Date(today);
-  
+
   while (true) {
     const dateString = toDateString(checkDate);
     const session = sessions.find((s) => s.date === dateString);
-    
+
     if (session && session.wordCount > 0) {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
@@ -239,7 +223,7 @@ export async function getWritingStats(userId: string): Promise<{
       break;
     }
   }
-  
+
   return {
     totalWords,
     totalDaysWritten,
@@ -260,9 +244,48 @@ export async function importDummyData(
   for (const goal of goals) {
     await createGoal(goal);
   }
-  
+
   // Import sessions
   for (const session of sessions) {
     await createOrUpdateWritingSession(session);
   }
+}
+
+/**
+ * Google Doc Favorites
+ *
+ * Stores only the doc id — the title/metadata is resolved from Drive on load so
+ * a favorited doc's title stays authoritative in Google Docs.
+ */
+
+export async function getFavoriteDocIds(userId: string): Promise<string[]> {
+  const db = getFirebaseDb();
+  const ref = collection(db, DOC_FAVORITES_COLLECTION);
+  const q = query(ref, where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs
+    .map((d) => (d.data() as { docId?: unknown }).docId)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+}
+
+export async function addFavoriteDoc(userId: string, docId: string): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = collection(db, DOC_FAVORITES_COLLECTION);
+  const existing = query(ref, where("userId", "==", userId), where("docId", "==", docId));
+  const snapshot = await getDocs(existing);
+  if (!snapshot.empty) return;
+
+  await addDoc(ref, {
+    userId,
+    docId,
+    createdAt: Timestamp.now(),
+  });
+}
+
+export async function removeFavoriteDoc(userId: string, docId: string): Promise<void> {
+  const db = getFirebaseDb();
+  const ref = collection(db, DOC_FAVORITES_COLLECTION);
+  const existing = query(ref, where("userId", "==", userId), where("docId", "==", docId));
+  const snapshot = await getDocs(existing);
+  await Promise.all(snapshot.docs.map((d) => deleteDoc(doc(db, DOC_FAVORITES_COLLECTION, d.id))));
 }

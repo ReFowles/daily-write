@@ -2,7 +2,7 @@
  * Shared type definitions for the daily-write application
  */
 
-export type { DocumentContent } from './document-content';
+export type { DocumentContent } from "./document-content";
 
 export interface Goal {
   id: string;
@@ -38,6 +38,14 @@ export interface GoogleDoc {
   modifiedTime: string;
   webViewLink: string;
   ownedByMe: boolean;
+  // Human-readable Drive location (e.g. "My Drive / Writing / Novels"). Omitted
+  // if the folder chain could not be resolved.
+  path?: string;
+}
+
+export interface DocFavorite {
+  userId: string;
+  docId: string;
 }
 
 export interface DocumentTab {
