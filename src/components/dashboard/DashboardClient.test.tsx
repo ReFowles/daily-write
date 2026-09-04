@@ -9,6 +9,10 @@ vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { email: "a@b.com" } } }),
 }));
 
+vi.mock("@/lib/data-store", () => ({
+  deleteGoal: vi.fn(),
+}));
+
 vi.mock("@/lib/use-current-goal", () => ({
   useCurrentGoal: vi.fn(),
 }));

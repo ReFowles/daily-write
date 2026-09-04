@@ -18,7 +18,17 @@ vi.mock("@/lib/use-current-goal", () => ({
 
 import { AboutPageClient } from "./AboutPageClient";
 
-const THEME_CLASSES = ["dark", "strawberry", "cherry", "seafoam", "ocean"] as const;
+const THEME_CLASSES = [
+  "dark",
+  "strawberry",
+  "cherry",
+  "seafoam",
+  "ocean",
+  "sunrise",
+  "sunset",
+  "energy",
+  "ambition",
+] as const;
 
 function currentAppliedThemeClass(): string | undefined {
   return THEME_CLASSES.find((c) => document.documentElement.classList.contains(c));

@@ -2,28 +2,46 @@
 
 import { useEffect } from "react";
 
+const MANAGED_CLASSES = [
+  "dark",
+  "strawberry",
+  "cherry",
+  "seafoam",
+  "ocean",
+  "sunrise",
+  "sunset",
+  "energy",
+  "ambition",
+] as const;
+
+const SAVED_THEMES = new Set([
+  "light",
+  "dark",
+  "strawberry",
+  "cherry",
+  "seafoam",
+  "ocean",
+  "sunrise",
+  "sunset",
+  "energy",
+  "ambition",
+]);
+
 export default function ThemeInit() {
   useEffect(() => {
-    // Initialize theme from localStorage or system preference
     const savedTheme = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    
-    // Remove all theme classes first
-    document.documentElement.classList.remove("dark", "strawberry", "cherry", "seafoam", "ocean");
-    
-    // Apply saved theme or default
-    if (savedTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else if (savedTheme === "strawberry") {
-      document.documentElement.classList.add("strawberry");
-    } else if (savedTheme === "cherry") {
-      document.documentElement.classList.add("cherry");
-    } else if (savedTheme === "seafoam") {
-      document.documentElement.classList.add("seafoam");
-    } else if (savedTheme === "ocean") {
-      document.documentElement.classList.add("ocean");
-    } else if (!savedTheme && prefersDark) {
-      document.documentElement.classList.add("dark");
+    const html = document.documentElement;
+
+    html.classList.remove(...MANAGED_CLASSES);
+
+    if (savedTheme && SAVED_THEMES.has(savedTheme)) {
+      if (savedTheme !== "light") {
+        html.classList.add(savedTheme);
+        if (savedTheme === "ambition") html.classList.add("dark");
+      }
+    } else if (prefersDark) {
+      html.classList.add("dark");
     }
   }, []);
 

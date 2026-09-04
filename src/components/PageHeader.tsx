@@ -80,7 +80,7 @@ export function PageHeader({
       value: formatWordCount(writtenToday),
       emphasize: true,
       valueClassName: todayHitGoal
-        ? "text-green-700 dark:text-green-400 strawberry:text-green-700 cherry:text-green-400 seafoam:text-green-700 ocean:text-green-400"
+        ? "text-green-700 dark:text-green-400"
         : undefined,
     },
     { label: "Goal", value: isLoading ? LOADING_PLACEHOLDER : formatWordCount(dailyGoal) },

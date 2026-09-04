@@ -1,35 +1,386 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Semantic color tokens
+   --------------------------------------------------------------------------
+   Every themable color is exposed as a `--color-*` variable inside @theme so
+   Tailwind generates matching utilities (e.g. `text-fg`, `bg-surface`,
+   `border-line`, `bg-accent/50`). Individual themes only override the
+   variable values, so adding a new theme is CSS-only — components never need
+   `strawberry:` / `sunset:` etc. variants.
+
+   The `background` and `foreground` variables (used only by the base body
+   styling) are kept as legacy aliases so nothing in the rest of the app has
+   to know about the migration.
+   ========================================================================== */
+
 @theme {
-  --color-background: #ffffff;
-  --color-foreground: #171717;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Text */
+  --color-fg: #18181b;
+  --color-fg-muted: #52525b;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #a1a1aa;
+  --color-fg-inverted: #ffffff;
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f4f4f5;
+  --color-surface-sunken: #e4e4e7;
+
+  /* Lines / borders */
+  --color-line: #e4e4e7;
+  --color-line-strong: #d4d4d8;
+
+  /* Accent (primary color) */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #dbeafe;
+  --color-accent-subtle-fg: #1d4ed8;
+  --color-accent-ring: #3b82f6;
 }
 
+/* The only variant we still keep — used by consumers of shadcn-style
+   `prose dark:prose-invert` and the built-in `dark:` variant Tailwind ships. */
 @custom-variant dark (&:is(.dark *));
-@custom-variant strawberry (&:is(.strawberry *));
-@custom-variant cherry (&:is(.cherry *));
-@custom-variant seafoam (&:is(.seafoam *));
-@custom-variant ocean (&:is(.ocean *));
+
+/* ==========================================================================
+   Per-theme overrides
+   --------------------------------------------------------------------------
+   Ordering matters: `.ambition` sits below `.dark` because Ambition adds
+   `.dark` alongside `.ambition` on <html> and we want its rainbow accent to
+   win over the plain dark palette.
+   ========================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --page-bg: #fafafa;
+  --page-bg-image: none;
+  --nav-bg: #ffffff;
+  --nav-bg-image: none;
+  --accent-image: none;
+  --accent-image-hover: none;
+  --accent-animation: none;
+  --accent-size: auto;
+  --border-image: none;
+  --border-animation: none;
+  --border-size: auto;
+
+  /* Seamless repeating rainbow: 8 stops evenly spaced over 400px along the
+     135° diagonal, wrapping red→red. Because the pattern tiles at 400px, any
+     animation that translates by one tile length looks continuous. */
+  --rainbow-gradient: repeating-linear-gradient(
+    135deg,
+    #ff3b3b 0px,
+    #ff9b3b 50px,
+    #ffe23b 100px,
+    #3bff5c 150px,
+    #3bd7ff 200px,
+    #3b5cff 250px,
+    #b03bff 300px,
+    #ff3b3b 400px
+  );
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.dark {
+  --color-fg: #fafafa;
+  --color-fg-muted: #a1a1aa;
+  --color-fg-subtle: #71717a;
+  --color-fg-faint: #52525b;
+  --color-fg-inverted: #18181b;
+  --color-surface: #18181b;
+  --color-surface-muted: #27272a;
+  --color-surface-sunken: #3f3f46;
+  --color-line: #27272a;
+  --color-line-strong: #3f3f46;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #1e3a8a;
+  --color-accent-subtle-fg: #bfdbfe;
+  --color-accent-ring: #60a5fa;
+
+  --page-bg: #09090b;
+  --nav-bg: #09090b;
+}
+
+.strawberry {
+  --color-fg: #881337;
+  --color-fg-muted: #be123c;
+  --color-fg-subtle: #e11d48;
+  --color-fg-faint: #fb7185;
+  --color-fg-inverted: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #ffe4e6;
+  --color-surface-sunken: #fecdd3;
+  --color-line: #fecdd3;
+  --color-line-strong: #fda4af;
+  --color-accent: #e11d48;
+  --color-accent-hover: #be123c;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #ffe4e6;
+  --color-accent-subtle-fg: #881337;
+  --color-accent-ring: #f43f5e;
+
+  --page-bg: #fdf2f8;
+  --page-bg-image: linear-gradient(to bottom right, #fdf2f8, #fff1f2, #fce7f3);
+  --nav-bg: #ffffff;
+  --nav-bg-image: linear-gradient(to right, #fdf2f8, #fff1f2);
+  --accent-image: linear-gradient(to right, #f43f5e, #ec4899);
+  --accent-image-hover: linear-gradient(to right, #e11d48, #db2777);
+}
+
+.cherry {
+  --color-fg: #fda4af;
+  --color-fg-muted: #fb7185;
+  --color-fg-subtle: #f43f5e;
+  --color-fg-faint: #e11d48;
+  --color-fg-inverted: #ffffff;
+  --color-surface: #2b0710;
+  --color-surface-muted: #4c0519;
+  --color-surface-sunken: #500724;
+  --color-line: #881337;
+  --color-line-strong: #9f1239;
+  --color-accent: #f43f5e;
+  --color-accent-hover: #fb7185;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #881337;
+  --color-accent-subtle-fg: #fecdd3;
+  --color-accent-ring: #fb7185;
+
+  --page-bg: #09090b;
+  --page-bg-image: linear-gradient(to bottom right, #09090b, #4c0519, #09090b);
+  --nav-bg: #4c0519;
+  --nav-bg-image: linear-gradient(to right, #4c0519, #500724);
+  --accent-image: linear-gradient(to right, #be123c, #be185d);
+  --accent-image-hover: linear-gradient(to right, #e11d48, #db2777);
+}
+
+.seafoam {
+  --color-fg: #164e63;
+  --color-fg-muted: #0e7490;
+  --color-fg-subtle: #06b6d4;
+  --color-fg-faint: #22d3ee;
+  --color-fg-inverted: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #ecfeff;
+  --color-surface-sunken: #cffafe;
+  --color-line: #a5f3fc;
+  --color-line-strong: #67e8f9;
+  --color-accent: #0891b2;
+  --color-accent-hover: #0e7490;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #cffafe;
+  --color-accent-subtle-fg: #164e63;
+  --color-accent-ring: #06b6d4;
+
+  --page-bg: #ecfeff;
+  --page-bg-image: linear-gradient(to bottom right, #ecfeff, #eff6ff, #cffafe);
+  --nav-bg: #ffffff;
+  --nav-bg-image: linear-gradient(to right, #ecfeff, #eff6ff);
+  --accent-image: linear-gradient(to right, #06b6d4, #3b82f6);
+  --accent-image-hover: linear-gradient(to right, #0891b2, #2563eb);
+}
+
+.ocean {
+  --color-fg: #dbeafe;
+  --color-fg-muted: #93c5fd;
+  --color-fg-subtle: #60a5fa;
+  --color-fg-faint: #3b82f6;
+  --color-fg-inverted: #ffffff;
+  --color-surface: #0f172a;
+  --color-surface-muted: #172554;
+  --color-surface-sunken: #1e1b4b;
+  --color-line: #1e3a8a;
+  --color-line-strong: #1d4ed8;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #1e3a8a;
+  --color-accent-subtle-fg: #dbeafe;
+  --color-accent-ring: #60a5fa;
+
+  --page-bg: #09090b;
+  --page-bg-image: linear-gradient(to bottom right, #09090b, #172554, #1e1b4b);
+  --nav-bg: #172554;
+  --nav-bg-image: linear-gradient(to right, #172554, #1e1b4b);
+  --accent-image: linear-gradient(to right, #1d4ed8, #4338ca);
+  --accent-image-hover: linear-gradient(to right, #2563eb, #4f46e5);
+}
+
+/* Sunrise: pastel pink + orange gradients, blue accent. */
+.sunrise {
+  --color-fg: #7c2d12;
+  --color-fg-muted: #c2410c;
+  --color-fg-subtle: #ea580c;
+  --color-fg-faint: #fb923c;
+  --color-fg-inverted: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #ffedd5;
+  --color-surface-sunken: #fed7aa;
+  --color-line: #fed7aa;
+  --color-line-strong: #fdba74;
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #e0f2fe;
+  --color-accent-subtle-fg: #075985;
+  --color-accent-ring: #0ea5e9;
+
+  --page-bg: #fff7ed;
+  --page-bg-image: linear-gradient(to bottom right, #fce7f3, #ffedd5, #fbcfe8);
+  --nav-bg: #ffffff;
+  --nav-bg-image: linear-gradient(to right, #fce7f3, #ffedd5);
+  --accent-image: linear-gradient(to right, #0ea5e9, #3b82f6);
+  --accent-image-hover: linear-gradient(to right, #0284c7, #2563eb);
+}
+
+/* Sunset: deeper orange + magenta gradients, blue accent. */
+.sunset {
+  --color-fg: #ffedd5;
+  --color-fg-muted: #fdba74;
+  --color-fg-subtle: #f97316;
+  --color-fg-faint: #ea580c;
+  --color-fg-inverted: #0c0a09;
+  --color-surface: #2b0a05;
+  --color-surface-muted: #7c2d12;
+  --color-surface-sunken: #9a3412;
+  --color-line: #7c2d12;
+  --color-line-strong: #9a3412;
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle: #312e81;
+  --color-accent-subtle-fg: #c7d2fe;
+  --color-accent-ring: #818cf8;
+
+  --page-bg: #09090b;
+  --page-bg-image: linear-gradient(to bottom right, #09090b, #7c2d12, #4a044e);
+  --nav-bg: #431407;
+  --nav-bg-image: linear-gradient(to right, #431407, #4a044e);
+  --accent-image: linear-gradient(to right, #ea580c, #c026d3);
+  --accent-image-hover: linear-gradient(to right, #f97316, #d946ef);
+}
+
+/* Energy + Ambition: each element runs its own monotonic rainbow pan. The
+   pattern is bound to the element's own box, so scrolling and bg-clip:text
+   behave normally at the cost of colors not lining up across elements.
+   --accent-size/--border-size must be an exact multiple of the gradient's
+   true repeat period projected onto each axis (400px / cos(45°) ≈
+   565.685px) — leaving it `auto` sizes the tile to the element's own box,
+   which almost never matches that period and produces a visible seam where
+   the tile wraps, making the pan look like it "jumps" between quadrants
+   instead of flowing smoothly through the color wheel. */
+.energy {
+  --accent-image: var(--rainbow-gradient);
+  --accent-image-hover: var(--rainbow-gradient);
+  --accent-animation: rainbow-pan 20s linear infinite;
+  --accent-size: 565.685px 565.685px;
+  --border-image: var(--rainbow-gradient);
+  --border-animation: rainbow-pan 20s linear infinite;
+  --border-size: 565.685px 565.685px;
+  --color-accent-fg: #ffffff;
+  --color-accent-ring: #a855f7;
+}
+
+.ambition {
+  --accent-image: var(--rainbow-gradient);
+  --accent-image-hover: var(--rainbow-gradient);
+  --accent-animation: rainbow-pan 20s linear infinite;
+  --accent-size: 565.685px 565.685px;
+  --border-image: var(--rainbow-gradient);
+  --border-animation: rainbow-pan 20s linear infinite;
+  --border-size: 565.685px 565.685px;
+  --color-accent-fg: #ffffff;
+  --color-accent-ring: #a855f7;
+}
+
+/* Monotonic top-left → bottom-right pan: increasing background-position
+   shifts the image toward the bottom-right, which drags the red band that
+   direction. 282.843px ≈ 400/√2 is exactly one tile of the rainbow along
+   the diagonal, so the end frame matches the start frame and the loop is
+   invisible — no reversal, no jump. */
+@keyframes rainbow-pan {
+  from { background-position: 0 0; }
+  to   { background-position: 282.843px 282.843px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .energy,
+  .ambition {
+    --accent-animation: none;
+    --border-animation: none;
   }
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-surface);
+  color: var(--color-fg);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ==========================================================================
+   Semantic helper classes
+   ========================================================================== */
+
+@layer components {
+  /* Page + nav backgrounds — colour + optional gradient image + optional
+     animation, all sourced from CSS variables. */
+  .surface-page {
+    background-color: var(--page-bg);
+    background-image: var(--page-bg-image);
+  }
+  .surface-nav {
+    background-color: var(--nav-bg);
+    background-image: var(--nav-bg-image);
+  }
+
+  /* Primary accent surface (buttons, progress bars, filled highlights).
+     Under Energy/Ambition the gradient becomes an animated rainbow. */
+  .accent-fill {
+    background-color: var(--color-accent);
+    background-image: var(--accent-image);
+    background-size: var(--accent-size);
+    animation: var(--accent-animation);
+    color: var(--color-accent-fg);
+  }
+  .accent-fill:hover {
+    background-color: var(--color-accent-hover);
+    background-image: var(--accent-image-hover);
+  }
+
+  /* Card with a themed border. Uses two backgrounds so the border layer can
+     be an animated rainbow (Energy/Ambition) while the interior stays the
+     surface color. Falls back to a plain solid border when
+     `--border-image` is `none`. */
+  .themed-card {
+    background-color: var(--color-surface);
+    background-image:
+      linear-gradient(var(--color-surface), var(--color-surface)),
+      var(--border-image);
+    background-origin: border-box, border-box;
+    background-clip: padding-box, border-box;
+    background-size: auto, var(--border-size);
+    animation: var(--border-animation);
+    border: 1px solid var(--color-line);
+  }
+  /* When the theme opts into a rainbow border, hide the fallback solid stroke. */
+  .energy .themed-card,
+  .ambition .themed-card {
+    border: 2px solid transparent;
+  }
+
+  /* Theme selection colour follows the accent, at low opacity. */
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
+  }
+}
+
+/* ==========================================================================
+   Editor (tiptap) — all styles are now theme-agnostic via CSS variables.
+   ========================================================================== */
 
 @layer components {
   .editor-root {
@@ -40,33 +391,17 @@ body {
     caret-color: currentColor;
   }
 
-  /* Tiptap placeholder — only visible when the entire editor is empty. */
   .editor-root .prose p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     float: left;
     height: 0;
     pointer-events: none;
-    @apply text-zinc-400 dark:text-zinc-500 strawberry:text-rose-400 cherry:text-rose-500 seafoam:text-cyan-400 ocean:text-cyan-500;
+    color: var(--color-fg-faint);
   }
 
-  /* Themed heading accents inside the editor. */
   .editor-root .prose :is(h1, h2, h3) {
-    @apply text-zinc-900 dark:text-zinc-50;
+    color: var(--color-fg);
   }
-  :is(.strawberry *) .editor-root .prose :is(h1, h2, h3) {
-    @apply text-rose-900;
-  }
-  :is(.cherry *) .editor-root .prose :is(h1, h2, h3) {
-    @apply text-rose-100;
-  }
-  :is(.seafoam *) .editor-root .prose :is(h1, h2, h3) {
-    @apply text-cyan-900;
-  }
-  :is(.ocean *) .editor-root .prose :is(h1, h2, h3) {
-    @apply text-cyan-100;
-  }
-
-  /* Distinct heading sizes/weights — Tailwind's preflight strips defaults. */
   .editor-root .prose h1 {
     @apply mt-6 mb-3 text-3xl font-bold leading-tight;
   }
@@ -80,40 +415,35 @@ body {
     @apply mt-0;
   }
 
-  /* Themed link colors. */
   .editor-root .prose a {
-    @apply text-blue-600 underline decoration-blue-400/60 underline-offset-2;
-  }
-  :is(.dark *) .editor-root .prose a {
-    @apply text-blue-400 decoration-blue-400/50;
-  }
-  :is(.strawberry *) .editor-root .prose a {
-    @apply text-rose-700 decoration-rose-400/60;
-  }
-  :is(.cherry *) .editor-root .prose a {
-    @apply text-rose-300 decoration-rose-400/60;
-  }
-  :is(.seafoam *) .editor-root .prose a {
-    @apply text-cyan-700 decoration-cyan-400/60;
-  }
-  :is(.ocean *) .editor-root .prose a {
-    @apply text-cyan-300 decoration-cyan-400/60;
+    color: var(--color-accent);
+    text-decoration-line: underline;
+    text-decoration-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+    text-underline-offset: 2px;
   }
 
-  /* Themed table borders. */
+  .editor-root .prose {
+    color: var(--color-fg);
+  }
+  .editor-root .prose :is(p, li, blockquote) {
+    color: var(--color-fg);
+  }
+  .editor-root .prose strong {
+    color: var(--color-fg);
+  }
+  .editor-root .prose code {
+    color: var(--color-fg);
+    background-color: var(--color-surface-muted);
+  }
+
   .editor-root .prose table {
     @apply w-full border-collapse;
   }
   .editor-root .prose :is(td, th) {
-    @apply border p-2 align-top;
-    @apply border-zinc-300 dark:border-zinc-700 strawberry:border-rose-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900;
+    @apply p-2 align-top;
+    border: 1px solid var(--color-line);
   }
   .editor-root .prose th {
-    @apply bg-zinc-100 dark:bg-zinc-800 strawberry:bg-rose-100 cherry:bg-rose-900 seafoam:bg-cyan-100 ocean:bg-cyan-900;
-  }
-
-  /* Selection highlight matches theme accent. */
-  .editor-root .prose ::selection {
-    @apply bg-blue-200/70 dark:bg-blue-800/50 strawberry:bg-rose-200/70 cherry:bg-rose-700/50 seafoam:bg-cyan-200/70 ocean:bg-cyan-700/50;
+    background-color: var(--color-surface-muted);
   }
 }

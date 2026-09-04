@@ -71,7 +71,7 @@ export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps
 
 function Hero({ signInSlot }: { signInSlot: ReactNode }) {
   return (
-    <section className="relative isolate overflow-hidden rounded-3xl border border-zinc-200/70 bg-white/60 px-6 py-14 mb-12 sm:mb-16 backdrop-blur-sm sm:px-12 sm:py-20 dark:border-zinc-800/70 dark:bg-zinc-900/40 strawberry:border-rose-200/70 strawberry:bg-white/60 cherry:border-rose-900/70 cherry:bg-rose-950/40 seafoam:border-cyan-200/70 seafoam:bg-white/60 ocean:border-cyan-900/70 ocean:bg-cyan-950/40">
+    <section className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface/60 px-6 py-14 mb-12 sm:mb-16 backdrop-blur-sm sm:px-12 sm:py-20">
       <HeroBlobs />
       <div className="relative">
         <div
@@ -114,7 +114,7 @@ function Hero({ signInSlot }: { signInSlot: ReactNode }) {
         </div>
 
         <dl className="mt-12 grid grid-cols-2 gap-4 sm:mt-14 sm:grid-cols-4 sm:gap-6">
-          <HeroStat label="Themes" value="6" />
+          <HeroStat label="Themes" value="10" />
           <HeroStat label="Content stored" value="0 bytes" />
           <HeroStat label="Setup time" value="< 1 min" />
           <HeroStat label="Locked In?" value="Nope!" />
@@ -127,16 +127,16 @@ function Hero({ signInSlot }: { signInSlot: ReactNode }) {
 function HeroBlobs() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-400/20 blur-3xl dark:bg-blue-500/20 strawberry:bg-rose-400/30 cherry:bg-rose-500/25 seafoam:bg-cyan-400/30 ocean:bg-cyan-500/25" />
-      <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-purple-400/20 blur-3xl dark:bg-purple-500/20 strawberry:bg-pink-400/30 cherry:bg-pink-500/25 seafoam:bg-blue-400/30 ocean:bg-blue-500/25" />
-      <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-teal-400/20 blur-3xl dark:bg-teal-500/20 strawberry:bg-orange-300/30 cherry:bg-orange-500/20 seafoam:bg-emerald-400/30 ocean:bg-teal-500/25" />
+      <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
+      <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-accent-ring/25 blur-3xl" />
+      <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-accent-subtle/40 blur-3xl" />
     </div>
   );
 }
 
 function GradientText({ children }: { children: ReactNode }) {
   return (
-    <span className="bg-linear-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 strawberry:from-rose-600 strawberry:via-pink-500 strawberry:to-orange-500 cherry:from-rose-400 cherry:via-pink-400 cherry:to-orange-400 seafoam:from-cyan-600 seafoam:via-teal-500 seafoam:to-blue-500 ocean:from-cyan-400 ocean:via-teal-400 ocean:to-blue-400">
+    <span className="accent-fill bg-clip-text text-transparent">
       {children}
     </span>
   );
@@ -202,7 +202,7 @@ function FeatureCard({ icon, title, body }: Feature) {
       <div
         className={cn(
           "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-transform group-hover:scale-110",
-          "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 strawberry:bg-rose-100 strawberry:text-rose-700 cherry:bg-rose-900 cherry:text-rose-200 seafoam:bg-cyan-100 seafoam:text-cyan-700 ocean:bg-cyan-900 ocean:text-cyan-200"
+          "bg-accent-subtle text-accent-subtle-fg"
         )}
       >
         {icon}
@@ -247,7 +247,7 @@ function HowItWorks({ className }: { className?: string }) {
               <div
                 className={cn(
                   "absolute -top-3 -left-3 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold shadow-md",
-                  "bg-blue-600 text-white strawberry:bg-rose-500 cherry:bg-rose-600 seafoam:bg-cyan-600 ocean:bg-cyan-600"
+                  "accent-fill"
                 )}
                 aria-hidden
               >
@@ -256,7 +256,7 @@ function HowItWorks({ className }: { className?: string }) {
               <div
                 className={cn(
                   "inline-flex h-10 w-10 items-center justify-center rounded-lg",
-                  "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 strawberry:bg-rose-100 strawberry:text-rose-700 cherry:bg-rose-900 cherry:text-rose-200 seafoam:bg-cyan-100 seafoam:text-cyan-700 ocean:bg-cyan-900 ocean:text-cyan-200"
+                  "bg-accent-subtle text-accent-subtle-fg"
                 )}
               >
                 {step.icon}
@@ -286,13 +286,56 @@ interface ThemeSwatch {
   swatches: [string, string, string];
 }
 
-const THEME_SWATCHES: ReadonlyArray<ThemeSwatch> = [
-  { value: "light", label: "Light", kind: "light", swatches: ["#ffffff", "#e4e4e7", "#2563eb"] },
-  { value: "dark", label: "Dark", kind: "dark", swatches: ["#0a0a0a", "#27272a", "#60a5fa"] },
-  { value: "strawberry", label: "Strawberry", kind: "light", swatches: ["#fff1f2", "#fecdd3", "#e11d48"] },
-  { value: "cherry", label: "Cherry", kind: "dark", swatches: ["#1f1013", "#4c0519", "#fb7185"] },
-  { value: "seafoam", label: "Seafoam", kind: "light", swatches: ["#ecfeff", "#a5f3fc", "#0891b2"] },
-  { value: "ocean", label: "Ocean", kind: "dark", swatches: ["#0a1013", "#083344", "#22d3ee"] },
+interface ThemePair {
+  family: string;
+  light: ThemeSwatch;
+  dark: ThemeSwatch;
+}
+
+const THEME_PAIRS: ReadonlyArray<ThemePair> = [
+  {
+    family: "Neutral",
+    light: { value: "light", label: "Light", kind: "light", swatches: ["#ffffff", "#e4e4e7", "#2563eb"] },
+    dark: { value: "dark", label: "Dark", kind: "dark", swatches: ["#0a0a0a", "#27272a", "#60a5fa"] },
+  },
+  {
+    family: "Berry",
+    light: { value: "strawberry", label: "Strawberry", kind: "light", swatches: ["#fff1f2", "#fecdd3", "#e11d48"] },
+    dark: { value: "cherry", label: "Cherry", kind: "dark", swatches: ["#1f1013", "#4c0519", "#fb7185"] },
+  },
+  {
+    family: "Water",
+    light: { value: "seafoam", label: "Seafoam", kind: "light", swatches: ["#ecfeff", "#a5f3fc", "#0891b2"] },
+    dark: { value: "ocean", label: "Ocean", kind: "dark", swatches: ["#0f172a", "#1e3a8a", "#60a5fa"] },
+  },
+  {
+    family: "Sky",
+    light: { value: "sunrise", label: "Sunrise", kind: "light", swatches: ["#ffedd5", "#fbcfe8", "#0ea5e9"] },
+    dark: { value: "sunset", label: "Sunset", kind: "dark", swatches: ["#7c2d12", "#9d174d", "#818cf8"] },
+  },
+  {
+    family: "Rainbow",
+    light: {
+      value: "energy",
+      label: "Energy",
+      kind: "light",
+      swatches: [
+        "#ffffff",
+        "linear-gradient(135deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7)",
+        "#2563eb",
+      ],
+    },
+    dark: {
+      value: "ambition",
+      label: "Ambition",
+      kind: "dark",
+      swatches: [
+        "#0a0a0a",
+        "linear-gradient(135deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7)",
+        "#60a5fa",
+      ],
+    },
+  },
 ];
 
 function ThemeShowcase({ className }: { className?: string }) {
@@ -305,58 +348,84 @@ function ThemeShowcase({ className }: { className?: string }) {
           <LuPalette className="h-3.5 w-3.5" aria-hidden /> Themes
         </span>
       </SectionEyebrow>
-      <SectionTitle>Pick a mood. Or six.</SectionTitle>
+      <SectionTitle>Pick a mood. Or ten.</SectionTitle>
       <p className={cn("mt-3 max-w-2xl text-base sm:text-lg", themeClasses.text.secondary)}>
-        Tap a theme to try it now — the whole app will follow along. You can always switch again
-        from the toolbar.
+        Every theme comes with a matching light/dark counterpart — tap one to try it now.
       </p>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {THEME_SWATCHES.map((theme) => {
-          const isActive = current === theme.value;
-          return (
-            <button
-              key={theme.value}
-              type="button"
-              onClick={() => applyTheme(theme.value)}
-              aria-pressed={isActive}
-              aria-label={`Apply ${theme.label} theme`}
-              className={cn(
-                "group flex items-center gap-4 rounded-xl border p-4 text-left transition-all",
-                themeClasses.background.card,
-                isActive
-                  ? "border-blue-500 shadow-md ring-2 ring-blue-500/40 dark:border-blue-400 dark:ring-blue-400/40 strawberry:border-rose-500 strawberry:ring-rose-500/40 cherry:border-rose-400 cherry:ring-rose-400/40 seafoam:border-cyan-500 seafoam:ring-cyan-500/40 ocean:border-cyan-400 ocean:ring-cyan-400/40"
-                  : cn(themeClasses.border.card, "hover:-translate-y-0.5 hover:shadow-md")
-              )}
-            >
-              <div
-                className="flex h-14 w-14 shrink-0 items-center overflow-hidden rounded-lg border border-zinc-200/50 shadow-inner dark:border-zinc-700/50"
-                aria-hidden
-              >
-                {theme.swatches.map((color) => (
-                  <div key={color} className="h-full flex-1" style={{ backgroundColor: color }} />
-                ))}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  {theme.kind === "light" ? (
-                    <LuSun className={cn("h-4 w-4", themeClasses.text.tertiary)} aria-hidden />
-                  ) : (
-                    <LuMoon className={cn("h-4 w-4", themeClasses.text.tertiary)} aria-hidden />
-                  )}
-                  <span className={cn("text-base font-semibold", themeClasses.text.primary)}>
-                    {theme.label}
-                  </span>
-                </div>
-                <div className={cn("text-xs", themeClasses.text.tertiary)}>
-                  {isActive ? "Currently active" : "Click to apply"}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+      <div className="mt-8 grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+        {THEME_PAIRS.map((pair) => (
+          <div
+            key={pair.family}
+            className={cn(
+              "flex overflow-hidden rounded-xl border",
+              themeClasses.background.card,
+              themeClasses.border.card
+            )}
+            aria-label={`${pair.family} theme pair`}
+          >
+            <ThemeSwatchButton
+              theme={pair.light}
+              isActive={current === pair.light.value}
+              onSelect={() => applyTheme(pair.light.value)}
+            />
+            <div className={cn("w-px shrink-0", themeClasses.border.card, "border-l")} aria-hidden />
+            <ThemeSwatchButton
+              theme={pair.dark}
+              isActive={current === pair.dark.value}
+              onSelect={() => applyTheme(pair.dark.value)}
+            />
+          </div>
+        ))}
       </div>
     </section>
+  );
+}
+
+function ThemeSwatchButton({
+  theme,
+  isActive,
+  onSelect,
+}: {
+  theme: ThemeSwatch;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={isActive}
+      aria-label={`Apply ${theme.label} theme`}
+      className={cn(
+        "group flex flex-1 items-center gap-3 p-4 text-left transition-colors",
+        isActive ? "bg-accent-ring/10" : "hover:bg-accent-ring/5"
+      )}
+    >
+      <div
+        className="flex h-10 w-10 shrink-0 items-center overflow-hidden rounded-md border border-line shadow-inner"
+        aria-hidden
+      >
+        {theme.swatches.map((color) => (
+          <div key={color} className="h-full flex-1" style={{ background: color }} />
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          {theme.kind === "light" ? (
+            <LuSun className={cn("h-3.5 w-3.5", themeClasses.text.tertiary)} aria-hidden />
+          ) : (
+            <LuMoon className={cn("h-3.5 w-3.5", themeClasses.text.tertiary)} aria-hidden />
+          )}
+          <span className={cn("truncate text-sm font-semibold", themeClasses.text.primary)}>
+            {theme.label}
+          </span>
+        </div>
+        <div className={cn("truncate text-[11px]", themeClasses.text.tertiary)}>
+          {isActive ? "Currently active" : "Click to apply"}
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -495,7 +564,7 @@ function InfoCard({
         <div
           className={cn(
             "inline-flex h-9 w-9 items-center justify-center rounded-lg",
-            "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 strawberry:bg-rose-100 strawberry:text-rose-700 cherry:bg-rose-900 cherry:text-rose-200 seafoam:bg-cyan-100 seafoam:text-cyan-700 ocean:bg-cyan-900 ocean:text-cyan-200"
+            "bg-accent-subtle text-accent-subtle-fg"
           )}
         >
           {icon}
@@ -525,8 +594,8 @@ function MiniList({
 }) {
   const dotClass =
     tone === "positive"
-      ? "bg-green-500 dark:bg-green-400 strawberry:bg-emerald-500 cherry:bg-emerald-400 seafoam:bg-emerald-500 ocean:bg-emerald-400"
-      : "bg-zinc-400 dark:bg-zinc-500 strawberry:bg-rose-400 cherry:bg-rose-500 seafoam:bg-cyan-400 ocean:bg-cyan-500";
+      ? "bg-green-500 dark:bg-green-400"
+      : "bg-fg-faint";
   return (
     <div
       className={cn(
@@ -728,7 +797,7 @@ function SectionEyebrow({ children }: { children: ReactNode }) {
     <div
       className={cn(
         "text-xs font-semibold uppercase tracking-[0.2em]",
-        "text-blue-700 dark:text-blue-400 strawberry:text-rose-600 cherry:text-rose-300 seafoam:text-cyan-700 ocean:text-cyan-300"
+        "text-accent"
       )}
     >
       {children}

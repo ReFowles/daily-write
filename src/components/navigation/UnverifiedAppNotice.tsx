@@ -66,7 +66,7 @@ export function UnverifiedAppNotice() {
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-label="Why does Google show an unverified app warning?"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-950 strawberry:text-amber-600 strawberry:hover:bg-amber-100 cherry:text-amber-400 cherry:hover:bg-amber-950 seafoam:text-amber-600 seafoam:hover:bg-amber-100 ocean:text-amber-400 ocean:hover:bg-amber-950"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-500/15 dark:text-amber-400"
       >
         <LuTriangleAlert className="h-5 w-5" aria-hidden />
       </button>

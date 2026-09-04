@@ -18,7 +18,7 @@ const containerClasses = cn(
 );
 
 const errorTextClasses =
-  'text-xs text-red-600 dark:text-red-400 strawberry:text-red-700 cherry:text-red-300 seafoam:text-red-600 ocean:text-red-300';
+  'text-xs text-red-600 dark:text-red-400';
 
 /**
  * DocumentTabs component - Displays tabs for a Google Doc
@@ -127,9 +127,9 @@ export default function DocumentTabs({
             className={cn(
               'px-3 py-2 -mb-px border-b-2 transition-colors text-xs font-medium whitespace-nowrap',
               isSelected
-                ? 'border-blue-500 dark:border-blue-400 strawberry:border-rose-500 cherry:border-rose-400 seafoam:border-cyan-500 ocean:border-cyan-400 text-blue-600 dark:text-blue-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400'
+                ? 'border-accent text-accent'
                 : cn(
-                    'border-transparent hover:border-zinc-300 dark:hover:border-zinc-600 strawberry:hover:border-pink-300 cherry:hover:border-rose-700 seafoam:hover:border-cyan-300 ocean:hover:border-cyan-700 hover:text-zinc-900 dark:hover:text-zinc-50 strawberry:hover:text-rose-900 cherry:hover:text-rose-100 seafoam:hover:text-cyan-900 ocean:hover:text-cyan-100',
+                    'border-transparent hover:border-line-strong hover:text-fg',
                     themeClasses.text.secondary
                   )
             )}

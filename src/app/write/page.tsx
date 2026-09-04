@@ -429,7 +429,7 @@ export default function WritePage() {
   return (
     <main
       className={cn(
-        "bg-zinc-50 dark:bg-zinc-950 strawberry:bg-linear-to-br strawberry:from-pink-50 strawberry:via-rose-50 strawberry:to-pink-100 cherry:bg-linear-to-br cherry:from-zinc-950 cherry:via-rose-950 cherry:to-zinc-950 seafoam:bg-linear-to-br seafoam:from-cyan-50 seafoam:via-blue-50 seafoam:to-cyan-100 ocean:bg-linear-to-br ocean:from-zinc-950 ocean:via-cyan-950 ocean:to-zinc-950",
+        "surface-page",
         showPicker ? "min-h-[calc(100vh-4rem)] overflow-y-auto" : "h-[calc(100vh-4rem)] overflow-hidden",
       )}
     >
@@ -487,7 +487,7 @@ export default function WritePage() {
             
             {loadingContent ? (
               <div className="flex items-center justify-center p-12" role="status" aria-live="polite">
-                <p className="text-gray-600 dark:text-gray-400 strawberry:text-rose-600 cherry:text-rose-400 seafoam:text-cyan-600 ocean:text-cyan-400">
+                <p className="text-fg-muted">
                   Loading document content...
                 </p>
               </div>
@@ -503,7 +503,7 @@ export default function WritePage() {
                     paragraphIndent={paragraphIndent}
                   />
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 p-3 sm:p-4 dark:border-zinc-800 strawberry:border-pink-200 cherry:border-rose-900 seafoam:border-cyan-200 ocean:border-cyan-900">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line p-3 sm:p-4">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                     <button
                       type="button"
@@ -511,7 +511,7 @@ export default function WritePage() {
                       aria-pressed={focusMode}
                       aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}
                       title={focusMode ? "Exit focus mode" : "Enter focus mode"}
-                      className="cursor-pointer rounded p-1 text-zinc-500 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
+                      className="cursor-pointer rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
                     >
                       {focusMode ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
                     </button>
@@ -520,7 +520,7 @@ export default function WritePage() {
                       onClick={cycleLineSpacing}
                       aria-label={`Line spacing: ${LINE_SPACING_LABEL[lineSpacing]}. Click to cycle.`}
                       title={`Line spacing: ${LINE_SPACING_LABEL[lineSpacing]}`}
-                      className="cursor-pointer rounded p-1 text-zinc-500 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
+                      className="cursor-pointer rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
                     >
                       <LuBaseline className="h-4 w-4" />
                     </button>
@@ -531,20 +531,20 @@ export default function WritePage() {
                       aria-label={paragraphIndent ? "Turn off paragraph indent" : "Turn on paragraph indent"}
                       title={paragraphIndent ? "Paragraph indent: on" : "Paragraph indent: off"}
                       className={cn(
-                        "cursor-pointer rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400",
+                        "cursor-pointer rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring",
                         paragraphIndent
-                          ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50 strawberry:bg-pink-200 strawberry:text-rose-900 cherry:bg-rose-800 cherry:text-rose-100 seafoam:bg-cyan-200 seafoam:text-cyan-900 ocean:bg-cyan-800 ocean:text-cyan-100"
-                          : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100 strawberry:text-rose-600 strawberry:hover:text-rose-800 cherry:text-rose-500 cherry:hover:text-rose-200 seafoam:text-cyan-600 seafoam:hover:text-cyan-800 ocean:text-cyan-500 ocean:hover:text-cyan-200"
+                          ? "bg-accent-subtle text-accent-subtle-fg"
+                          : "text-fg-subtle hover:text-fg"
                       )}
                     >
                       <LuIndentIncrease className="h-4 w-4" />
                     </button>
                     {!focusMode && (
-                      <div className="flex gap-4 text-sm text-zinc-600 dark:text-zinc-400 strawberry:text-rose-700 cherry:text-rose-400 seafoam:text-cyan-700 ocean:text-cyan-400">
+                      <div className="flex gap-4 text-sm text-fg-muted">
                         <div>
                           <span className="font-semibold">{formatWordCount(wordsWrittenToday)}</span> Words Today
                         </div>
-                        <div className="text-zinc-400 dark:text-zinc-600 strawberry:text-rose-500 cherry:text-rose-600 seafoam:text-cyan-500 ocean:text-cyan-600">
+                        <div className="text-fg-faint">
                           {formatWordCount(wordCount)} Words in Doc
                         </div>
                       </div>
@@ -561,7 +561,7 @@ export default function WritePage() {
                         Error: {docSaveError}
                       </span>
                     )}
-                    <span className="text-zinc-500 dark:text-zinc-500 strawberry:text-rose-600 cherry:text-rose-500 seafoam:text-cyan-600 ocean:text-cyan-500">
+                    <span className="text-fg-subtle">
                       {saveStatus === 'saving' && 'Saving to Google Docs...'}
                       {saveStatus === 'saved' && !docSaveError && 'Saved to Google Docs'}
                       {saveStatus === 'unsaved' && !docSaveError && 'Unsaved changes'}

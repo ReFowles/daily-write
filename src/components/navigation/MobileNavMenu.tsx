@@ -41,11 +41,7 @@ export function MobileNavMenu({ children }: MobileNavMenuProps) {
         aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
         className={cn(
           "inline-flex h-10 w-10 items-center justify-center rounded-md lg:hidden",
-          "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800",
-          "strawberry:text-rose-700 strawberry:hover:bg-pink-100",
-          "cherry:text-rose-300 cherry:hover:bg-rose-900",
-          "seafoam:text-cyan-700 seafoam:hover:bg-cyan-100",
-          "ocean:text-cyan-300 ocean:hover:bg-cyan-900"
+          "text-fg-muted hover:bg-surface-muted"
         )}
       >
         {isOpen ? <LuX className="h-5 w-5" /> : <LuMenu className="h-5 w-5" />}

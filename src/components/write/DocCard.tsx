@@ -28,10 +28,10 @@ export default function DocCard({
       className={cn(
         "relative rounded-lg border transition-all",
         isSelected
-          ? "border-blue-500 bg-blue-50 dark:bg-blue-950 strawberry:border-rose-500 strawberry:bg-rose-100 cherry:border-rose-500 cherry:bg-rose-950 seafoam:border-cyan-500 seafoam:bg-cyan-100 ocean:border-cyan-500 ocean:bg-cyan-950"
+          ? "border-accent bg-accent-subtle"
           : cn(
               themeClasses.border.card,
-              "hover:border-zinc-300 dark:hover:border-zinc-600 strawberry:hover:border-pink-300 cherry:hover:border-rose-800 seafoam:hover:border-cyan-300 ocean:hover:border-cyan-800"
+              "hover:border-line-strong"
             )
       )}
     >
@@ -66,7 +66,7 @@ export default function DocCard({
           "absolute top-2 right-2 rounded p-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
           isFavorite
             ? "text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
-            : "text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 strawberry:text-rose-400 strawberry:hover:text-rose-600 cherry:text-rose-600 cherry:hover:text-rose-400 seafoam:text-cyan-400 seafoam:hover:text-cyan-600 ocean:text-cyan-600 ocean:hover:text-cyan-400"
+            : "text-fg-subtle hover:text-fg-muted"
         )}
       >
         <LuStar className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} />

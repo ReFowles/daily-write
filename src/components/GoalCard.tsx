@@ -82,8 +82,8 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               {isCompleted && (
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${
                   progress >= 100
-                    ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 cherry:bg-green-900 cherry:text-green-200 ocean:bg-green-900 ocean:text-green-200"
-                    : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cherry:bg-red-900 cherry:text-red-200 ocean:bg-red-900 ocean:text-red-200"
+                    ? "bg-green-500/15 text-green-700 dark:text-green-300"
+                    : "bg-red-500/15 text-red-700 dark:text-red-300"
                 }`}>
                   {progress >= 100 ? "Goal Met ✓" : "Goal Not Met"}
                 </span>
@@ -96,7 +96,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
           <Button
             variant="icon"
             onClick={() => onDelete(goal.id)}
-            className="text-zinc-400 transition-colors hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
+            className="text-fg-subtle transition-colors hover:text-red-600 dark:hover:text-red-400"
             aria-label="Delete goal"
           >
             <LuTrash2 className="h-5 w-5" />
@@ -135,8 +135,8 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
                       key={date}
                       className={`rounded-md px-3 py-2 text-sm ${
                         words >= goal.dailyWordTarget
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 cherry:bg-green-900 cherry:text-green-200 ocean:bg-green-900 ocean:text-green-200"
-                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cherry:bg-red-900 cherry:text-red-200 ocean:bg-red-900 ocean:text-red-200"
+                          ? "bg-green-500/15 text-green-700 dark:text-green-300"
+                          : "bg-red-500/15 text-red-700 dark:text-red-300"
                       }`}
                     >
                       <div className="font-medium">{formatDate(date)}</div>

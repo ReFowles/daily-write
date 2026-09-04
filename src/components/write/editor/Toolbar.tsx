@@ -31,36 +31,14 @@ interface ToolbarButtonProps {
   ariaLabel: string;
 }
 
-const inactiveClasses =
-  'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 ' +
-  'dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 ' +
-  'strawberry:text-rose-700 strawberry:hover:bg-pink-100 strawberry:hover:text-rose-900 ' +
-  'cherry:text-rose-300 cherry:hover:bg-rose-900 cherry:hover:text-rose-100 ' +
-  'seafoam:text-cyan-700 seafoam:hover:bg-cyan-100 seafoam:hover:text-cyan-900 ' +
-  'ocean:text-cyan-300 ocean:hover:bg-cyan-900 ocean:hover:text-cyan-100';
+const inactiveClasses = 'text-fg-muted hover:bg-surface-muted hover:text-fg';
 
-const activeClasses =
-  'bg-zinc-200 text-zinc-900 ' +
-  'dark:bg-zinc-700 dark:text-zinc-50 ' +
-  'strawberry:bg-rose-200 strawberry:text-rose-900 ' +
-  'cherry:bg-rose-700 cherry:text-rose-50 ' +
-  'seafoam:bg-cyan-200 seafoam:text-cyan-900 ' +
-  'ocean:bg-cyan-700 ocean:text-cyan-50';
+const activeClasses = 'bg-accent-subtle text-accent-subtle-fg';
 
 const toolbarContainerClasses =
-  'sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b p-2 ' +
-  'border-zinc-200 bg-zinc-50 ' +
-  'dark:border-zinc-800 dark:bg-zinc-900 ' +
-  'strawberry:border-pink-200 strawberry:bg-pink-50 ' +
-  'cherry:border-rose-900 cherry:bg-rose-950 ' +
-  'seafoam:border-cyan-200 seafoam:bg-cyan-50 ' +
-  'ocean:border-cyan-900 ocean:bg-cyan-950';
+  'sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b p-2 border-line bg-surface-muted';
 
-const dividerClasses =
-  'mx-1 h-6 w-px ' +
-  'bg-zinc-200 dark:bg-zinc-700 ' +
-  'strawberry:bg-pink-200 cherry:bg-rose-900 ' +
-  'seafoam:bg-cyan-200 ocean:bg-cyan-900';
+const dividerClasses = 'mx-1 h-6 w-px bg-line';
 
 function ToolbarButton({
   icon,

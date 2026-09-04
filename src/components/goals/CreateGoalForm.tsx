@@ -83,8 +83,8 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         Create New Goal
       </h2>
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 p-4 dark:bg-red-900/20 cherry:bg-red-900/20 ocean:bg-red-900/20">
-          <p className="text-sm text-red-800 dark:text-red-200 cherry:text-red-200 ocean:text-red-200">{error}</p>
+        <div className="mb-4 rounded-md bg-red-500/10 p-4">
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">

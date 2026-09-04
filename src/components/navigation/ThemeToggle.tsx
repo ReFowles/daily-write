@@ -9,6 +9,16 @@ function ThemeIcon({ kind }: { kind: "light" | "dark" }) {
   return kind === "light" ? <LuSun className="h-4 w-4" /> : <LuMoon className="h-4 w-4" />;
 }
 
+// Pairs mirror the About page. Order matters — light theme on the left,
+// its dark counterpart on the right.
+const THEME_PAIRS: ReadonlyArray<{ light: Theme; dark: Theme }> = [
+  { light: "light", dark: "dark" },
+  { light: "strawberry", dark: "cherry" },
+  { light: "seafoam", dark: "ocean" },
+  { light: "sunrise", dark: "sunset" },
+  { light: "energy", dark: "ambition" },
+];
+
 interface ThemeToggleProps {
   align?: "left" | "right";
 }
@@ -40,7 +50,7 @@ export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) 
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 rounded-md p-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 strawberry:text-pink-600 strawberry:hover:bg-pink-100 cherry:text-rose-400 cherry:hover:bg-rose-950 seafoam:text-cyan-600 seafoam:hover:bg-cyan-100 ocean:text-cyan-400 ocean:hover:bg-cyan-950"
+        className="flex items-center gap-2 rounded-md p-2 text-fg-muted transition-colors hover:bg-surface-muted"
         aria-label="Change theme"
       >
         <ThemeIcon kind={currentThemeData.kind} />
@@ -51,28 +61,59 @@ export default function ThemeToggle({ align = "right" }: ThemeToggleProps = {}) 
       {isOpen && (
         <div
           className={cn(
-            "absolute z-50 mt-2 w-48 rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800 strawberry:border-pink-200 strawberry:bg-pink-50 cherry:border-rose-800 cherry:bg-rose-950 seafoam:border-cyan-200 seafoam:bg-cyan-50 ocean:border-cyan-800 ocean:bg-cyan-950",
+            "absolute z-50 mt-2 w-72 rounded-md border border-line bg-surface shadow-lg",
             align === "right" ? "right-0" : "left-0"
           )}
+          role="menu"
         >
-          <div className="py-1">
-            {THEMES.map((theme) => (
-              <button
-                key={theme.value}
-                onClick={() => selectTheme(theme.value)}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-700 strawberry:hover:bg-pink-100 cherry:hover:bg-rose-900 seafoam:hover:bg-cyan-100 ocean:hover:bg-cyan-900 ${
-                  currentTheme === theme.value
-                    ? "bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50 strawberry:bg-pink-100 strawberry:text-pink-900 cherry:bg-rose-900 cherry:text-rose-100 seafoam:bg-cyan-100 seafoam:text-cyan-900 ocean:bg-cyan-900 ocean:text-cyan-100"
-                    : "text-zinc-700 dark:text-zinc-300 strawberry:text-pink-700 cherry:text-rose-300 seafoam:text-cyan-700 ocean:text-cyan-300"
-                }`}
-              >
-                <ThemeIcon kind={theme.kind} />
-                {theme.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-1 p-1">
+            {THEME_PAIRS.flatMap((pair) => [
+              <ThemeItem
+                key={pair.light}
+                theme={pair.light}
+                isActive={currentTheme === pair.light}
+                onSelect={selectTheme}
+              />,
+              <ThemeItem
+                key={pair.dark}
+                theme={pair.dark}
+                isActive={currentTheme === pair.dark}
+                onSelect={selectTheme}
+              />,
+            ])}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function ThemeItem({
+  theme,
+  isActive,
+  onSelect,
+}: {
+  theme: Theme;
+  isActive: boolean;
+  onSelect: (theme: Theme) => void;
+}) {
+  const meta = THEMES.find((t) => t.value === theme);
+  if (!meta) return null;
+
+  return (
+    <button
+      onClick={() => onSelect(theme)}
+      role="menuitemradio"
+      aria-checked={isActive}
+      className={cn(
+        "flex items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors",
+        isActive
+          ? "bg-accent-subtle text-accent-subtle-fg font-medium"
+          : "text-fg-muted hover:bg-surface-muted hover:text-fg"
+      )}
+    >
+      <ThemeIcon kind={meta.kind} />
+      {meta.label}
+    </button>
   );
 }

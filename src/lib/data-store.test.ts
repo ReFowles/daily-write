@@ -1,46 +1,52 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Goal, WritingSession } from "./types";
 
-vi.mock("./firebase", () => ({
-  getFirebaseDb: () => ({ __fake: true }),
+const TEST_EMAIL = "u1";
+
+const { getMock, addMock, docGetMock, updateMock, deleteMock, whereMock, collectionMock } =
+  vi.hoisted(() => {
+    const getMock = vi.fn();
+    const addMock = vi.fn();
+    const docGetMock = vi.fn();
+    const updateMock = vi.fn();
+    const deleteMock = vi.fn();
+
+    const docRef = { get: docGetMock, update: updateMock, delete: deleteMock };
+    const docMock = vi.fn(() => docRef);
+
+    const queryRef = {
+      where: vi.fn(),
+      get: getMock,
+      add: addMock,
+      doc: docMock,
+    };
+    queryRef.where.mockImplementation(() => queryRef);
+
+    const collectionMock = vi.fn(() => queryRef);
+
+    return {
+      getMock,
+      addMock,
+      docGetMock,
+      updateMock,
+      deleteMock,
+      whereMock: queryRef.where,
+      collectionMock,
+    };
+  });
+
+vi.mock("./firebase-admin", () => ({
+  getAdminDb: () => ({ collection: collectionMock }),
 }));
 
-vi.mock("firebase/firestore", () => {
-  const collection = vi.fn((_db: unknown, name: string) => ({ kind: "collection", name }));
-  const doc = vi.fn((_dbOrCol: unknown, name: string, id?: string) => ({
-    kind: "doc",
-    name,
-    id: id ?? "generated-id",
-  }));
-  const where = vi.fn((field: string, op: string, value: unknown) => ({ field, op, value }));
-  const query = vi.fn(
-    (
-      colRef: { name: string },
-      ...filters: Array<{ field: string; op: string; value: unknown }>
-    ) => ({ kind: "query", colRef, filters })
-  );
-  const getDocs = vi.fn();
-  const getDoc = vi.fn();
-  const addDoc = vi.fn();
-  const updateDoc = vi.fn();
-  const deleteDoc = vi.fn();
-  const Timestamp = { now: vi.fn(() => ({ __ts: "now" })) };
+vi.mock("firebase-admin/firestore", () => ({
+  Timestamp: { now: vi.fn(() => ({ __ts: "now" })) },
+}));
 
-  return {
-    collection,
-    doc,
-    where,
-    query,
-    getDocs,
-    getDoc,
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    Timestamp,
-  };
-});
+vi.mock("./auth", () => ({
+  auth: vi.fn(async () => ({ user: { email: TEST_EMAIL } })),
+}));
 
-import { addDoc, deleteDoc, getDoc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import {
   addFavoriteDoc,
   createGoal,
@@ -59,31 +65,24 @@ import {
   updateGoal,
 } from "./data-store";
 
-const getDocsMock = vi.mocked(getDocs);
-const getDocMock = vi.mocked(getDoc);
-const addDocMock = vi.mocked(addDoc);
-const updateDocMock = vi.mocked(updateDoc);
-const deleteDocMock = vi.mocked(deleteDoc);
-const whereMock = vi.mocked(where);
-const queryMock = vi.mocked(query);
-
-// Build a snapshot object shaped like Firestore's QuerySnapshot for `getDocs`.
+// Build a snapshot object shaped like the Admin SDK's QuerySnapshot for `.get()`.
 function snapshotFrom<T extends object>(items: Array<T & { id?: string }>) {
   return {
     empty: items.length === 0,
     docs: items.map((item, index) => ({
       id: item.id ?? `doc-${index}`,
+      ref: { update: updateMock, delete: deleteMock },
       data: () => item,
     })),
-  } as unknown as Awaited<ReturnType<typeof getDocs>>;
+  };
 }
 
 function docSnapshotFrom<T extends object>(data: (T & { id?: string }) | null) {
   return {
-    exists: () => data !== null,
+    exists: data !== null,
     id: data?.id ?? "doc-0",
     data: () => data,
-  } as unknown as Awaited<ReturnType<typeof getDoc>>;
+  };
 }
 
 describe("data-store", () => {
@@ -93,7 +92,7 @@ describe("data-store", () => {
 
   describe("goals", () => {
     it("getAllGoals filters by userId and sorts by startDate desc", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<Goal>([
           {
             id: "a",
@@ -114,18 +113,17 @@ describe("data-store", () => {
 
       const goals = await getAllGoals("u1");
       expect(whereMock).toHaveBeenCalledWith("userId", "==", "u1");
-      expect(queryMock).toHaveBeenCalled();
       expect(goals.map((g) => g.id)).toEqual(["b", "a"]);
     });
 
     it("getGoalById returns null when the document does not exist", async () => {
-      getDocMock.mockResolvedValueOnce(docSnapshotFrom(null));
+      docGetMock.mockResolvedValueOnce(docSnapshotFrom(null));
       const result = await getGoalById("missing");
       expect(result).toBeNull();
     });
 
     it("getGoalById returns the goal payload when found", async () => {
-      getDocMock.mockResolvedValueOnce(
+      docGetMock.mockResolvedValueOnce(
         docSnapshotFrom<Goal>({
           id: "g1",
           userId: "u1",
@@ -140,9 +138,7 @@ describe("data-store", () => {
     });
 
     it("createGoal persists the new goal and returns it with an id", async () => {
-      addDocMock.mockResolvedValueOnce({ id: "new-id" } as unknown as Awaited<
-        ReturnType<typeof addDoc>
-      >);
+      addMock.mockResolvedValueOnce({ id: "new-id" });
       const created = await createGoal({
         userId: "u1",
         startDate: "2026-06-01",
@@ -150,8 +146,8 @@ describe("data-store", () => {
         dailyWordTarget: 200,
       });
 
-      expect(addDocMock).toHaveBeenCalledTimes(1);
-      const [, payload] = addDocMock.mock.calls[0];
+      expect(addMock).toHaveBeenCalledTimes(1);
+      const [payload] = addMock.mock.calls[0];
       expect(payload).toMatchObject({
         userId: "u1",
         startDate: "2026-06-01",
@@ -162,24 +158,33 @@ describe("data-store", () => {
     });
 
     it("updateGoal forwards updates + updatedAt timestamp", async () => {
-      updateDocMock.mockResolvedValueOnce(undefined);
+      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Goal>({ id: "g1", userId: "u1" } as Goal));
+      updateMock.mockResolvedValueOnce(undefined);
       await updateGoal("g1", { dailyWordTarget: 999 });
-      const [, payload] = updateDocMock.mock.calls[0];
+      const [payload] = updateMock.mock.calls[0];
       expect(payload).toMatchObject({ dailyWordTarget: 999 });
       expect(payload).toHaveProperty("updatedAt");
     });
 
-    it("deleteGoal proxies to Firestore deleteDoc", async () => {
-      deleteDocMock.mockResolvedValueOnce(undefined);
+    it("deleteGoal proxies to Firestore delete", async () => {
+      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Goal>({ id: "g1", userId: "u1" } as Goal));
+      deleteMock.mockResolvedValueOnce(undefined);
       await deleteGoal("g1");
-      expect(deleteDocMock).toHaveBeenCalledTimes(1);
+      expect(deleteMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("updateGoal rejects when the goal belongs to another user", async () => {
+      docGetMock.mockResolvedValueOnce(
+        docSnapshotFrom<Goal>({ id: "g1", userId: "someone-else" } as Goal)
+      );
+      await expect(updateGoal("g1", { dailyWordTarget: 999 })).rejects.toThrow("Unauthorized");
     });
 
     it("getCurrentGoal returns the goal whose range covers today", async () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date(2026, 5, 15));
       try {
-        getDocsMock.mockResolvedValueOnce(
+        getMock.mockResolvedValueOnce(
           snapshotFrom<Goal>([
             {
               id: "past",
@@ -208,7 +213,7 @@ describe("data-store", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date(2030, 0, 1));
       try {
-        getDocsMock.mockResolvedValueOnce(
+        getMock.mockResolvedValueOnce(
           snapshotFrom<Goal>([
             {
               id: "past",
@@ -228,7 +233,7 @@ describe("data-store", () => {
 
   describe("writing sessions", () => {
     it("getAllWritingSessions sorts descending by date", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([
           { userId: "u1", date: "2026-01-05", wordCount: 100 },
           { userId: "u1", date: "2026-02-10", wordCount: 200 },
@@ -239,12 +244,12 @@ describe("data-store", () => {
     });
 
     it("getWritingSessionByDate returns null when snapshot is empty", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
+      getMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
       expect(await getWritingSessionByDate("u1", "2026-06-15")).toBeNull();
     });
 
     it("getWritingSessionByDate returns the first session", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([{ userId: "u1", date: "2026-06-15", wordCount: 250 }])
       );
       const session = await getWritingSessionByDate("u1", "2026-06-15");
@@ -252,7 +257,7 @@ describe("data-store", () => {
     });
 
     it("getWritingSessionsInRange filters by inclusive bounds and sorts ascending", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([
           { userId: "u1", date: "2026-05-31", wordCount: 100 },
           { userId: "u1", date: "2026-06-05", wordCount: 200 },
@@ -265,46 +270,44 @@ describe("data-store", () => {
     });
 
     it("createOrUpdateWritingSession creates when none exists for the date", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
-      addDocMock.mockResolvedValueOnce({ id: "new" } as unknown as Awaited<
-        ReturnType<typeof addDoc>
-      >);
+      getMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
+      addMock.mockResolvedValueOnce({ id: "new" });
 
       await createOrUpdateWritingSession({ userId: "u1", date: "2026-06-15", wordCount: 250 });
-      expect(addDocMock).toHaveBeenCalledTimes(1);
-      expect(updateDocMock).not.toHaveBeenCalled();
+      expect(addMock).toHaveBeenCalledTimes(1);
+      expect(updateMock).not.toHaveBeenCalled();
     });
 
     it("createOrUpdateWritingSession updates the existing doc when present", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession & { id: string }>([
           { id: "existing", userId: "u1", date: "2026-06-15", wordCount: 100 },
         ])
       );
-      updateDocMock.mockResolvedValueOnce(undefined);
+      updateMock.mockResolvedValueOnce(undefined);
 
       await createOrUpdateWritingSession({ userId: "u1", date: "2026-06-15", wordCount: 400 });
-      expect(addDocMock).not.toHaveBeenCalled();
-      expect(updateDocMock).toHaveBeenCalledTimes(1);
-      const [, payload] = updateDocMock.mock.calls[0];
+      expect(addMock).not.toHaveBeenCalled();
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      const [payload] = updateMock.mock.calls[0];
       expect(payload).toMatchObject({ wordCount: 400 });
     });
 
     it("deleteWritingSession is a no-op when the session is missing", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
+      getMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
       await deleteWritingSession("u1", "2026-06-15");
-      expect(deleteDocMock).not.toHaveBeenCalled();
+      expect(deleteMock).not.toHaveBeenCalled();
     });
 
     it("deleteWritingSession removes the matching doc", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession & { id: string }>([
           { id: "s1", userId: "u1", date: "2026-06-15", wordCount: 100 },
         ])
       );
-      deleteDocMock.mockResolvedValueOnce(undefined);
+      deleteMock.mockResolvedValueOnce(undefined);
       await deleteWritingSession("u1", "2026-06-15");
-      expect(deleteDocMock).toHaveBeenCalledTimes(1);
+      expect(deleteMock).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -319,7 +322,7 @@ describe("data-store", () => {
     });
 
     it("aggregates totals, days written, and average", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([
           { userId: "u1", date: "2026-06-13", wordCount: 100 },
           { userId: "u1", date: "2026-06-14", wordCount: 200 },
@@ -333,7 +336,7 @@ describe("data-store", () => {
     });
 
     it("counts current streak from today backwards", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([
           { userId: "u1", date: "2026-06-13", wordCount: 100 },
           { userId: "u1", date: "2026-06-14", wordCount: 200 },
@@ -345,7 +348,7 @@ describe("data-store", () => {
     });
 
     it("breaks the streak on a zero-word day", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom<WritingSession>([
           { userId: "u1", date: "2026-06-14", wordCount: 200 },
           { userId: "u1", date: "2026-06-15", wordCount: 0 },
@@ -356,7 +359,7 @@ describe("data-store", () => {
     });
 
     it("returns zeros for empty history", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
+      getMock.mockResolvedValueOnce(snapshotFrom<WritingSession>([]));
       const stats = await getWritingStats("u1");
       expect(stats).toEqual({
         totalWords: 0,
@@ -369,7 +372,7 @@ describe("data-store", () => {
 
   describe("doc favorites", () => {
     it("getFavoriteDocIds returns the docIds stored for the user", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom([
           { userId: "u1", docId: "a" },
           { userId: "u1", docId: "b" },
@@ -381,41 +384,39 @@ describe("data-store", () => {
     });
 
     it("addFavoriteDoc is a no-op when the favorite already exists", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom([{ id: "existing", userId: "u1", docId: "doc-1" }])
       );
       await addFavoriteDoc("u1", "doc-1");
-      expect(addDocMock).not.toHaveBeenCalled();
+      expect(addMock).not.toHaveBeenCalled();
     });
 
     it("addFavoriteDoc writes a new favorite when missing", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom([]));
-      addDocMock.mockResolvedValueOnce({ id: "new" } as unknown as Awaited<
-        ReturnType<typeof addDoc>
-      >);
+      getMock.mockResolvedValueOnce(snapshotFrom([]));
+      addMock.mockResolvedValueOnce({ id: "new" });
 
       await addFavoriteDoc("u1", "doc-1");
-      expect(addDocMock).toHaveBeenCalledTimes(1);
-      const [, payload] = addDocMock.mock.calls[0];
+      expect(addMock).toHaveBeenCalledTimes(1);
+      const [payload] = addMock.mock.calls[0];
       expect(payload).toMatchObject({ userId: "u1", docId: "doc-1" });
     });
 
     it("removeFavoriteDoc deletes each matching entry", async () => {
-      getDocsMock.mockResolvedValueOnce(
+      getMock.mockResolvedValueOnce(
         snapshotFrom([
           { id: "f1", userId: "u1", docId: "doc-1" },
           { id: "f2", userId: "u1", docId: "doc-1" },
         ])
       );
-      deleteDocMock.mockResolvedValue(undefined);
+      deleteMock.mockResolvedValue(undefined);
       await removeFavoriteDoc("u1", "doc-1");
-      expect(deleteDocMock).toHaveBeenCalledTimes(2);
+      expect(deleteMock).toHaveBeenCalledTimes(2);
     });
 
     it("removeFavoriteDoc is a no-op when nothing matches", async () => {
-      getDocsMock.mockResolvedValueOnce(snapshotFrom([]));
+      getMock.mockResolvedValueOnce(snapshotFrom([]));
       await removeFavoriteDoc("u1", "doc-1");
-      expect(deleteDocMock).not.toHaveBeenCalled();
+      expect(deleteMock).not.toHaveBeenCalled();
     });
   });
 });

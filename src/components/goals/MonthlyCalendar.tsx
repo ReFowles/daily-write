@@ -103,7 +103,7 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                           className={cn(
                             "absolute inset-0",
                             // Neutral header color at lower opacity
-                            "bg-zinc-200/30 dark:bg-zinc-800/30 strawberry:bg-rose-200/30 cherry:bg-rose-900/30 seafoam:bg-cyan-200/30 ocean:bg-cyan-900/30",
+                            "bg-surface-muted",
                             // Rounded corners only if truly at goal start/end
                             shouldCapLeft && "rounded-l-lg",
                             shouldCapRight && "rounded-r-lg",

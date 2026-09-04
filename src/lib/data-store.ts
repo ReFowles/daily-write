@@ -1,21 +1,15 @@
+"use server";
+
 /**
  * Data store service layer for Firebase Firestore
- * Provides CRUD operations for goals and writing sessions
+ * Server Actions only — the client never talks to Firestore directly.
+ * Uses the Admin SDK, which bypasses firestore.rules, so every function here
+ * enforces its own authorization against the NextAuth session.
  */
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  Timestamp,
-} from "firebase/firestore";
-import { getFirebaseDb } from "./firebase";
+import { Timestamp } from "firebase-admin/firestore";
+import { getAdminDb } from "./firebase-admin";
+import { auth } from "./auth";
 import { toDateString } from "./date-utils";
 import type { Goal, WritingSession } from "./types";
 
@@ -23,51 +17,91 @@ const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
 const DOC_FAVORITES_COLLECTION = "docFavorites";
 
+async function requireUserId(expectedUserId: string): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.email || session.user.email !== expectedUserId) {
+    throw new Error("Unauthorized");
+  }
+}
+
+function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
+  return {
+    id,
+    userId: data.userId,
+    startDate: data.startDate,
+    endDate: data.endDate,
+    dailyWordTarget: data.dailyWordTarget,
+  };
+}
+
+function toWritingSession(data: FirebaseFirestore.DocumentData): WritingSession {
+  return {
+    userId: data.userId,
+    date: data.date,
+    wordCount: data.wordCount,
+  };
+}
+
+// Verifies the caller owns the goal and returns its ref for update/delete.
+async function requireGoalOwnership(
+  goalId: string
+): Promise<FirebaseFirestore.DocumentReference> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) {
+    throw new Error("Unauthorized");
+  }
+
+  const goalRef = getAdminDb().collection(GOALS_COLLECTION).doc(goalId);
+  const goalDoc = await goalRef.get();
+  if (!goalDoc.exists || goalDoc.data()?.userId !== email) {
+    throw new Error("Unauthorized");
+  }
+
+  return goalRef;
+}
+
 /**
  * Goals CRUD Operations
  */
 
 export async function getAllGoals(userId: string): Promise<Goal[]> {
-  const db = getFirebaseDb();
-  const goalsRef = collection(db, GOALS_COLLECTION);
-  const q = query(goalsRef, where("userId", "==", userId));
-  const snapshot = await getDocs(q);
+  await requireUserId(userId);
 
-  const goals = snapshot.docs.map(
-    (doc) =>
-      ({
-        id: doc.id,
-        ...doc.data(),
-      }) as Goal
-  );
+  const snapshot = await getAdminDb()
+    .collection(GOALS_COLLECTION)
+    .where("userId", "==", userId)
+    .get();
+
+  const goals = snapshot.docs.map((doc) => toGoal(doc.id, doc.data()));
 
   // Sort client-side to avoid needing a composite index
   return goals.sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
 export async function getGoalById(goalId: string): Promise<Goal | null> {
-  const db = getFirebaseDb();
-  const goalRef = doc(db, GOALS_COLLECTION, goalId);
-  const goalDoc = await getDoc(goalRef);
+  const goalRef = getAdminDb().collection(GOALS_COLLECTION).doc(goalId);
+  const goalDoc = await goalRef.get();
 
-  if (!goalDoc.exists()) {
+  if (!goalDoc.exists) {
     return null;
   }
 
-  return {
-    id: goalDoc.id,
-    ...goalDoc.data(),
-  } as Goal;
+  const data = goalDoc.data()!;
+  await requireUserId(data.userId);
+
+  return toGoal(goalDoc.id, data);
 }
 
 export async function createGoal(goalData: Omit<Goal, "id">): Promise<Goal> {
-  const db = getFirebaseDb();
-  const goalsRef = collection(db, GOALS_COLLECTION);
+  await requireUserId(goalData.userId);
 
-  const docRef = await addDoc(goalsRef, {
-    ...goalData,
-    createdAt: Timestamp.now(),
-  });
+  const docRef = await getAdminDb()
+    .collection(GOALS_COLLECTION)
+    .add({
+      ...goalData,
+      createdAt: Timestamp.now(),
+    });
 
   return {
     id: docRef.id,
@@ -79,19 +113,17 @@ export async function updateGoal(
   goalId: string,
   updates: Partial<Omit<Goal, "id">>
 ): Promise<void> {
-  const db = getFirebaseDb();
-  const goalRef = doc(db, GOALS_COLLECTION, goalId);
+  const goalRef = await requireGoalOwnership(goalId);
 
-  await updateDoc(goalRef, {
+  await goalRef.update({
     ...updates,
     updatedAt: Timestamp.now(),
   });
 }
 
 export async function deleteGoal(goalId: string): Promise<void> {
-  const db = getFirebaseDb();
-  const goalRef = doc(db, GOALS_COLLECTION, goalId);
-  await deleteDoc(goalRef);
+  const goalRef = await requireGoalOwnership(goalId);
+  await goalRef.delete();
 }
 
 export async function getCurrentGoal(userId: string): Promise<Goal | null> {
@@ -110,12 +142,14 @@ export async function getCurrentGoal(userId: string): Promise<Goal | null> {
  */
 
 export async function getAllWritingSessions(userId: string): Promise<WritingSession[]> {
-  const db = getFirebaseDb();
-  const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, where("userId", "==", userId));
-  const snapshot = await getDocs(q);
+  await requireUserId(userId);
 
-  const sessions = snapshot.docs.map((doc) => doc.data() as WritingSession);
+  const snapshot = await getAdminDb()
+    .collection(SESSIONS_COLLECTION)
+    .where("userId", "==", userId)
+    .get();
+
+  const sessions = snapshot.docs.map((doc) => toWritingSession(doc.data()));
 
   // Sort client-side to avoid needing a composite index
   return sessions.sort((a, b) => b.date.localeCompare(a.date));
@@ -125,16 +159,19 @@ export async function getWritingSessionByDate(
   userId: string,
   date: string
 ): Promise<WritingSession | null> {
-  const db = getFirebaseDb();
-  const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, where("userId", "==", userId), where("date", "==", date));
-  const snapshot = await getDocs(q);
+  await requireUserId(userId);
+
+  const snapshot = await getAdminDb()
+    .collection(SESSIONS_COLLECTION)
+    .where("userId", "==", userId)
+    .where("date", "==", date)
+    .get();
 
   if (snapshot.empty) {
     return null;
   }
 
-  return snapshot.docs[0].data() as WritingSession;
+  return toWritingSession(snapshot.docs[0].data());
 }
 
 export async function getWritingSessionsInRange(
@@ -151,27 +188,24 @@ export async function getWritingSessionsInRange(
 }
 
 export async function createOrUpdateWritingSession(session: WritingSession): Promise<void> {
-  const db = getFirebaseDb();
-  const sessionsRef = collection(db, SESSIONS_COLLECTION);
+  await requireUserId(session.userId);
 
-  // Check if session already exists for this date and user
-  const q = query(
-    sessionsRef,
-    where("userId", "==", session.userId),
-    where("date", "==", session.date)
-  );
-  const snapshot = await getDocs(q);
+  const sessionsRef = getAdminDb().collection(SESSIONS_COLLECTION);
+  const snapshot = await sessionsRef
+    .where("userId", "==", session.userId)
+    .where("date", "==", session.date)
+    .get();
 
   if (snapshot.empty) {
     // Create new session
-    await addDoc(sessionsRef, {
+    await sessionsRef.add({
       ...session,
       createdAt: Timestamp.now(),
     });
   } else {
     // Update existing session
     const sessionDoc = snapshot.docs[0];
-    await updateDoc(doc(db, SESSIONS_COLLECTION, sessionDoc.id), {
+    await sessionDoc.ref.update({
       wordCount: session.wordCount,
       updatedAt: Timestamp.now(),
     });
@@ -179,15 +213,15 @@ export async function createOrUpdateWritingSession(session: WritingSession): Pro
 }
 
 export async function deleteWritingSession(userId: string, date: string): Promise<void> {
-  const db = getFirebaseDb();
-  const sessionsRef = collection(db, SESSIONS_COLLECTION);
-  const q = query(sessionsRef, where("userId", "==", userId), where("date", "==", date));
-  const snapshot = await getDocs(q);
+  await requireUserId(userId);
 
-  if (!snapshot.empty) {
-    const sessionDoc = snapshot.docs[0];
-    await deleteDoc(doc(db, SESSIONS_COLLECTION, sessionDoc.id));
-  }
+  const snapshot = await getAdminDb()
+    .collection(SESSIONS_COLLECTION)
+    .where("userId", "==", userId)
+    .where("date", "==", date)
+    .get();
+
+  await Promise.all(snapshot.docs.map((d) => d.ref.delete()));
 }
 
 /**
@@ -259,23 +293,26 @@ export async function importDummyData(
  */
 
 export async function getFavoriteDocIds(userId: string): Promise<string[]> {
-  const db = getFirebaseDb();
-  const ref = collection(db, DOC_FAVORITES_COLLECTION);
-  const q = query(ref, where("userId", "==", userId));
-  const snapshot = await getDocs(q);
+  await requireUserId(userId);
+
+  const snapshot = await getAdminDb()
+    .collection(DOC_FAVORITES_COLLECTION)
+    .where("userId", "==", userId)
+    .get();
+
   return snapshot.docs
     .map((d) => (d.data() as { docId?: unknown }).docId)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
 export async function addFavoriteDoc(userId: string, docId: string): Promise<void> {
-  const db = getFirebaseDb();
-  const ref = collection(db, DOC_FAVORITES_COLLECTION);
-  const existing = query(ref, where("userId", "==", userId), where("docId", "==", docId));
-  const snapshot = await getDocs(existing);
-  if (!snapshot.empty) return;
+  await requireUserId(userId);
 
-  await addDoc(ref, {
+  const ref = getAdminDb().collection(DOC_FAVORITES_COLLECTION);
+  const existing = await ref.where("userId", "==", userId).where("docId", "==", docId).get();
+  if (!existing.empty) return;
+
+  await ref.add({
     userId,
     docId,
     createdAt: Timestamp.now(),
@@ -283,9 +320,13 @@ export async function addFavoriteDoc(userId: string, docId: string): Promise<voi
 }
 
 export async function removeFavoriteDoc(userId: string, docId: string): Promise<void> {
-  const db = getFirebaseDb();
-  const ref = collection(db, DOC_FAVORITES_COLLECTION);
-  const existing = query(ref, where("userId", "==", userId), where("docId", "==", docId));
-  const snapshot = await getDocs(existing);
-  await Promise.all(snapshot.docs.map((d) => deleteDoc(doc(db, DOC_FAVORITES_COLLECTION, d.id))));
+  await requireUserId(userId);
+
+  const snapshot = await getAdminDb()
+    .collection(DOC_FAVORITES_COLLECTION)
+    .where("userId", "==", userId)
+    .where("docId", "==", docId)
+    .get();
+
+  await Promise.all(snapshot.docs.map((d) => d.ref.delete()));
 }

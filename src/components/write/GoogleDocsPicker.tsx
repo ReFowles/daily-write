@@ -18,7 +18,7 @@ interface GoogleDocsPickerProps {
 }
 
 const errorTextClasses =
-  "text-red-600 dark:text-red-400 strawberry:text-red-700 cherry:text-red-300 seafoam:text-red-600 ocean:text-red-300";
+  "text-red-600 dark:text-red-400";
 
 const SEARCH_DEBOUNCE_MS = 300;
 

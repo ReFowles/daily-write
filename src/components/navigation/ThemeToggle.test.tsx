@@ -2,7 +2,17 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import ThemeToggle from "./ThemeToggle";
 
-const THEME_CLASSES = ["dark", "strawberry", "cherry", "seafoam", "ocean"] as const;
+const THEME_CLASSES = [
+  "dark",
+  "strawberry",
+  "cherry",
+  "seafoam",
+  "ocean",
+  "sunrise",
+  "sunset",
+  "energy",
+  "ambition",
+] as const;
 
 function currentAppliedThemeClass(): string | undefined {
   return THEME_CLASSES.find((c) => document.documentElement.classList.contains(c));
@@ -43,14 +53,25 @@ describe("ThemeToggle", () => {
     });
   });
 
-  it("opens the menu and lists all six themes", async () => {
+  it("opens the menu and lists all ten themes", async () => {
     render(<ThemeToggle />);
-    await act(async () => {}); // flush microtask hydration
+    await act(async () => {});
 
     fireEvent.click(screen.getByRole("button", { name: /change theme/i }));
 
-    for (const label of ["Light", "Dark", "Strawberry", "Cherry", "Seafoam", "Ocean"]) {
-      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    for (const label of [
+      "Light",
+      "Dark",
+      "Strawberry",
+      "Cherry",
+      "Seafoam",
+      "Ocean",
+      "Sunrise",
+      "Sunset",
+      "Energy",
+      "Ambition",
+    ]) {
+      expect(screen.getByRole("menuitemradio", { name: label })).toBeInTheDocument();
     }
   });
 
@@ -59,12 +80,11 @@ describe("ThemeToggle", () => {
     await act(async () => {});
 
     fireEvent.click(screen.getByRole("button", { name: /change theme/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Strawberry" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Strawberry" }));
 
     expect(currentAppliedThemeClass()).toBe("strawberry");
     expect(localStorage.getItem("theme")).toBe("strawberry");
-    // Menu closed → only the trigger button remains.
-    expect(screen.queryByRole("button", { name: "Dark" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "Dark" })).not.toBeInTheDocument();
   });
 
   it("applying Light removes all theme classes", async () => {
@@ -73,10 +93,21 @@ describe("ThemeToggle", () => {
     await act(async () => {});
 
     fireEvent.click(screen.getByRole("button", { name: /change theme/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Light" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Light" }));
 
     expect(currentAppliedThemeClass()).toBeUndefined();
     expect(localStorage.getItem("theme")).toBe("light");
+  });
+
+  it("applying Ambition also adds the dark class for the shared dark palette", async () => {
+    render(<ThemeToggle />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: /change theme/i }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Ambition" }));
+
+    expect(document.documentElement.classList.contains("ambition")).toBe(true);
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
   it("clicking outside closes the menu", async () => {
@@ -89,9 +120,9 @@ describe("ThemeToggle", () => {
     await act(async () => {});
 
     fireEvent.click(screen.getByRole("button", { name: /change theme/i }));
-    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitemradio", { name: "Dark" })).toBeInTheDocument();
 
     fireEvent.mouseDown(screen.getByRole("button", { name: "outside" }));
-    expect(screen.queryByRole("button", { name: "Dark" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: "Dark" })).not.toBeInTheDocument();
   });
 });
