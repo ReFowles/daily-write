@@ -35,7 +35,8 @@ export default async function Navigation() {
             />
             <span
               className={cn(
-                "hidden text-xl font-bold sm:inline",
+                "text-xl font-bold mr-4",
+                session ? "hidden sm:inline" : "sm:hidden",
                 themeClasses.text.link
               )}
             >

@@ -34,45 +34,49 @@ export function Input({
   "aria-label": ariaLabel,
   leadingIcon,
 }: InputProps) {
-  const paddingClasses = leadingIcon ? "pl-9 pr-3 py-2" : "px-3 py-2";
-  const baseClasses = cn(
-    "w-full rounded-md border border-line bg-surface text-sm text-fg",
+  // Border lives on the wrapper so the Energy/Ambition rainbow-border rule
+  // (which uses `::before`/`::after`) can attach — `<input>` can't render
+  // pseudo-elements.
+  const wrapperClasses = cn(
+    "relative w-full rounded-md border border-line bg-surface",
+    "focus-within:border-accent-ring focus-within:ring-1 focus-within:ring-accent-ring",
+    disabled && "cursor-not-allowed opacity-50",
+    className
+  );
+
+  const inputPadding = leadingIcon ? "pl-9 pr-3 py-2" : "px-3 py-2";
+  const inputClasses = cn(
+    "block w-full bg-transparent text-sm text-fg outline-none",
     "placeholder:text-fg-faint",
-    "focus:border-accent-ring focus:outline-none focus:ring-1 focus:ring-accent-ring",
-    paddingClasses
+    inputPadding,
+    disabled && "cursor-not-allowed"
   );
-
-  const disabledClasses = disabled ? "opacity-50 cursor-not-allowed" : "";
-
-  const inputEl = (
-    <input
-      type={type}
-      id={id}
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      required={required}
-      disabled={disabled}
-      min={min}
-      max={max}
-      autoFocus={autoFocus}
-      aria-label={ariaLabel}
-      className={cn(baseClasses, disabledClasses, className)}
-    />
-  );
-
-  if (!leadingIcon) return inputEl;
 
   return (
-    <div className="relative">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-fg-faint"
-      >
-        {leadingIcon}
-      </span>
-      {inputEl}
+    <div className={wrapperClasses}>
+      {leadingIcon && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-fg-faint"
+        >
+          {leadingIcon}
+        </span>
+      )}
+      <input
+        type={type}
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        disabled={disabled}
+        min={min}
+        max={max}
+        autoFocus={autoFocus}
+        aria-label={ariaLabel}
+        className={inputClasses}
+      />
     </div>
   );
 }

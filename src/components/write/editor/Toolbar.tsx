@@ -36,7 +36,7 @@ const inactiveClasses = 'text-fg-muted hover:bg-surface-muted hover:text-fg';
 const activeClasses = 'bg-accent-subtle text-accent-subtle-fg';
 
 const toolbarContainerClasses =
-  'sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b p-2 border-line bg-surface-muted';
+  'flex flex-shrink-0 flex-wrap items-center gap-1 border-b p-2 border-line bg-surface-muted';
 
 const dividerClasses = 'mx-1 h-6 w-px bg-line';
 

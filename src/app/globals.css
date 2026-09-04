@@ -332,6 +332,176 @@
   --border-position: var(--rainbow-pan) var(--rainbow-pan);
 }
 
+/* ==========================================================================
+   Global rainbow borders (Energy / Ambition)
+   --------------------------------------------------------------------------
+   Every element that carries a Tailwind border-width utility gets two
+   pseudo-elements painted with the shared `--rainbow-gradient`. Because
+   the pseudos use the same `background-attachment: fixed` + document-
+   anchored `--border-position` as `.accent-fill` / `.themed-card`, every
+   border on the page reads the same gradient colour at its document
+   position — a card border, a nav underline, and a button outline that
+   line up vertically show the same slice of the rainbow.
+
+   Why two pseudos? A single pseudo forces one dash mask across the whole
+   ring, which meant the right/bottom endcaps of dashed borders showed
+   whatever slice of the horizontal-dash pattern happened to fall under
+   them — so a `border-r-4` cap could render narrower than a `border-l-4`
+   cap depending on the parent's width. Splitting the ring by axis lets
+   each pseudo run a dash mask that only varies along its strip's *long*
+   axis, so endcap widths are exactly `--bw-{l,r}`/`--bw-{t,b}` regardless
+   of the parent's dimensions:
+
+     - `::after` owns the horizontal (top + bottom) strips. Its padding is
+       `bw-t 0 bw-b 0`, so its border-strip mask is the full-width top and
+       bottom rows of the parent's border ring (including corners). Under
+       `.border-dashed` it gets a vertical-stripe mask → horizontal dashes.
+     - `::before` owns the vertical (left + right) strips. Its padding is
+       `0 bw-r 0 bw-l`, so its border-strip mask is the full-height left
+       and right columns (including corners). Under `.border-dashed` it
+       gets a horizontal-stripe mask → vertical dashes.
+
+   Both pseudos cover the parent's full border-box, so corners are painted
+   by both — the two dash masks are both opaque near the corners (the
+   first black band of each `repeating-linear-gradient` is 8px, and every
+   border-width we use is ≤ 4px), matching how native `border-style:
+   dashed` fills its corners.
+
+   Widths: `--bw-{t,r,b,l}` default to 0px, so `[class*="border"]` matches
+   without a width utility (e.g. `border-inherit`) render zero-width
+   pseudos. The class-scoped rules below map every Tailwind border-width
+   utility used in the app to the corresponding per-side variable, and
+   multi-class combinations (e.g. `border-y-4 border-l-4`) compose because
+   each utility only writes the sides it owns. */
+:where(.energy, .ambition) [class*="border"] {
+  --bw-t: 0px;
+  --bw-r: 0px;
+  --bw-b: 0px;
+  --bw-l: 0px;
+}
+
+/* Give the pseudo a positioned containing block *only* when the element
+   doesn't already opt into its own positioning scheme — otherwise we'd
+   clobber `position: absolute` on the theme dropdown, `position: fixed`
+   on the navbar, etc. */
+:where(.energy, .ambition) [class*="border"]:not(.absolute):not(.fixed):not(.sticky):not(.relative) {
+  position: relative;
+}
+
+/* Shared geometry + rainbow paint + base border-strip mask. Both pseudos
+   cover the parent's full border-box; they only differ in `padding` (set
+   below), which is what makes their border-strip masks isolate horizontal
+   vs. vertical edges. */
+:where(.energy, .ambition) [class*="border"]::before,
+:where(.energy, .ambition) [class*="border"]::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--bw-t));
+  right: calc(-1 * var(--bw-r));
+  bottom: calc(-1 * var(--bw-b));
+  left: calc(-1 * var(--bw-l));
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: var(--rainbow-gradient);
+  background-size: 2262.741px 2262.741px;
+  background-position: var(--border-position);
+  background-attachment: fixed;
+  /* Long-hand mask-* so the `.border-dashed` overrides can extend the
+     layer count without inheriting stale shorthand defaults. */
+  -webkit-mask-image:
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-image:
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+}
+
+/* Horizontal strips (top + bottom edges). */
+:where(.energy, .ambition) [class*="border"]::after {
+  padding: var(--bw-t) 0 var(--bw-b) 0;
+}
+
+/* Vertical strips (left + right edges). */
+:where(.energy, .ambition) [class*="border"]::before {
+  padding: 0 var(--bw-r) 0 var(--bw-l);
+}
+
+/* Map every Tailwind border-width utility to per-side `--bw-*` values. */
+:where(.energy, .ambition) .border    { --bw-t: 1px; --bw-r: 1px; --bw-b: 1px; --bw-l: 1px; }
+:where(.energy, .ambition) .border-0  { --bw-t: 0px; --bw-r: 0px; --bw-b: 0px; --bw-l: 0px; }
+:where(.energy, .ambition) .border-2  { --bw-t: 2px; --bw-r: 2px; --bw-b: 2px; --bw-l: 2px; }
+:where(.energy, .ambition) .border-4  { --bw-t: 4px; --bw-r: 4px; --bw-b: 4px; --bw-l: 4px; }
+:where(.energy, .ambition) .border-8  { --bw-t: 8px; --bw-r: 8px; --bw-b: 8px; --bw-l: 8px; }
+:where(.energy, .ambition) .border-x   { --bw-l: 1px; --bw-r: 1px; }
+:where(.energy, .ambition) .border-y   { --bw-t: 1px; --bw-b: 1px; }
+:where(.energy, .ambition) .border-x-2 { --bw-l: 2px; --bw-r: 2px; }
+:where(.energy, .ambition) .border-y-2 { --bw-t: 2px; --bw-b: 2px; }
+:where(.energy, .ambition) .border-x-4 { --bw-l: 4px; --bw-r: 4px; }
+:where(.energy, .ambition) .border-y-4 { --bw-t: 4px; --bw-b: 4px; }
+:where(.energy, .ambition) .border-t   { --bw-t: 1px; }
+:where(.energy, .ambition) .border-r   { --bw-r: 1px; }
+:where(.energy, .ambition) .border-b   { --bw-b: 1px; }
+:where(.energy, .ambition) .border-l   { --bw-l: 1px; }
+:where(.energy, .ambition) .border-t-2 { --bw-t: 2px; }
+:where(.energy, .ambition) .border-r-2 { --bw-r: 2px; }
+:where(.energy, .ambition) .border-b-2 { --bw-b: 2px; }
+:where(.energy, .ambition) .border-l-2 { --bw-l: 2px; }
+:where(.energy, .ambition) .border-t-4 { --bw-t: 4px; }
+:where(.energy, .ambition) .border-r-4 { --bw-r: 4px; }
+:where(.energy, .ambition) .border-b-4 { --bw-b: 4px; }
+:where(.energy, .ambition) .border-l-4 { --bw-l: 4px; }
+
+/* Dashed borders: overlay a per-axis dash mask on the pseudo that owns
+   the matching strips. `.border-2.border-dashed` (future day cards) is
+   excluded so those keep their native gray dashes — the small border
+   width doesn't read as clearly under the rainbow. */
+:where(.energy, .ambition) .border-dashed:not(.border-2) {
+  border-color: transparent;
+}
+
+/* Horizontal dashes on top + bottom strips (via `::after`). */
+:where(.energy, .ambition) .border-dashed:not(.border-2)::after {
+  -webkit-mask-image:
+    repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 12px),
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  -webkit-mask-clip: border-box, content-box, border-box;
+  -webkit-mask-composite: source-in, xor;
+  mask-image:
+    repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 12px),
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  mask-clip: border-box, content-box, border-box;
+  mask-composite: intersect, exclude;
+}
+
+/* Vertical dashes on left + right strips (via `::before`). */
+:where(.energy, .ambition) .border-dashed:not(.border-2)::before {
+  -webkit-mask-image:
+    repeating-linear-gradient(to bottom, #000 0 8px, transparent 8px 12px),
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  -webkit-mask-clip: border-box, content-box, border-box;
+  -webkit-mask-composite: source-in, xor;
+  mask-image:
+    repeating-linear-gradient(to bottom, #000 0 8px, transparent 8px 12px),
+    linear-gradient(#000 0 0),
+    linear-gradient(#000 0 0);
+  mask-clip: border-box, content-box, border-box;
+  mask-composite: intersect, exclude;
+}
+
+/* Future day cards: hide both rainbow pseudos so their native gray dashed
+   border shows through. */
+:where(.energy, .ambition) .border-2.border-dashed::before,
+:where(.energy, .ambition) .border-2.border-dashed::after {
+  content: none;
+}
+
 /* Monotonic top-left → bottom-right pan by animating a length variable.
    Because `--rainbow-pan` is `inherits: true`, the value flows to every
    descendant so their `background-position` calc resolves to the same

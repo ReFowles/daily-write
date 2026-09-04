@@ -83,9 +83,15 @@ export function Editor({ content, onChange, placeholder, className, lineSpacing 
   }, [content, editor]);
 
   return (
-    <div className="editor-root">
+    <div className="editor-root flex h-full min-h-0 flex-col">
       <Toolbar editor={editor} />
-      <div className={cn(LINE_SPACING_CLASSES[lineSpacing], paragraphIndent && PARAGRAPH_INDENT_CLASS)}>
+      <div
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto',
+          LINE_SPACING_CLASSES[lineSpacing],
+          paragraphIndent && PARAGRAPH_INDENT_CLASS
+        )}
+      >
         <EditorContent editor={editor} />
       </div>
     </div>

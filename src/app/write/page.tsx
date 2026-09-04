@@ -22,6 +22,7 @@ import {
   booleanFromLocalStorage,
   useLocalStorageState,
 } from "@/lib/use-local-storage-state";
+import { useFocusMode } from "@/lib/use-focus-mode";
 import { classifyGoogleDocsSaveResponse } from "@/lib/google-docs-save-response";
 import {
   computeWordsWrittenToday,
@@ -30,7 +31,6 @@ import {
 } from "@/lib/write-session-math";
 import dynamic from 'next/dynamic';
 
-const FOCUS_MODE_STORAGE_KEY = "daily-write:focus-mode";
 const LINE_SPACING_STORAGE_KEY = "daily-write:line-spacing";
 const PARAGRAPH_INDENT_STORAGE_KEY = "daily-write:paragraph-indent";
 
@@ -73,11 +73,7 @@ export default function WritePage() {
   const [driftBlocked, setDriftBlocked] = useState(false);
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [focusMode, setFocusMode] = useLocalStorageState(
-    FOCUS_MODE_STORAGE_KEY,
-    false,
-    booleanFromLocalStorage
-  );
+  const [focusMode, setFocusMode] = useFocusMode();
   const [lineSpacing, setLineSpacing] = useLocalStorageState<LineSpacingValue>(
     LINE_SPACING_STORAGE_KEY,
     'normal',
@@ -430,7 +426,9 @@ export default function WritePage() {
     <main
       className={cn(
         "surface-page",
-        showPicker ? "min-h-[calc(100vh-4rem)] overflow-y-auto" : "h-[calc(100vh-4rem)] overflow-hidden",
+        showPicker
+          ? cn(focusMode ? "min-h-screen" : "min-h-[calc(100vh-4rem)]", "overflow-y-auto")
+          : cn(focusMode ? "h-screen" : "h-[calc(100vh-4rem)]", "overflow-hidden"),
       )}
     >
       <div
@@ -493,7 +491,7 @@ export default function WritePage() {
               </div>
             ) : (
               <>
-                <div className="flex-1 overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-hidden">
                   <Editor
                     key={`${selectedDoc.id}-${selectedTab?.tabId ?? 'default'}`}
                     content={content}

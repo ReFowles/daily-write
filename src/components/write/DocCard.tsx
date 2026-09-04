@@ -1,6 +1,7 @@
 "use client";
 
-import { LuStar } from "react-icons/lu";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { LuInfo, LuStar } from "react-icons/lu";
 import { formatDistanceToNow } from "@/lib/date-utils";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
@@ -23,6 +24,58 @@ export default function DocCard({
 }: DocCardProps) {
   const modifiedDate = new Date(doc.modifiedTime);
 
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const pathRef = useRef<HTMLParagraphElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const [isClipped, setIsClipped] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
+  // Detect horizontal truncation on the title and/or breadcrumb so we only
+  // surface the info affordance when the user actually can't read them.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const t = titleRef.current;
+      const p = pathRef.current;
+      const clipped =
+        (!!t && t.scrollWidth > t.clientWidth) ||
+        (!!p && p.scrollWidth > p.clientWidth);
+      setIsClipped(clipped);
+    };
+    measure();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    if (titleRef.current) ro.observe(titleRef.current);
+    if (pathRef.current) ro.observe(pathRef.current);
+    return () => ro.disconnect();
+  }, [doc.name, doc.path]);
+
+  useEffect(() => {
+    if (!popoverOpen) return;
+
+    const handlePointer = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (popoverRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setPopoverOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPopoverOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [popoverOpen]);
+
   return (
     <div
       className={cn(
@@ -38,14 +91,23 @@ export default function DocCard({
       <button
         type="button"
         onClick={() => onSelect(doc)}
-        className="w-full pr-9 text-left p-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className={cn(
+          "w-full text-left p-3 pr-9 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          isClipped && "pb-8"
+        )}
         aria-label={`Open ${doc.name}`}
       >
-        <h3 className={cn("text-sm font-medium truncate", themeClasses.text.primary)}>
+        <h3
+          ref={titleRef}
+          className={cn("text-sm font-medium truncate", themeClasses.text.primary)}
+        >
           {doc.name}
         </h3>
         {doc.path && (
-          <p className={cn("text-xs mt-1 truncate", themeClasses.text.secondary)} title={doc.path}>
+          <p
+            ref={pathRef}
+            className={cn("text-xs mt-1 truncate", themeClasses.text.secondary)}
+          >
             {doc.path}
           </p>
         )}
@@ -71,6 +133,47 @@ export default function DocCard({
       >
         <LuStar className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} />
       </button>
+      {isClipped && (
+        <>
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setPopoverOpen((open) => !open);
+            }}
+            aria-expanded={popoverOpen}
+            aria-haspopup="dialog"
+            aria-label={`Show full details for ${doc.name}`}
+            title="Show full title and path"
+            className="absolute bottom-2 right-2 rounded p-1 cursor-pointer text-fg-subtle hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <LuInfo className="h-4 w-4" />
+          </button>
+          {popoverOpen && (
+            <div
+              ref={popoverRef}
+              role="dialog"
+              aria-label={`Full details for ${doc.name}`}
+              className={cn(
+                "absolute z-10 right-2 bottom-10 w-64 max-w-[calc(100vw-2rem)] rounded-md border p-3 shadow-lg",
+                themeClasses.background.card,
+                themeClasses.border.card
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className={cn("text-sm font-medium break-words", themeClasses.text.primary)}>
+                {doc.name}
+              </p>
+              {doc.path && (
+                <p className={cn("text-xs mt-1 break-words", themeClasses.text.secondary)}>
+                  {doc.path}
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

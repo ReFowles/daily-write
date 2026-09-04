@@ -358,7 +358,7 @@ function ThemeShowcase({ className }: { className?: string }) {
           <div
             key={pair.family}
             className={cn(
-              "flex overflow-hidden rounded-xl border",
+              "flex rounded-xl border",
               themeClasses.background.card,
               themeClasses.border.card
             )}
@@ -368,12 +368,14 @@ function ThemeShowcase({ className }: { className?: string }) {
               theme={pair.light}
               isActive={current === pair.light.value}
               onSelect={() => applyTheme(pair.light.value)}
+              className="rounded-l-xl"
             />
             <div className={cn("w-px shrink-0", themeClasses.border.card, "border-l")} aria-hidden />
             <ThemeSwatchButton
               theme={pair.dark}
               isActive={current === pair.dark.value}
               onSelect={() => applyTheme(pair.dark.value)}
+              className="rounded-r-xl"
             />
           </div>
         ))}
@@ -386,10 +388,12 @@ function ThemeSwatchButton({
   theme,
   isActive,
   onSelect,
+  className,
 }: {
   theme: ThemeSwatch;
   isActive: boolean;
   onSelect: () => void;
+  className?: string;
 }) {
   return (
     <button
@@ -399,7 +403,8 @@ function ThemeSwatchButton({
       aria-label={`Apply ${theme.label} theme`}
       className={cn(
         "group flex flex-1 items-center gap-3 p-4 text-left transition-colors",
-        isActive ? "bg-accent-ring/10" : "hover:bg-accent-ring/5"
+        isActive ? "bg-accent-ring/10" : "hover:bg-accent-ring/5",
+        className
       )}
     >
       <div

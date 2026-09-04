@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/navigation/Navigation";
+import NavigationChrome from "@/components/navigation/NavigationChrome";
 import ThemeInit from "./theme-init";
 import RainbowScrollSync from "./rainbow-scroll-sync";
 
@@ -35,8 +36,9 @@ export default function RootLayout({
         <SessionProvider>
           <ThemeInit />
           <RainbowScrollSync />
-          <Navigation />
-          <div className="pt-16">{children}</div>
+          <NavigationChrome navigation={<Navigation />}>
+            {children}
+          </NavigationChrome>
         </SessionProvider>
       </body>
     </html>
