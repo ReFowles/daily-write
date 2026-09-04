@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import Navigation from "@/components/navigation/Navigation";
 import ThemeInit from "./theme-init";
+import RainbowScrollSync from "./rainbow-scroll-sync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
       >
         <SessionProvider>
           <ThemeInit />
+          <RainbowScrollSync />
           <Navigation />
           <div className="pt-16">{children}</div>
         </SessionProvider>

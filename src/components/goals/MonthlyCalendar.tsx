@@ -107,8 +107,9 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                             // Rounded corners only if truly at goal start/end
                             shouldCapLeft && "rounded-l-lg",
                             shouldCapRight && "rounded-r-lg",
-                            // Thick dashed border styling.
-                            "border-y-4 border-dashed border-line-strong",
+                            // Thick dashed border styling
+                            "border-y-4 border-dashed",
+                            themeClasses.border.default,
                             shouldCapLeft && "border-l-4",
                             shouldCapRight && "border-r-4",
                             // Add horizontal spacing when goals transition

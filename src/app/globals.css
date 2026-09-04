@@ -47,6 +47,15 @@
    `prose dark:prose-invert` and the built-in `dark:` variant Tailwind ships. */
 @custom-variant dark (&:is(.dark *));
 
+/* Registered so keyframes can interpolate it smoothly. Animates on <html>
+   under .energy/.ambition and inherits down to every descendant, so the
+   shared gradient stays in phase across every rainbow element. */
+@property --rainbow-pan {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 /* ==========================================================================
    Per-theme overrides
    --------------------------------------------------------------------------
@@ -62,37 +71,28 @@
   --nav-bg-image: none;
   --accent-image: none;
   --accent-image-hover: none;
-  --accent-animation: none;
   --accent-size: auto;
+  --accent-position: 0 0;
+  --accent-attachment: scroll;
   --border-image: none;
-  --border-animation: none;
   --border-size: auto;
+  --border-position: 0 0;
+  --border-attachment: scroll;
 
-  /* Seamless repeating rainbow: 8 stops evenly spaced over 400px along the
-     135° diagonal, wrapping red→red. Because the pattern tiles at 400px, any
-     animation that translates by one tile length looks continuous. */
+  /* Seamless repeating rainbow: 8 stops evenly spaced over 1600px along the
+     135° diagonal, wrapping red→red. The 1600px period gives each colour
+     band ~200px along the diagonal so a card-sized surface only reveals a
+     few colours at once. Used by both accent surfaces and card borders so
+     they read the same colour at the same document position. */
   --rainbow-gradient: repeating-linear-gradient(
     135deg,
     #ff3b3b 0px,
-    #ff9b3b 50px,
-    #ffe23b 100px,
-    #3bff5c 150px,
-    #3bd7ff 200px,
-    #3b5cff 250px,
-    #b03bff 300px,
-    #ff3b3b 400px
-  );
-
-  /* Calmer 3-stop variant for borders, stretched 4× along the 135° diagonal
-     so a card-sized border only reveals a slice of the spectrum at once.
-     Tile size and pan translation must scale by the same factor as the
-     stops — see --border-size on .energy/.ambition and the
-     `rainbow-border-pan` keyframes below. */
-  --rainbow-border-gradient: repeating-linear-gradient(
-    135deg,
-    #ff3b3b 0px,
-    #3bff5c 533.333px,
-    #3b5cff 1066.667px,
+    #ff9b3b 200px,
+    #ffe23b 400px,
+    #3bff5c 600px,
+    #3bd7ff 800px,
+    #3b5cff 1000px,
+    #b03bff 1200px,
     #ff3b3b 1600px
   );
 }
@@ -106,8 +106,9 @@
   --color-surface: #18181b;
   --color-surface-muted: #27272a;
   --color-surface-sunken: #3f3f46;
-  --color-line: #27272a;
-  --color-line-strong: #3f3f46;
+  /* Bumped up one step so borders don't disappear on bg-surface-muted */
+  --color-line: #3f3f46;
+  --color-line-strong: #52525b;
   --color-accent: #3b82f6;
   --color-accent-hover: #60a5fa;
   --color-accent-fg: #ffffff;
@@ -260,8 +261,9 @@
   --color-surface: #2b0a05;
   --color-surface-muted: #7c2d12;
   --color-surface-sunken: #9a3412;
-  --color-line: #7c2d12;
-  --color-line-strong: #9a3412;
+  /* Bumped up one step so borders don't disappear on bg-surface-muted */
+  --color-line: #9a3412;
+  --color-line-strong: #c2410c;
   --color-accent: #6366f1;
   --color-accent-hover: #818cf8;
   --color-accent-fg: #ffffff;
@@ -277,62 +279,74 @@
   --accent-image-hover: linear-gradient(to right, #f97316, #d946ef);
 }
 
-/* Energy + Ambition: each element runs its own monotonic rainbow pan. The
-   pattern is bound to the element's own box, so scrolling and bg-clip:text
-   behave normally at the cost of colors not lining up across elements.
-   --accent-size/--border-size must be an exact multiple of the gradient's
-   true repeat period projected onto each axis (400px / cos(45°) ≈
-   565.685px) — leaving it `auto` sizes the tile to the element's own box,
-   which almost never matches that period and produces a visible seam where
-   the tile wraps, making the pan look like it "jumps" between quadrants
-   instead of flowing smoothly through the color wheel. */
-.energy {
-  --accent-image: var(--rainbow-gradient);
-  --accent-image-hover: var(--rainbow-gradient);
-  --accent-animation: rainbow-pan 20s linear infinite;
-  --accent-size: 565.685px 565.685px;
-  --border-image: var(--rainbow-border-gradient);
-  --border-animation: rainbow-border-pan 20s linear infinite;
-  --border-size: 2262.741px 2262.741px;
-  --color-accent-fg: #ffffff;
-  --color-accent-ring: #a855f7;
-}
+/* Energy + Ambition: a single rainbow gradient spans the whole document.
+   Every rainbow surface (accent fills AND card borders) renders
+   `--rainbow-gradient` with `background-attachment: fixed`
+   (viewport-anchored) plus a negative scroll offset applied via
+   `--scroll-x`/`--scroll-y` (set by RainbowScrollSync on scroll), which
+   effectively converts viewport-anchoring into document-anchoring: an
+   element at document (x, y) always shows the gradient colour at gradient
+   coordinate (x, y), regardless of scroll.
 
+   Accent and border use the exact same gradient, tile size, and pan so a
+   badge sitting at a card's corner reads the same colour as the border
+   right next to it.
+
+   The animated pan (`--rainbow-pan`) is registered via @property so it
+   interpolates smoothly, and is animated on <html> (via .energy /
+   .ambition) so descendants inherit the same value each frame and stay in
+   phase.
+
+   --accent-size / --border-size must be an exact multiple of the
+   gradient's true repeat period projected onto each axis
+   (1600px / cos(45°) ≈ 2262.741px) so tile wraps are seamless. */
+.energy,
 .ambition {
   --accent-image: var(--rainbow-gradient);
   --accent-image-hover: var(--rainbow-gradient);
-  --accent-animation: rainbow-pan 20s linear infinite;
-  --accent-size: 565.685px 565.685px;
-  --border-image: var(--rainbow-border-gradient);
-  --border-animation: rainbow-border-pan 20s linear infinite;
+  --accent-size: 2262.741px 2262.741px;
+  --accent-attachment: fixed;
+  --accent-position:
+    calc(var(--rainbow-pan) - var(--scroll-x, 0px))
+    calc(var(--rainbow-pan) - var(--scroll-y, 0px));
+  --border-image: var(--rainbow-gradient);
   --border-size: 2262.741px 2262.741px;
+  --border-attachment: fixed;
+  --border-position: var(--accent-position);
   --color-accent-fg: #ffffff;
   --color-accent-ring: #a855f7;
+  animation: rainbow-pan 20s linear infinite;
 }
 
-/* Monotonic top-left → bottom-right pan: increasing background-position
-   shifts the image toward the bottom-right, which drags the red band that
-   direction. 282.843px ≈ 400/√2 is exactly one tile of the rainbow along
-   the diagonal, so the end frame matches the start frame and the loop is
-   invisible — no reversal, no jump. */
+/* Fixed-position surfaces have a constant viewport position but a
+   scroll-dependent "document" position, so folding `--scroll-x/y` into the
+   background position makes their colour race through the spectrum as the
+   page scrolls. Rebind the position vars on the fixed nav so its rainbow
+   surfaces stay locked to their viewport slice of the shared gradient.
+   (Overriding `--scroll-x/y` on nav would not work: `--accent-position` is
+   substituted at declaration on <html>, so the html-level scroll values are
+   already baked into the inherited value.) */
+.energy nav,
+.ambition nav {
+  --accent-position: var(--rainbow-pan) var(--rainbow-pan);
+  --border-position: var(--rainbow-pan) var(--rainbow-pan);
+}
+
+/* Monotonic top-left → bottom-right pan by animating a length variable.
+   Because `--rainbow-pan` is `inherits: true`, the value flows to every
+   descendant so their `background-position` calc resolves to the same
+   number on the same frame. 1131.372px ≈ 1600/√2 is exactly one tile of
+   the rainbow along the diagonal, so the end frame matches the start frame
+   and the loop is invisible. */
 @keyframes rainbow-pan {
-  from { background-position: 0 0; }
-  to   { background-position: 282.843px 282.843px; }
-}
-
-/* Border variant: same monotonic 135° pan, but one full tile is 4× longer
-   (1600px along the diagonal → 1131.372px projected on each axis) to match
-   the stretched --rainbow-border-gradient stops. */
-@keyframes rainbow-border-pan {
-  from { background-position: 0 0; }
-  to   { background-position: 1131.372px 1131.372px; }
+  from { --rainbow-pan: 0px; }
+  to   { --rainbow-pan: 1131.372px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .energy,
   .ambition {
-    --accent-animation: none;
-    --border-animation: none;
+    animation: none;
   }
 }
 
@@ -359,12 +373,16 @@ body {
   }
 
   /* Primary accent surface (buttons, progress bars, filled highlights).
-     Under Energy/Ambition the gradient becomes an animated rainbow. */
+     Under Energy/Ambition the gradient is document-anchored via
+     `background-attachment: fixed` + a `--scroll-x/y` offset baked into
+     `--accent-position`, so every rainbow surface on the page shows the
+     slice of the shared gradient that lives under its document position. */
   .accent-fill {
     background-color: var(--color-accent);
     background-image: var(--accent-image);
     background-size: var(--accent-size);
-    animation: var(--accent-animation);
+    background-position: var(--accent-position);
+    background-attachment: var(--accent-attachment);
     color: var(--color-accent-fg);
   }
   .accent-fill:hover {
@@ -375,7 +393,8 @@ body {
   /* Card with a themed border. Uses two backgrounds so the border layer can
      be an animated rainbow (Energy/Ambition) while the interior stays the
      surface color. Falls back to a plain solid border when
-     `--border-image` is `none`. */
+     `--border-image` is `none`. The border layer participates in the same
+     document-anchored gradient as `.accent-fill`. */
   .themed-card {
     background-color: var(--color-surface);
     background-image:
@@ -384,7 +403,8 @@ body {
     background-origin: border-box, border-box;
     background-clip: padding-box, border-box;
     background-size: auto, var(--border-size);
-    animation: var(--border-animation);
+    background-position: 0 0, var(--border-position);
+    background-attachment: scroll, var(--border-attachment);
     border: 1px solid var(--color-line);
   }
   /* When the theme opts into a rainbow border, hide the fallback solid stroke. */

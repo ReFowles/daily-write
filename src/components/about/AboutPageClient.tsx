@@ -198,7 +198,7 @@ function FeatureGrid({ className }: { className?: string }) {
 
 function FeatureCard({ icon, title, body }: Feature) {
   return (
-    <Card className="group h-full p-6 transition-all hover:-translate-y-1 hover:shadow-lg">
+    <Card className="group h-full p-6 transition-[transform,box-shadow] hover:-translate-y-1 hover:shadow-lg">
       <div
         className={cn(
           "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-transform group-hover:scale-110",
