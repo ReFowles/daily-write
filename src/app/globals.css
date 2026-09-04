@@ -259,11 +259,11 @@
   --color-fg-faint: #ea580c;
   --color-fg-inverted: #0c0a09;
   --color-surface: #2b0a05;
-  --color-surface-muted: #7c2d12;
-  --color-surface-sunken: #9a3412;
+  --color-surface-muted: #431407;
+  --color-surface-sunken: #7c2d12;
   /* Bumped up one step so borders don't disappear on bg-surface-muted */
-  --color-line: #9a3412;
-  --color-line-strong: #c2410c;
+  --color-line: #7c2d12;
+  --color-line-strong: #9a3412;
   --color-accent: #6366f1;
   --color-accent-hover: #818cf8;
   --color-accent-fg: #ffffff;
