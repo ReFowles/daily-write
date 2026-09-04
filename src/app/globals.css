@@ -82,6 +82,19 @@
     #b03bff 300px,
     #ff3b3b 400px
   );
+
+  /* Calmer 3-stop variant for borders, stretched 4× along the 135° diagonal
+     so a card-sized border only reveals a slice of the spectrum at once.
+     Tile size and pan translation must scale by the same factor as the
+     stops — see --border-size on .energy/.ambition and the
+     `rainbow-border-pan` keyframes below. */
+  --rainbow-border-gradient: repeating-linear-gradient(
+    135deg,
+    #ff3b3b 0px,
+    #3bff5c 533.333px,
+    #3b5cff 1066.667px,
+    #ff3b3b 1600px
+  );
 }
 
 .dark {
@@ -278,9 +291,9 @@
   --accent-image-hover: var(--rainbow-gradient);
   --accent-animation: rainbow-pan 20s linear infinite;
   --accent-size: 565.685px 565.685px;
-  --border-image: var(--rainbow-gradient);
-  --border-animation: rainbow-pan 20s linear infinite;
-  --border-size: 565.685px 565.685px;
+  --border-image: var(--rainbow-border-gradient);
+  --border-animation: rainbow-border-pan 20s linear infinite;
+  --border-size: 2262.741px 2262.741px;
   --color-accent-fg: #ffffff;
   --color-accent-ring: #a855f7;
 }
@@ -290,9 +303,9 @@
   --accent-image-hover: var(--rainbow-gradient);
   --accent-animation: rainbow-pan 20s linear infinite;
   --accent-size: 565.685px 565.685px;
-  --border-image: var(--rainbow-gradient);
-  --border-animation: rainbow-pan 20s linear infinite;
-  --border-size: 565.685px 565.685px;
+  --border-image: var(--rainbow-border-gradient);
+  --border-animation: rainbow-border-pan 20s linear infinite;
+  --border-size: 2262.741px 2262.741px;
   --color-accent-fg: #ffffff;
   --color-accent-ring: #a855f7;
 }
@@ -305,6 +318,14 @@
 @keyframes rainbow-pan {
   from { background-position: 0 0; }
   to   { background-position: 282.843px 282.843px; }
+}
+
+/* Border variant: same monotonic 135° pan, but one full tile is 4× longer
+   (1600px along the diagonal → 1131.372px projected on each axis) to match
+   the stretched --rainbow-border-gradient stops. */
+@keyframes rainbow-border-pan {
+  from { background-position: 0 0; }
+  to   { background-position: 1131.372px 1131.372px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

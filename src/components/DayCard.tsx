@@ -32,7 +32,7 @@ export function DayCard({
   const containerClasses = cn(
     "flex flex-col overflow-hidden transition-all",
     isCompact ? "rounded-md min-h-12 sm:min-h-15" : "rounded-lg",
-    isFuture && "border-2 border-dashed border-line opacity-60",
+    isFuture && "border-2 border-dashed border-line-strong opacity-60",
     !isCompact && isToday && "shadow-lg scale-105",
     isToday && meetsGoal && "border-2 border-green-500",
     isToday && !meetsGoal && "border-2 border-line-strong",
