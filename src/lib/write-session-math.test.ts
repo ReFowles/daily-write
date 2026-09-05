@@ -48,14 +48,26 @@ describe("computeWordsWrittenToday", () => {
     ).toBe(400);
   });
 
-  it("never sends the total below the session baseline", () => {
+  it("lets deletions of the user's own prior writing decrement the total", () => {
+    // Session baseline came from earlier writing in this same doc, so
+    // deleting some of it (dropping below docStart) should subtract.
+    expect(
+      computeWordsWrittenToday({
+        sessionStartWordCount: 85,
+        docStartWordCount: 500,
+        wordCount: 495,
+      })
+    ).toBe(80);
+  });
+
+  it("clamps the total at zero on a large cleanup pass", () => {
     expect(
       computeWordsWrittenToday({
         sessionStartWordCount: 400,
         docStartWordCount: 1000,
         wordCount: 500,
       })
-    ).toBe(400);
+    ).toBe(0);
   });
 });
 
@@ -140,5 +152,9 @@ describe("hasUnsavedSessionChanges", () => {
     // Editing a saved doc and deleting later text can push the total down;
     // we still want to flush the new (lower) figure to Firestore.
     expect(hasUnsavedSessionChanges(450, 500)).toBe(true);
+  });
+
+  it("is true when everything the user wrote today has been deleted", () => {
+    expect(hasUnsavedSessionChanges(0, 500)).toBe(true);
   });
 });

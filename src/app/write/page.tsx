@@ -102,6 +102,21 @@ export default function WritePage() {
   // Ref to track if we're currently saving to avoid race conditions
   const isSavingToDoc = useRef(false);
 
+  // Latest wordsWrittenToday for callbacks that fire outside of render — the
+  // ref is synced in a useEffect below so we never read a mutated ref during
+  // render (React Compiler / concurrent rendering safe).
+  const wordsWrittenTodayRef = useRef(0);
+
+  // Snapshot the current running total into sessionStartWordCount and clear
+  // the doc-scoped baselines so the next doc/tab starts fresh without losing
+  // credit. Safe to call redundantly — if the baseline already matches
+  // (delta 0) sessionStart stays put.
+  const commitCurrentDocContribution = useCallback(() => {
+    setSessionStartWordCount(wordsWrittenTodayRef.current);
+    setDocStartWordCount(0);
+    setWordCount(0);
+  }, []);
+
   const cycleLineSpacing = useCallback(() => {
     setLineSpacing((current) => {
       const idx = LINE_SPACING_CYCLE.indexOf(current);
@@ -209,6 +224,8 @@ export default function WritePage() {
   }, []);
 
   const handleSelectDoc = async (doc: GoogleDoc) => {
+    // Preserve any words added to the outgoing doc before the baseline is cleared.
+    commitCurrentDocContribution();
     setSelectedDoc(doc);
     setSelectedTab(null); // Clear tab selection - will be set by DocumentTabs component
     setShowPicker(false);
@@ -221,8 +238,6 @@ export default function WritePage() {
     setLastSavedContent(null);
     setBaseRevisionId(null);
     setDriftBlocked(false);
-    setWordCount(0);
-    setDocStartWordCount(0);
     setLoadingContent(false);
   };
 
@@ -261,6 +276,9 @@ export default function WritePage() {
       
       // Calculate initial word count from loaded content
       const initialCount = calculateWordCount(getPlainText(loadedContent));
+      // Roll the outgoing tab's contribution into sessionStart before we
+      // replace the baseline with the new tab's count.
+      commitCurrentDocContribution();
       setWordCount(initialCount);
       setDocStartWordCount(initialCount);
     } catch (error) {
@@ -272,7 +290,7 @@ export default function WritePage() {
     } finally {
       setLoadingContent(false);
     }
-  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs]);
+  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs, commitCurrentDocContribution]);
 
   const handleContentChange = useCallback((next: DocumentContent) => {
     setContent(next);
@@ -292,6 +310,12 @@ export default function WritePage() {
     wordCount,
     docStartWordCount,
   });
+
+  // Keep the ref in sync for callbacks (doc switch, tab switch, refresh) that
+  // need the current total without depending on the state in a stale closure.
+  useEffect(() => {
+    wordsWrittenTodayRef.current = wordsWrittenToday;
+  }, [wordsWrittenToday]);
 
   // Check if there are unsaved Google Docs changes
   const hasUnsavedDocChangesFlag = hasUnsavedDocChanges({
@@ -364,6 +388,9 @@ export default function WritePage() {
         if (fetchedRevisionId) setBaseRevisionId(fetchedRevisionId);
         setDriftBlocked(false);
         const refreshedCount = calculateWordCount(getPlainText(fetched));
+        // Preserve credit for words the user wrote (and autosaved) before the
+        // external refresh replaced the doc's baseline.
+        commitCurrentDocContribution();
         setWordCount(refreshedCount);
         setDocStartWordCount(refreshedCount);
       } catch (error) {
@@ -374,7 +401,7 @@ export default function WritePage() {
     return () => {
       cancelled = true;
     };
-  }, [isDocumentVisible]);
+  }, [isDocumentVisible, commitCurrentDocContribution]);
 
   // Auto-save to Google Docs when content changes (only when visible and has changes)
   useEffect(() => {
@@ -416,9 +443,6 @@ export default function WritePage() {
           wordCount: wordsWrittenToday,
         });
         setLastSavedCount(wordsWrittenToday);
-        setSessionStartWordCount(wordsWrittenToday);
-        // Reset document baseline so we don't double-count these words
-        setDocStartWordCount(wordCount);
         // Drop the cached goal snapshot so other pages refetch today's progress on next mount.
         invalidateCurrentGoalCache(session.user.email!);
       } catch (error) {
@@ -427,7 +451,7 @@ export default function WritePage() {
     }, AUTO_SAVE_DELAY);
 
     return () => clearTimeout(timeoutId);
-  }, [session?.user?.email, wordsWrittenToday, wordCount, isDocumentVisible, hasUnsavedSessionChangesFlag]);
+  }, [session?.user?.email, wordsWrittenToday, isDocumentVisible, hasUnsavedSessionChangesFlag]);
 
   // Redirect if not authenticated (after all hooks)
   if (status === "loading") {

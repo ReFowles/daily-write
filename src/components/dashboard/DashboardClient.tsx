@@ -77,7 +77,7 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
       id: "avg-words",
       content: (
         <StatsCard
-          label="Avg Words/Session"
+          label="Avg Words/Day"
           value={formatWordCount(stats.averageWordsPerDay)}
           subtitle="words"
         />

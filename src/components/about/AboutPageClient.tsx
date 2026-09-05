@@ -506,13 +506,20 @@ function DeepDive({ className }: { className?: string }) {
               <strong>Pasted content counts.</strong> The app can&apos;t tell typing from pasting.
             </li>
             <li>
-              <strong>Deletions lower the baseline.</strong> Only the net increase from your
-              day&apos;s low-water mark is tracked.
+              <strong>Deletions subtract.</strong> Highlight text and delete it and today&apos;s
+              total drops — including words you already saved earlier in the day. The counter
+              never goes below zero.
             </li>
             <li>
               <strong>Day-scoped.</strong> Progress accumulates until midnight, across documents.
             </li>
           </ul>
+          <p className="mt-4">
+            <strong>Heads up:</strong> DailyWrite can&apos;t tell which words in a document you
+            wrote today versus which were already there when you opened it. If you crack open an
+            old doc and delete a large chunk, that cleanup can eat into credit you earned earlier
+            in the day.
+          </p>
           <p className="mt-4 font-medium">
             DailyWrite is a tool for self-improvement. It only works if you write in good faith.
           </p>

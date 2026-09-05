@@ -2,12 +2,14 @@
  * Pure helpers for the write page's word-count and dirty-state math.
  * Keeping this out of the component makes the accounting rules easy to test:
  *
- *  words written today = words already saved for today
- *                      + max(0, current doc words − doc's starting words)
+ *  words written today = max(0, session baseline
+ *                              + (current doc words − doc's starting words))
  *
- * The `max(0, …)` means deleting characters you just wrote reduces the
- * running total, but deleting characters that were already in the document
- * when you opened it does not send the counter negative.
+ * The delta is *not* clamped per-doc, because we can't tell whether words
+ * being deleted are pre-existing content or writing the user did earlier
+ * today (and already got credit for) in the same doc. Clamping only at zero
+ * lets deletions of your own prior writing decrement "words today"; the
+ * outer clamp keeps a large cleanup pass from producing a negative total.
  */
 
 export interface DocWordCountInput {
@@ -27,7 +29,10 @@ export function computeCurrentDocWordsAdded(input: DocWordCountInput): number {
 }
 
 export function computeWordsWrittenToday(input: SessionWordCountInput): number {
-  return input.sessionStartWordCount + computeCurrentDocWordsAdded(input);
+  return Math.max(
+    0,
+    input.sessionStartWordCount + (input.wordCount - input.docStartWordCount)
+  );
 }
 
 export interface UnsavedDocChangesInput<Doc, Content> {
@@ -50,5 +55,5 @@ export function hasUnsavedSessionChanges(
   wordsWrittenToday: number,
   lastSavedCount: number
 ): boolean {
-  return wordsWrittenToday > 0 && wordsWrittenToday !== lastSavedCount;
+  return wordsWrittenToday !== lastSavedCount;
 }

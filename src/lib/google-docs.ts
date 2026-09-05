@@ -270,7 +270,8 @@ export async function getDocumentTabs(
 // because these operations are not supported by the Google Docs API.
 
 /**
- * Get the content and word count of a Google Doc
+ * Get the content and word count of a Google Doc, summed across every tab
+ * (Docs only returns the first tab's body unless includeTabsContent is set).
  */
 export async function getGoogleDocContent(accessToken: string, documentId: string) {
   const auth = new google.auth.OAuth2();
@@ -280,24 +281,46 @@ export async function getGoogleDocContent(accessToken: string, documentId: strin
 
   const response = await docs.documents.get({
     documentId,
+    includeTabsContent: true,
   });
 
   const document = response.data;
 
-  // Extract text content from the document
-  let text = "";
-  const content = document.body?.content || [];
+  interface DocsParagraphElement {
+    textRun?: { content?: string | null } | null;
+  }
+  interface DocsStructuralElement {
+    paragraph?: { elements?: DocsParagraphElement[] | null } | null;
+  }
+  interface DocsTabNode {
+    documentTab?: { body?: { content?: DocsStructuralElement[] | null } | null } | null;
+    childTabs?: DocsTabNode[] | null;
+  }
 
-  for (const element of content) {
-    if (element.paragraph) {
-      const paragraphElements = element.paragraph.elements || [];
-      for (const elem of paragraphElements) {
-        if (elem.textRun?.content) {
-          text += elem.textRun.content;
-        }
+  const extractText = (content: DocsStructuralElement[] | null | undefined): string => {
+    let text = "";
+    for (const element of content ?? []) {
+      for (const elem of element.paragraph?.elements ?? []) {
+        if (elem.textRun?.content) text += elem.textRun.content;
       }
     }
-  }
+    return text;
+  };
+
+  const collectTabsText = (tabs: DocsTabNode[] | null | undefined): string => {
+    let text = "";
+    for (const tab of tabs ?? []) {
+      text += extractText(tab.documentTab?.body?.content);
+      if (tab.childTabs) text += collectTabsText(tab.childTabs);
+    }
+    return text;
+  };
+
+  const tabs = document.tabs as unknown as DocsTabNode[] | undefined;
+  const text =
+    tabs && tabs.length > 0
+      ? collectTabsText(tabs)
+      : extractText(document.body?.content as DocsStructuralElement[] | undefined);
 
   // Calculate word count
   const wordCount = text

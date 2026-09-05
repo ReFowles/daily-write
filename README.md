@@ -102,10 +102,8 @@ pnpm lint         # Run ESLint
 
 ## TODO:
 
-- Automatically use curly quotes/apostrophies
 - New goal types?
   - Set total word count by deadline, recalculate number of words per day every day (live goal) or keep unchanged (static goal)
-- Change dashboard wording from "Session" to "Day"
 - Refreshing the write page takes you back to the doc, not the choice screen (slug support)
 - Tooltip on document tabs not working?
 - Preserve Google-Docs-only features on paragraphs edited in the app

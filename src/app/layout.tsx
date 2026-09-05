@@ -6,6 +6,7 @@ import Navigation from "@/components/navigation/Navigation";
 import NavigationChrome from "@/components/navigation/NavigationChrome";
 import ThemeInit from "./theme-init";
 import RainbowScrollSync from "./rainbow-scroll-sync";
+import MidnightRefresh from "./midnight-refresh";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
       >
         <SessionProvider>
           <ThemeInit />
+          <MidnightRefresh />
           <RainbowScrollSync />
           <NavigationChrome navigation={<Navigation />}>
             {children}

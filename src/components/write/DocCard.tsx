@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { LuInfo, LuStar } from "react-icons/lu";
 import { formatDistanceToNow } from "@/lib/date-utils";
 import { formatWordCount } from "@/lib/format-utils";
@@ -34,6 +35,11 @@ export default function DocCard({
 
   const [isClipped, setIsClipped] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<{
+    right: number;
+    bottom: number;
+    maxWidth: number;
+  } | null>(null);
 
   // Detect horizontal truncation on the title and/or breadcrumb so we only
   // surface the info affordance when the user actually can't read them.
@@ -76,6 +82,41 @@ export default function DocCard({
     return () => {
       document.removeEventListener("mousedown", handlePointer);
       document.removeEventListener("keydown", handleKey);
+    };
+  }, [popoverOpen]);
+
+  // Position the popover with viewport-aware `fixed` coords so a narrow card
+  // near the screen edge (mobile) can't clip its own tooltip. Rendered via a
+  // portal to `document.body` to avoid any ancestor that establishes a
+  // containing block for `position: fixed` (transforms, filters, etc.).
+  useLayoutEffect(() => {
+    if (!popoverOpen) return;
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const margin = 8;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const right = Math.max(margin, Math.round(viewportWidth - rect.right));
+      const bottom = Math.max(
+        margin,
+        Math.round(viewportHeight - rect.top + margin)
+      );
+      // Cap width to the space between the right anchor and the left viewport
+      // edge (with margin), so the panel can never overflow off-screen left.
+      const availableWidth = Math.max(120, viewportWidth - right - margin);
+      const maxWidth = Math.min(320, availableWidth);
+      setPopoverStyle({ right, bottom, maxWidth });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
   }, [popoverOpen]);
 
@@ -169,28 +210,41 @@ export default function DocCard({
           >
             <LuInfo className="h-4 w-4" />
           </button>
-          {popoverOpen && (
-            <div
-              ref={popoverRef}
-              role="dialog"
-              aria-label={`Full details for ${doc.name}`}
-              className={cn(
-                "absolute z-10 right-0 bottom-full mb-2 w-64 max-w-[calc(100vw-2rem)] rounded-md border p-3 shadow-lg",
-                themeClasses.background.card,
-                themeClasses.border.card
-              )}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <p className={cn("text-sm font-medium break-words", themeClasses.text.primary)}>
-                {doc.name}
-              </p>
-              {doc.path && (
-                <p className={cn("text-xs mt-1 break-words", themeClasses.text.secondary)}>
-                  {doc.path}
+          {popoverOpen &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={popoverRef}
+                role="dialog"
+                aria-label={`Full details for ${doc.name}`}
+                style={
+                  popoverStyle
+                    ? {
+                        position: "fixed",
+                        right: popoverStyle.right,
+                        bottom: popoverStyle.bottom,
+                        maxWidth: popoverStyle.maxWidth,
+                      }
+                    : { position: "fixed", visibility: "hidden" }
+                }
+                className={cn(
+                  "z-50 w-64 rounded-md border p-3 shadow-lg",
+                  themeClasses.background.card,
+                  themeClasses.border.card
+                )}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <p className={cn("text-sm font-medium break-words", themeClasses.text.primary)}>
+                  {doc.name}
                 </p>
-              )}
-            </div>
-          )}
+                {doc.path && (
+                  <p className={cn("text-xs mt-1 break-words", themeClasses.text.secondary)}>
+                    {doc.path}
+                  </p>
+                )}
+              </div>,
+              document.body
+            )}
         </div>
       )}
     </div>
