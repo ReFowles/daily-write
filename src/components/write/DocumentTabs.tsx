@@ -41,11 +41,13 @@ export default function DocumentTabs({
   // Refs avoid re-fetching when callbacks change identity.
   const onSelectTabRef = useRef(onSelectTab);
   const onTabsChangeRef = useRef(onTabsChange);
+  const selectedTabIdRef = useRef(selectedTabId);
 
   useEffect(() => {
     onSelectTabRef.current = onSelectTab;
     onTabsChangeRef.current = onTabsChange;
-  }, [onSelectTab, onTabsChange]);
+    selectedTabIdRef.current = selectedTabId;
+  }, [onSelectTab, onTabsChange, selectedTabId]);
 
   const fetchTabs = useCallback(async () => {
     try {
@@ -69,7 +71,13 @@ export default function DocumentTabs({
       onTabsChangeRef.current?.(data.tabs);
 
       if (data.tabs.length > 0) {
-        onSelectTabRef.current(data.tabs[0]);
+        // Honor a caller-provided tab id (e.g. restored from the URL) on the
+        // initial fetch; otherwise fall back to the first tab.
+        const desired = selectedTabIdRef.current;
+        const target = desired
+          ? (data.tabs as DocumentTab[]).find((t) => t.tabId === desired)
+          : undefined;
+        onSelectTabRef.current(target ?? data.tabs[0]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

@@ -302,7 +302,7 @@ export default function GoogleDocsPicker({ onSelectDoc, selectedDocId }: GoogleD
             <Button
               type="button"
               onClick={() => setShowCreateForm(true)}
-              className="shrink-0 whitespace-nowrap"
+              className="shrink-0 whitespace-nowrap py-3"
             >
               + New Doc
             </Button>
@@ -315,6 +315,7 @@ export default function GoogleDocsPicker({ onSelectDoc, selectedDocId }: GoogleD
               placeholder="Search your Google Drive..."
               aria-label="Search your Google Drive"
               leadingIcon={<LuSearch className="h-4 w-4" />}
+              className="py-1"
             />
           </div>
         </div>

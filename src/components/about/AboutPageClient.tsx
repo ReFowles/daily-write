@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import {
   LuArrowRight,
-  LuCalendarDays,
   LuChevronDown,
   LuFeather,
   LuFileText,
@@ -14,8 +13,8 @@ import {
   LuSun,
   LuTarget,
   LuTrendingUp,
+  LuDollarSign,
 } from "react-icons/lu";
-import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal } from "@/lib/use-current-goal";
@@ -34,7 +33,7 @@ export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        {isSignedIn ? (
+        {isSignedIn && (
           <PageHeader
             title="About"
             description="Learn about DailyWrite"
@@ -45,13 +44,15 @@ export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps
             goalEndDate={currentGoal?.endDate}
             isLoading={isLoading}
           />
-        ) : (
-          <Hero signInSlot={signInSlot} />
         )}
 
-        <FeatureGrid />
+        <div className={isSignedIn ? "mt-12" : undefined}>
+          <Hero signInSlot={signInSlot} showCta={!isSignedIn} />
+        </div>
 
         <HowItWorks className="mt-16 sm:mt-24" />
+
+        <FeatureGrid className="mt-16 sm:mt-24" />
 
         <ThemeShowcase className="mt-16 sm:mt-24" />
 
@@ -69,9 +70,9 @@ export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps
 /*  Hero                                                                       */
 /* -------------------------------------------------------------------------- */
 
-function Hero({ signInSlot }: { signInSlot: ReactNode }) {
+function Hero({ signInSlot, showCta }: { signInSlot: ReactNode; showCta: boolean }) {
   return (
-    <section className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface/60 px-6 py-14 mb-12 sm:mb-16 backdrop-blur-sm sm:px-12 sm:py-20">
+    <section className="relative isolate rounded-3xl border border-line bg-surface/60 px-6 py-14 mb-12 sm:mb-16 backdrop-blur-sm sm:px-12 sm:py-20">
       <HeroBlobs />
       <div className="relative">
         <div
@@ -98,26 +99,28 @@ function Hero({ signInSlot }: { signInSlot: ReactNode }) {
           focus on the story — not the spreadsheet.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {signInSlot}
-          <a
-            href="#how-it-works"
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-              themeClasses.text.link,
-              "hover:underline"
-            )}
-          >
-            See how it works
-            <LuArrowRight className="h-4 w-4" aria-hidden />
-          </a>
-        </div>
+        {showCta && (
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {signInSlot}
+            <a
+              href="#how-it-works"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                themeClasses.text.link,
+                "hover:underline"
+              )}
+            >
+              See how it works
+              <LuArrowRight className="h-4 w-4" aria-hidden />
+            </a>
+          </div>
+        )}
 
         <dl className="mt-12 grid grid-cols-2 gap-4 sm:mt-14 sm:grid-cols-4 sm:gap-6">
-          <HeroStat label="Themes" value="10" />
-          <HeroStat label="Content stored" value="0 bytes" />
           <HeroStat label="Setup time" value="< 1 min" />
-          <HeroStat label="Locked In?" value="Nope!" />
+          <HeroStat label="Content stored" value="0 bytes" />
+          <HeroStat label="Themes" value="10" />
+          <HeroStat label="Price" value="Free" />
         </dl>
       </div>
     </section>
@@ -126,7 +129,7 @@ function Hero({ signInSlot }: { signInSlot: ReactNode }) {
 
 function HeroBlobs() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
       <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-accent/25 blur-3xl" />
       <div className="absolute -right-24 top-1/3 h-80 w-80 rounded-full bg-accent-ring/25 blur-3xl" />
       <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-accent-subtle/40 blur-3xl" />
@@ -165,29 +168,31 @@ const FEATURES: ReadonlyArray<Feature> = [
   {
     icon: <LuTarget className="h-6 w-6" aria-hidden />,
     title: "Daily word goals",
-    body: "Set a daily target and a deadline. DailyWrite counts every word toward your goal automatically.",
-  },
-  {
-    icon: <LuCalendarDays className="h-6 w-6" aria-hidden />,
-    title: "Streak-friendly calendar",
-    body: "Monthly and weekly views make it obvious when you're on a roll — and gently honest when you're not.",
+    body: "Choose a goal type and set your timeline. See your progress at a glance.",
   },
   {
     icon: <LuFileText className="h-6 w-6" aria-hidden />,
-    title: "Google Docs, native",
-    body: "Write in your own Google Drive. DailyWrite reads the word count and stays out of your way.",
+    title: "YOUR Google Docs",
+    body: "Pick a theme to suit your mood, then write in DailyWrite to and from your own Google Drive.",
   },
   {
     icon: <LuShieldCheck className="h-6 w-6" aria-hidden />,
     title: "Your words stay yours",
-    body: "We store goals and word counts — never document contents. You own the writing. Always.",
+    body: "We store goals and word counts—never document contents. You own the writing. Always.",
+  },
+  {
+    icon: <LuDollarSign className="h-6 w-6" aria-hidden />,
+    title: "Don't break the bank",
+    body: "DailyWrite is completely free to use. No hidden fees, no subscriptions.",
   },
 ];
 
 function FeatureGrid({ className }: { className?: string }) {
   return (
     <section className={className}>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <SectionEyebrow>Features</SectionEyebrow>
+      <SectionTitle>Everything you need. Nothing you don&apos;t.</SectionTitle>
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {FEATURES.map((feature) => (
           <FeatureCard key={feature.title} {...feature} />
         ))}
@@ -221,17 +226,17 @@ const STEPS = [
   {
     icon: <LuTarget className="h-5 w-5" aria-hidden />,
     title: "Set a goal",
-    body: "Pick a daily word target and an end date. That's it — no wizards, no fluff.",
+    body: "Sign in, pick a goal type, set a timeline. That's it.",
   },
   {
     icon: <LuFeather className="h-5 w-5" aria-hidden />,
-    title: "Write in Google Docs",
-    body: "Open a doc from inside DailyWrite or bring your own. Write like you normally would.",
+    title: "Write your story",
+    body: "Open or create a new Google Doc from inside DailyWrite and get into the groove.",
   },
   {
     icon: <LuTrendingUp className="h-5 w-5" aria-hidden />,
     title: "Watch the streak grow",
-    body: "Your dashboard shows today's progress, the current streak, and how many days you have left.",
+    body: "Your dashboard shows you everything you need to know, right where you need it.",
   },
 ] as const;
 
@@ -239,7 +244,7 @@ function HowItWorks({ className }: { className?: string }) {
   return (
     <section id="how-it-works" className={className}>
       <SectionEyebrow>How it works</SectionEyebrow>
-      <SectionTitle>Three steps. No spreadsheet.</SectionTitle>
+      <SectionTitle>Three steps. Because of course.</SectionTitle>
       <ol className="mt-8 grid gap-4 md:grid-cols-3">
         {STEPS.map((step, i) => (
           <li key={step.title} className="h-full">
@@ -350,7 +355,7 @@ function ThemeShowcase({ className }: { className?: string }) {
       </SectionEyebrow>
       <SectionTitle>Pick a mood. Or ten.</SectionTitle>
       <p className={cn("mt-3 max-w-2xl text-base sm:text-lg", themeClasses.text.secondary)}>
-        Every theme comes with a matching light/dark counterpart — tap one to try it now.
+        Never tied down to one boring style—tap one to try now and change from the menu anytime.
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
@@ -445,26 +450,24 @@ function DeepDive({ className }: { className?: string }) {
       <SectionTitle>Everything you might want to know.</SectionTitle>
 
       <div className="mt-8 columns-1 gap-6 space-y-6 lg:columns-2">
-        <InfoCard title="Google Docs integration" icon={<LuFileText className="h-5 w-5" aria-hidden />}>
+        <InfoCard title="How word counting works" icon={<LuTrendingUp className="h-5 w-5" aria-hidden />}>
           <p>
-            DailyWrite plugs directly into Google Docs, so you write inside the tool you already
-            trust:
+            DailyWrite tracks <strong>net new words per day</strong> by measuring the change in a
+            document&apos;s word count while you write. Words added across every document you open
+            during the day are combined.
           </p>
           <ul className="ml-6 list-disc space-y-2">
             <li>
-              <strong>Create new documents</strong> that live in your own Google Drive.
+              <strong>Pasted content counts.</strong> The app can&apos;t tell typing from pasting.
             </li>
             <li>
-              <strong>Continue recent drafts</strong> — the picker surfaces your most recently
-              edited docs first.
-            </li>
-            <li>
-              <strong>Autosave as you type</strong>, so nothing goes missing between sessions.
+              <strong>All deletions subtract.</strong> Whether one at a time or en masse, deleting 
+              words drops your count, even words written on different days.
             </li>
           </ul>
-          <p className="mt-4">
-            Everything stays in your Drive. If you ever stop using DailyWrite, your writing is
-            already exactly where it needs to be.
+          <p className="mt-4 font-medium">
+            DailyWrite is an imperfect tool optimized for writing prose and self-improvement. It&apos;s 
+            not as robust as a full-fledged word processor, and only works if you write in good faith.
           </p>
         </InfoCard>
 
@@ -493,68 +496,6 @@ function DeepDive({ className }: { className?: string }) {
               ]}
             />
           </div>
-        </InfoCard>
-
-        <InfoCard title="How word counting works" icon={<LuTrendingUp className="h-5 w-5" aria-hidden />}>
-          <p>
-            DailyWrite tracks <strong>net new words per day</strong> by measuring the change in a
-            document&apos;s word count while you write. Words added across every document you open
-            during the day are combined.
-          </p>
-          <ul className="ml-6 list-disc space-y-2">
-            <li>
-              <strong>Pasted content counts.</strong> The app can&apos;t tell typing from pasting.
-            </li>
-            <li>
-              <strong>Deletions subtract.</strong> Highlight text and delete it and today&apos;s
-              total drops — including words you already saved earlier in the day. The counter
-              never goes below zero.
-            </li>
-            <li>
-              <strong>Day-scoped.</strong> Progress accumulates until midnight, across documents.
-            </li>
-          </ul>
-          <p className="mt-4">
-            <strong>Heads up:</strong> DailyWrite can&apos;t tell which words in a document you
-            wrote today versus which were already there when you opened it. If you crack open an
-            old doc and delete a large chunk, that cleanup can eat into credit you earned earlier
-            in the day.
-          </p>
-          <p className="mt-4 font-medium">
-            DailyWrite is a tool for self-improvement. It only works if you write in good faith.
-          </p>
-        </InfoCard>
-
-        <InfoCard title="Writing experience" icon={<LuFeather className="h-5 w-5" aria-hidden />}>
-          <p>
-            The in-app editor is deliberately minimal — headings, lists, links, tables, and a live
-            word count. It&apos;s enough to draft without getting lost in a toolbar.
-          </p>
-          <p className="mt-4">
-            Need fancy formatting, comments, or version history? Open the document in Google Docs
-            with a single click and the full suite is right there.
-          </p>
-        </InfoCard>
-
-        <InfoCard title="Goals &amp; progressive targets" icon={<LuTarget className="h-5 w-5" aria-hidden />}>
-          <p>Every goal has three ingredients:</p>
-          <ul className="ml-6 list-disc space-y-2">
-            <li>
-              <strong>Daily word target</strong> — what to aim for each day.
-            </li>
-            <li>
-              <strong>Start and end dates</strong> — the season you&apos;re writing in.
-            </li>
-            <li>
-              <strong>Visual progress</strong> — cards, calendars, and streak counts on the
-              dashboard.
-            </li>
-          </ul>
-          <p className="mt-4">
-            When you set your next goal, DailyWrite suggests a target based on your recent
-            performance — a small nudge up from your last average, so you keep growing without
-            burning out.
-          </p>
         </InfoCard>
       </div>
     </section>
@@ -641,9 +582,9 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
     a: (
       <>
         <p>
-          Not currently. Once a goal is created, its target and dates are locked in — you can delete
+          Not currently. Once a goal is created, its target and dates are locked in. You can delete
           it and start over, but you can&apos;t change it in place. This keeps historical progress
-          honest and prevents accidental target-tweaking mid-run.
+          honest and prevents accidental (or dishonest) target-tweaking mid-run.
         </p>
       </>
     ),
@@ -673,8 +614,7 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
     a: (
       <p>
         Document tabs are <strong>read-only</strong> inside DailyWrite. You can pick which tab to
-        write in, but creating and removing tabs happens inside Google Docs itself — the app just
-        follows along.
+        write in, but creating and removing tabs can only happen inside Google Docs.
       </p>
     ),
   },
@@ -683,7 +623,7 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
     a: (
       <p>
         No. Only word counts, goals, and timestamps are stored. Every character you write lives in
-        your Google Drive. If you delete your DailyWrite account, your writing is untouched.
+        your Google Drive. If you ever abandon DailyWrite, your writing will still be accessible there.
       </p>
     ),
   },
@@ -695,8 +635,28 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
         Full verification requires a paid security review that isn&apos;t worth it yet for a small
         app, so you&apos;ll see a &quot;Google hasn&apos;t verified this app&quot; screen when
         signing in. Click <strong>Advanced</strong>, then{" "}
-        <strong>Go to DailyWrite (unsafe)</strong> to continue — this is expected, and your data
+        <strong>Go to DailyWrite (unsafe)</strong> to continue—this is expected, and your data
         stays private to your own Google account.
+      </p>
+    ),
+  },
+  {
+    q: "Can I request a new theme or feature?",
+    a: (
+      <p>
+        Yes! DailyWrite is actively developed, and user feedback helps shape its future. 
+        If you have a feature or theme request, please reach out through the official channels.
+      </p>
+    ),
+  },
+  {
+    q: "I found a bug.",
+    a: (
+      <p>
+        If you find a bug, please report it through the official channels so it can be 
+        addressed promptly. Your feedback helps improve DailyWrite for everyone!
+        Please note: due to the content retention policy, some bugs may not be fixable and
+        are considered true limitations of the app.
       </p>
     ),
   },
@@ -708,7 +668,7 @@ function Limitations({ className }: { className?: string }) {
       <SectionEyebrow>Good to know</SectionEyebrow>
       <SectionTitle>Honest limitations, up front.</SectionTitle>
       <p className={cn("mt-3 max-w-2xl text-base sm:text-lg", themeClasses.text.secondary)}>
-        DailyWrite is intentionally small. Here&apos;s what it doesn&apos;t do — yet.
+        DailyWrite is intentionally small. Here&apos;s what it doesn&apos;t do. Yet.
       </p>
 
       <div className="mt-8 space-y-3">
@@ -767,7 +727,7 @@ function BottomCta({ className, signInSlot }: { className?: string; signInSlot: 
   return (
     <section
       className={cn(
-        "relative isolate overflow-hidden rounded-3xl border px-6 py-14 text-center sm:px-12 sm:py-20",
+        "relative isolate rounded-3xl border px-6 py-14 text-center sm:px-12 sm:py-20",
         themeClasses.border.default,
         themeClasses.background.card,
         className
@@ -780,20 +740,10 @@ function BottomCta({ className, signInSlot }: { className?: string; signInSlot: 
         </h2>
         <p className={cn("mt-4 text-base sm:text-lg", themeClasses.text.secondary)}>
           Sign in with Google and set your first goal in under a minute. No credit card, no
-          gimmicks, no lock-in.
+          gimmicks, and leave whenever you want.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           {signInSlot}
-          <Link
-            href="/"
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium hover:underline",
-              themeClasses.text.link
-            )}
-          >
-            Take me to the dashboard
-            <LuArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
         </div>
       </div>
     </section>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -16,7 +16,7 @@ import type { DocumentContent } from "@/lib/document-content";
 import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
 import GoogleDocsPicker from "@/components/write/GoogleDocsPicker";
 import DocumentTabs from "@/components/write/DocumentTabs";
-import { LuMaximize2, LuMinimize2 } from "react-icons/lu";
+import { LuExternalLink, LuMaximize2, LuMinimize2 } from "react-icons/lu";
 import type { FontSize, LineSpacing as LineSpacingValue } from "@/components/write/editor";
 import { EditorSettingsMenu } from "@/components/write/EditorSettingsMenu";
 import {
@@ -60,6 +60,9 @@ const GOOGLE_DOCS_SAVE_DELAY = 3000;
 
 export default function WritePageClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlDocId = searchParams.get("doc");
+  const urlTabId = searchParams.get("tab");
   const { data: session, status } = useSession();
   const { todayGoal, daysLeft, currentGoal, isLoading: isGoalLoading } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
@@ -132,6 +135,18 @@ export default function WritePageClient() {
     });
   }, [setFontSize]);
 
+  // Push the currently-selected doc/tab to the URL so a refresh restores it.
+  const syncUrl = useCallback(
+    (docId: string | null, tabId: string | null) => {
+      const params = new URLSearchParams();
+      if (docId) params.set("doc", docId);
+      if (docId && tabId) params.set("tab", tabId);
+      const qs = params.toString();
+      router.replace(qs ? `/write?${qs}` : "/write", { scroll: false });
+    },
+    [router]
+  );
+
   // Track document visibility
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -164,6 +179,40 @@ export default function WritePageClient() {
 
     loadTodaySession();
   }, [session?.user?.email]);
+
+  // Restore a doc from `?doc=…` on first authenticated render so a refresh
+  // keeps the user in the editor instead of dropping them back to the picker.
+  const hasHydratedFromUrlRef = useRef(false);
+  useEffect(() => {
+    if (hasHydratedFromUrlRef.current) return;
+    if (status !== "authenticated") return;
+    hasHydratedFromUrlRef.current = true;
+
+    if (!urlDocId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/google-docs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "getByIds", ids: [urlDocId] }),
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        const doc: GoogleDoc | undefined = data.docs?.[0];
+        if (cancelled || !doc) return;
+        setSelectedDoc(doc);
+        setShowPicker(false);
+      } catch (error) {
+        console.error("Failed to load document from URL:", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, urlDocId]);
 
   // Function to save content to Google Docs. Reads latest baseline state from
   // refs so callers don't need to pass them and the useCallback stays stable.
@@ -232,7 +281,7 @@ export default function WritePageClient() {
     setShowPicker(false);
     setLoadingContent(true);
     setDocSaveError(null);
-    
+
     // Note: Content will be loaded when a tab is selected
     // The DocumentTabs component will auto-select the first tab
     setContent(null);
@@ -240,6 +289,7 @@ export default function WritePageClient() {
     setBaseRevisionId(null);
     setDriftBlocked(false);
     setLoadingContent(false);
+    syncUrl(doc.id, null);
   };
 
   const handleSelectTab = useCallback(async (tab: DocumentTab) => {
@@ -251,8 +301,9 @@ export default function WritePageClient() {
     setSelectedTab(tab);
     setLoadingContent(true);
     setDocSaveError(null);
-    
+
     if (!selectedDoc) return;
+    syncUrl(selectedDoc.id, tab.tabId);
     
     // Load the tab content
     try {
@@ -291,7 +342,7 @@ export default function WritePageClient() {
     } finally {
       setLoadingContent(false);
     }
-  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs, commitCurrentDocContribution]);
+  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs, commitCurrentDocContribution, syncUrl]);
 
   const handleContentChange = useCallback((next: DocumentContent) => {
     setContent(next);
@@ -504,15 +555,30 @@ export default function WritePageClient() {
             title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
             description={
               selectedDoc && !showPicker ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowPicker(true)}
-                  aria-label="Change selected document"
-                  className="mt-2 cursor-pointer"
-                >
-                  Change Document
-                </Button>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setShowPicker(true);
+                      syncUrl(null, null);
+                    }}
+                    aria-label="Change selected document"
+                    className="cursor-pointer"
+                  >
+                    Change Document
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => window.open(selectedDoc.webViewLink, "_blank", "noopener,noreferrer")}
+                    aria-label="Open document in Google Docs"
+                    className="inline-flex cursor-pointer items-center gap-1.5"
+                  >
+                    <LuExternalLink className="size-4" aria-hidden="true" />
+                    Open in Google Docs
+                  </Button>
+                </div>
               ) : (
                 "Start your daily writing session"
               )
@@ -543,7 +609,7 @@ export default function WritePageClient() {
             {/* Document Tabs */}
             <DocumentTabs
               documentId={selectedDoc.id}
-              selectedTabId={selectedTab?.tabId}
+              selectedTabId={selectedTab?.tabId ?? urlTabId ?? undefined}
               onSelectTab={handleSelectTab}
             />
             
