@@ -15,6 +15,7 @@ vi.mock("@/lib/google-docs", async () => {
     getDocumentTabs: vi.fn(),
     searchGoogleDocs: vi.fn(),
     getGoogleDocsByIds: vi.fn(),
+    getGoogleDocContent: vi.fn(),
   };
 });
 
@@ -23,6 +24,7 @@ import {
   createGoogleDoc,
   getDocumentTabs,
   getGoogleDocAsContent,
+  getGoogleDocContent,
   getGoogleDocsByIds,
   listGoogleDocs,
   searchGoogleDocs,
@@ -43,6 +45,7 @@ const getGoogleDocAsContentMock = vi.mocked(getGoogleDocAsContent);
 const updateGoogleDocFromContentMock = vi.mocked(updateGoogleDocFromContent);
 const searchGoogleDocsMock = vi.mocked(searchGoogleDocs);
 const getGoogleDocsByIdsMock = vi.mocked(getGoogleDocsByIds);
+const getGoogleDocContentMock = vi.mocked(getGoogleDocContent);
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost/api/google-docs", {
@@ -222,6 +225,28 @@ describe("google-docs API route", () => {
       const res = await POST(makeRequest({ action: "getByIds", ids: ["a", "b"] }));
       expect(res.status).toBe(200);
       expect(getGoogleDocsByIdsMock).toHaveBeenCalledWith("test-token", ["a", "b"]);
+    });
+
+    it("rejects getWordCount without documentId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "getWordCount" }));
+      expect(res.status).toBe(400);
+      expect(getGoogleDocContentMock).not.toHaveBeenCalled();
+    });
+
+    it("returns the word count when documentId is provided", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      getGoogleDocContentMock.mockResolvedValueOnce({
+        documentId: "doc-1",
+        title: "Test",
+        text: "hello world",
+        wordCount: 2,
+      });
+
+      const res = await POST(makeRequest({ action: "getWordCount", documentId: "doc-1" }));
+      expect(res.status).toBe(200);
+      expect(getGoogleDocContentMock).toHaveBeenCalledWith("test-token", "doc-1");
+      await expect(res.json()).resolves.toEqual({ wordCount: 2 });
     });
   });
 

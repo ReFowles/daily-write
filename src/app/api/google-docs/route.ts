@@ -7,6 +7,7 @@ import {
   getDocumentTabs,
   searchGoogleDocs,
   getGoogleDocsByIds,
+  getGoogleDocContent,
   DocumentDriftError,
 } from "@/lib/google-docs";
 import { isDocumentContent } from "@/lib/document-content";
@@ -82,6 +83,17 @@ export async function POST(request: Request) {
 
         const docs = await getGoogleDocsByIds(session.accessToken, ids);
         return NextResponse.json({ docs });
+      }
+
+      case "getWordCount": {
+        const { documentId } = body;
+
+        if (!documentId) {
+          return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+        }
+
+        const { wordCount } = await getGoogleDocContent(session.accessToken, documentId);
+        return NextResponse.json({ wordCount });
       }
 
       // NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs.

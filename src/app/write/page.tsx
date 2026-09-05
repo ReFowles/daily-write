@@ -16,13 +16,15 @@ import type { DocumentContent } from "@/lib/document-content";
 import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
 import GoogleDocsPicker from "@/components/write/GoogleDocsPicker";
 import DocumentTabs from "@/components/write/DocumentTabs";
-import { LuBaseline, LuEye, LuEyeOff, LuIndentIncrease } from "react-icons/lu";
-import type { LineSpacing as LineSpacingValue } from "@/components/write/editor";
+import { LuMaximize2, LuMinimize2 } from "react-icons/lu";
+import type { FontSize, LineSpacing as LineSpacingValue } from "@/components/write/editor";
+import { EditorSettingsMenu } from "@/components/write/EditorSettingsMenu";
 import {
   booleanFromLocalStorage,
   useLocalStorageState,
 } from "@/lib/use-local-storage-state";
 import { useFocusMode } from "@/lib/use-focus-mode";
+import { useFullscreenMode } from "@/lib/use-fullscreen-mode";
 import { classifyGoogleDocsSaveResponse } from "@/lib/google-docs-save-response";
 import {
   computeWordsWrittenToday,
@@ -32,17 +34,18 @@ import {
 import dynamic from 'next/dynamic';
 
 const LINE_SPACING_STORAGE_KEY = "daily-write:line-spacing";
+const FONT_SIZE_STORAGE_KEY = "daily-write:font-size";
 const PARAGRAPH_INDENT_STORAGE_KEY = "daily-write:paragraph-indent";
+const SMART_QUOTES_STORAGE_KEY = "daily-write:smart-quotes";
 
 const LINE_SPACING_CYCLE: readonly LineSpacingValue[] = ['normal', 'relaxed', 'spacious'];
-const LINE_SPACING_LABEL: Record<LineSpacingValue, string> = {
-  normal: 'Normal',
-  relaxed: 'Relaxed',
-  spacious: 'Spacious',
-};
+const FONT_SIZE_CYCLE: readonly FontSize[] = ['small', 'medium', 'large', 'xlarge'];
 
 const lineSpacingFromLocalStorage = (raw: string): LineSpacingValue | undefined =>
   (LINE_SPACING_CYCLE as readonly string[]).includes(raw) ? (raw as LineSpacingValue) : undefined;
+
+const fontSizeFromLocalStorage = (raw: string): FontSize | undefined =>
+  (FONT_SIZE_CYCLE as readonly string[]).includes(raw) ? (raw as FontSize) : undefined;
 
 const Editor = dynamic(() => import('@/components/write/editor').then((m) => m.Editor), {
   ssr: false,
@@ -74,14 +77,25 @@ export default function WritePage() {
   const [docSaveError, setDocSaveError] = useState<string | null>(null);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
   const [focusMode, setFocusMode] = useFocusMode();
+  const [fullscreenMode, setFullscreenMode] = useFullscreenMode();
   const [lineSpacing, setLineSpacing] = useLocalStorageState<LineSpacingValue>(
     LINE_SPACING_STORAGE_KEY,
     'normal',
     lineSpacingFromLocalStorage
   );
+  const [fontSize, setFontSize] = useLocalStorageState<FontSize>(
+    FONT_SIZE_STORAGE_KEY,
+    'medium',
+    fontSizeFromLocalStorage
+  );
   const [paragraphIndent, setParagraphIndent] = useLocalStorageState(
     PARAGRAPH_INDENT_STORAGE_KEY,
     false,
+    booleanFromLocalStorage
+  );
+  const [smartQuotes, setSmartQuotes] = useLocalStorageState(
+    SMART_QUOTES_STORAGE_KEY,
+    true,
     booleanFromLocalStorage
   );
 
@@ -94,6 +108,13 @@ export default function WritePage() {
       return LINE_SPACING_CYCLE[(idx + 1) % LINE_SPACING_CYCLE.length];
     });
   }, [setLineSpacing]);
+
+  const cycleFontSize = useCallback(() => {
+    setFontSize((current) => {
+      const idx = FONT_SIZE_CYCLE.indexOf(current);
+      return FONT_SIZE_CYCLE[(idx + 1) % FONT_SIZE_CYCLE.length];
+    });
+  }, [setFontSize]);
 
   // Track document visibility
   useEffect(() => {
@@ -422,13 +443,15 @@ export default function WritePage() {
     return null;
   }
 
+  const isFullPage = fullscreenMode;
+
   return (
     <main
       className={cn(
         "surface-page",
         showPicker
-          ? cn(focusMode ? "min-h-screen" : "min-h-[calc(100vh-4rem)]", "overflow-y-auto")
-          : cn(focusMode ? "h-screen" : "h-[calc(100vh-4rem)]", "overflow-hidden"),
+          ? cn(isFullPage ? "min-h-screen" : "min-h-[calc(100vh-4rem)]", "overflow-y-auto")
+          : cn(isFullPage ? "h-screen" : "h-[calc(100vh-4rem)]", "overflow-hidden"),
       )}
     >
       <div
@@ -437,31 +460,33 @@ export default function WritePage() {
           showPicker ? "min-h-full" : "h-full",
         )}
       >
-        <PageHeader
-          title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
-          description={
-            selectedDoc && !showPicker ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowPicker(true)}
-                aria-label="Change selected document"
-                className="mt-2 cursor-pointer"
-              >
-                Change Document
-              </Button>
-            ) : (
-              "Start your daily writing session"
-            )
-          }
-          dailyGoal={todayGoal}
-          daysLeft={daysLeft}
-          writtenToday={wordsWrittenToday}
-          goalStartDate={currentGoal?.startDate}
-          goalEndDate={currentGoal?.endDate}
-          hideStats={focusMode}
-          isLoading={isGoalLoading}
-        />
+        {!fullscreenMode && (
+          <PageHeader
+            title={selectedDoc && !showPicker ? selectedDoc.name : "Write"}
+            description={
+              selectedDoc && !showPicker ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowPicker(true)}
+                  aria-label="Change selected document"
+                  className="mt-2 cursor-pointer"
+                >
+                  Change Document
+                </Button>
+              ) : (
+                "Start your daily writing session"
+              )
+            }
+            dailyGoal={todayGoal}
+            daysLeft={daysLeft}
+            writtenToday={wordsWrittenToday}
+            goalStartDate={currentGoal?.startDate}
+            goalEndDate={currentGoal?.endDate}
+            hideStats={focusMode}
+            isLoading={isGoalLoading}
+          />
+        )}
 
         {/* Google Docs Picker */}
         {showPicker && (
@@ -498,45 +523,24 @@ export default function WritePage() {
                     onChange={handleContentChange}
                     placeholder="Start writing..."
                     lineSpacing={lineSpacing}
+                    fontSize={fontSize}
                     paragraphIndent={paragraphIndent}
+                    smartQuotes={smartQuotes}
+                    onToggleSmartQuotes={() => setSmartQuotes((v) => !v)}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line p-3 sm:p-4">
                   <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setFocusMode((v) => !v)}
-                      aria-pressed={focusMode}
-                      aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"}
-                      title={focusMode ? "Exit focus mode" : "Enter focus mode"}
-                      className="cursor-pointer rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
-                    >
-                      {focusMode ? <LuEyeOff className="h-4 w-4" /> : <LuEye className="h-4 w-4" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cycleLineSpacing}
-                      aria-label={`Line spacing: ${LINE_SPACING_LABEL[lineSpacing]}. Click to cycle.`}
-                      title={`Line spacing: ${LINE_SPACING_LABEL[lineSpacing]}`}
-                      className="cursor-pointer rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
-                    >
-                      <LuBaseline className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setParagraphIndent((v) => !v)}
-                      aria-pressed={paragraphIndent}
-                      aria-label={paragraphIndent ? "Turn off paragraph indent" : "Turn on paragraph indent"}
-                      title={paragraphIndent ? "Paragraph indent: on" : "Paragraph indent: off"}
-                      className={cn(
-                        "cursor-pointer rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring",
-                        paragraphIndent
-                          ? "bg-accent-subtle text-accent-subtle-fg"
-                          : "text-fg-subtle hover:text-fg"
-                      )}
-                    >
-                      <LuIndentIncrease className="h-4 w-4" />
-                    </button>
+                    <EditorSettingsMenu
+                      focusMode={focusMode}
+                      onToggleFocusMode={() => setFocusMode((v) => !v)}
+                      lineSpacing={lineSpacing}
+                      onCycleLineSpacing={cycleLineSpacing}
+                      fontSize={fontSize}
+                      onCycleFontSize={cycleFontSize}
+                      paragraphIndent={paragraphIndent}
+                      onToggleParagraphIndent={() => setParagraphIndent((v) => !v)}
+                    />
                     {!focusMode && (
                       <div className="flex gap-4 text-sm text-fg-muted">
                         <div>
@@ -548,22 +552,34 @@ export default function WritePage() {
                       </div>
                     )}
                   </div>
-                  <div 
-                    className="flex items-center gap-3 text-xs"
-                    role="status"
-                    aria-live="polite"
-                    aria-atomic="true"
-                  >
-                    {docSaveError && (
-                      <span className="text-red-500 dark:text-red-400">
-                        Error: {docSaveError}
+                  <div className="flex items-center gap-3 text-xs">
+                    <div
+                      className="flex items-center gap-3"
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      {docSaveError && (
+                        <span className="text-red-500 dark:text-red-400">
+                          Error: {docSaveError}
+                        </span>
+                      )}
+                      <span className="text-fg-subtle">
+                        {saveStatus === 'saving' && 'Saving to Google Docs...'}
+                        {saveStatus === 'saved' && !docSaveError && 'Saved to Google Docs'}
+                        {saveStatus === 'unsaved' && !docSaveError && 'Unsaved changes'}
                       </span>
-                    )}
-                    <span className="text-fg-subtle">
-                      {saveStatus === 'saving' && 'Saving to Google Docs...'}
-                      {saveStatus === 'saved' && !docSaveError && 'Saved to Google Docs'}
-                      {saveStatus === 'unsaved' && !docSaveError && 'Unsaved changes'}
-                    </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFullscreenMode((v) => !v)}
+                      aria-pressed={fullscreenMode}
+                      aria-label={fullscreenMode ? "Exit fullscreen" : "Enter fullscreen"}
+                      title={fullscreenMode ? "Exit fullscreen" : "Enter fullscreen"}
+                      className="cursor-pointer rounded p-1 text-fg-subtle transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+                    >
+                      {fullscreenMode ? <LuMinimize2 className="h-4 w-4" /> : <LuMaximize2 className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
               </>

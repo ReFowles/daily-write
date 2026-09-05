@@ -11,6 +11,7 @@ import {
   LuLink,
   LuList,
   LuListOrdered,
+  LuQuote,
   LuRedo2,
   LuStrikethrough,
   LuTable,
@@ -21,6 +22,8 @@ import { cn } from '@/lib/class-utils';
 
 interface ToolbarProps {
   editor: Editor | null;
+  smartQuotes?: boolean;
+  onToggleSmartQuotes?: () => void;
 }
 
 interface ToolbarButtonProps {
@@ -71,7 +74,7 @@ function ToolbarDivider() {
   );
 }
 
-export function Toolbar({ editor }: ToolbarProps) {
+export function Toolbar({ editor, smartQuotes = true, onToggleSmartQuotes }: ToolbarProps) {
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -179,6 +182,13 @@ export function Toolbar({ editor }: ToolbarProps) {
         onClick={() =>
           editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()
         }
+      />
+      <ToolbarDivider />
+      <ToolbarButton
+        icon={<LuQuote aria-hidden />}
+        ariaLabel={smartQuotes ? "Turn off smart quotes" : "Turn on smart quotes"}
+        active={smartQuotes}
+        onClick={() => onToggleSmartQuotes?.()}
       />
       <div className="ml-auto flex items-center gap-1">
         <ToolbarButton

@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   booleanFromLocalStorage,
   useLocalStorageState,
@@ -8,11 +8,10 @@ import {
 describe("useLocalStorageState", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.useFakeTimers({ toFake: ["queueMicrotask"] });
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    localStorage.clear();
   });
 
   const boolParse = (raw: string): boolean | undefined =>
@@ -25,30 +24,29 @@ describe("useLocalStorageState", () => {
     expect(result.current[0]).toBe(false);
   });
 
-  it("hydrates from an existing localStorage value", async () => {
+  it("hydrates from an existing localStorage value", () => {
     localStorage.setItem("k", "true");
     const { result } = renderHook(() =>
       useLocalStorageState("k", false, boolParse)
     );
 
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-
     expect(result.current[0]).toBe(true);
   });
 
-  it("ignores stored values that parse returns undefined for", async () => {
+  it("ignores stored values that parse returns undefined for", () => {
     localStorage.setItem("k", "garbage");
     const { result } = renderHook(() =>
       useLocalStorageState("k", true, boolParse)
     );
 
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-
     expect(result.current[0]).toBe(true);
+  });
+
+  it("does not overwrite a stored value with the initial default while hydrating", () => {
+    localStorage.setItem("k", "true");
+    renderHook(() => useLocalStorageState("k", false, boolParse));
+
+    expect(localStorage.getItem("k")).toBe("true");
   });
 
   it("writes updates back to localStorage", () => {

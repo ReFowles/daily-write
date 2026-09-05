@@ -14,6 +14,7 @@ import { cn } from '@/lib/class-utils';
 import { canonicalizeContent, contentsEqual, type DocumentContent } from '@/lib/document-content';
 import { Toolbar } from './Toolbar';
 import { DocParagraphStylePassthrough, DocTextStyleMark } from './doc-style-passthrough';
+import { SmartQuotes } from './smart-quotes';
 
 export interface EditorProps {
   content: DocumentContent | null;
@@ -21,10 +22,14 @@ export interface EditorProps {
   placeholder?: string;
   className?: string;
   lineSpacing?: LineSpacing;
+  fontSize?: FontSize;
   paragraphIndent?: boolean;
+  smartQuotes?: boolean;
+  onToggleSmartQuotes?: () => void;
 }
 
 export type LineSpacing = 'normal' | 'relaxed' | 'spacious';
+export type FontSize = 'small' | 'medium' | 'large' | 'xlarge';
 
 // Descendant-selector classes; prose uses :where() so any direct selector wins.
 const LINE_SPACING_CLASSES: Record<LineSpacing, string> = {
@@ -33,9 +38,26 @@ const LINE_SPACING_CLASSES: Record<LineSpacing, string> = {
   spacious: '[&_p]:leading-[2.5] [&_li]:leading-[2.5]',
 };
 
+const FONT_SIZE_CLASSES: Record<FontSize, string> = {
+  small: '[&_p]:text-sm [&_li]:text-sm',
+  medium: '',
+  large: '[&_p]:text-lg [&_li]:text-lg',
+  xlarge: '[&_p]:text-xl [&_li]:text-xl',
+};
+
 const PARAGRAPH_INDENT_CLASS = '[&_p]:indent-8';
 
-export function Editor({ content, onChange, placeholder, className, lineSpacing = 'normal', paragraphIndent = false }: EditorProps) {
+export function Editor({
+  content,
+  onChange,
+  placeholder,
+  className,
+  lineSpacing = 'normal',
+  fontSize = 'medium',
+  paragraphIndent = false,
+  smartQuotes = true,
+  onToggleSmartQuotes,
+}: EditorProps) {
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -52,6 +74,7 @@ export function Editor({ content, onChange, placeholder, className, lineSpacing 
       TableCell,
       DocParagraphStylePassthrough,
       DocTextStyleMark,
+      SmartQuotes,
     ],
     [placeholder]
   );
@@ -82,13 +105,19 @@ export function Editor({ content, onChange, placeholder, className, lineSpacing 
     }
   }, [content, editor]);
 
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setSmartQuotesEnabled(smartQuotes);
+  }, [editor, smartQuotes]);
+
   return (
     <div className="editor-root flex h-full min-h-0 flex-col">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} smartQuotes={smartQuotes} onToggleSmartQuotes={onToggleSmartQuotes} />
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto',
           LINE_SPACING_CLASSES[lineSpacing],
+          FONT_SIZE_CLASSES[fontSize],
           paragraphIndent && PARAGRAPH_INDENT_CLASS
         )}
       >

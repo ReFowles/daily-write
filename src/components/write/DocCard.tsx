@@ -3,8 +3,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LuInfo, LuStar } from "react-icons/lu";
 import { formatDistanceToNow } from "@/lib/date-utils";
+import { formatWordCount } from "@/lib/format-utils";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
+import { useDocWordCount } from "@/lib/use-doc-word-count";
 import type { GoogleDoc } from "@/lib/types";
 
 interface DocCardProps {
@@ -23,6 +25,7 @@ export default function DocCard({
   onToggleFavorite,
 }: DocCardProps) {
   const modifiedDate = new Date(doc.modifiedTime);
+  const { wordCount, elementRef: wordCountRef } = useDocWordCount(doc.id);
 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const pathRef = useRef<HTMLParagraphElement>(null);
@@ -78,6 +81,7 @@ export default function DocCard({
 
   return (
     <div
+      ref={wordCountRef}
       className={cn(
         "relative rounded-lg border transition-all",
         isSelected
@@ -88,18 +92,22 @@ export default function DocCard({
             )
       )}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => onSelect(doc)}
-        className={cn(
-          "w-full text-left p-3 pr-9 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          isClipped && "pb-8"
-        )}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect(doc);
+          }
+        }}
+        className="w-full text-left p-3 rounded-lg cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         aria-label={`Open ${doc.name}`}
       >
         <h3
           ref={titleRef}
-          className={cn("text-sm font-medium truncate", themeClasses.text.primary)}
+          className={cn("text-sm font-medium truncate pr-7", themeClasses.text.primary)}
         >
           {doc.name}
         </h3>
@@ -111,10 +119,21 @@ export default function DocCard({
             {doc.path}
           </p>
         )}
-        <p className={cn("text-xs mt-1", themeClasses.text.secondary)}>
+        {wordCount !== null && (
+          <p className={cn("text-xs mt-1", themeClasses.text.secondary)}>
+            {formatWordCount(wordCount)} words
+          </p>
+        )}
+        <p
+          className={cn(
+            "text-xs mt-1",
+            themeClasses.text.secondary,
+            isClipped && "pr-7"
+          )}
+        >
           {formatDistanceToNow(modifiedDate)}
         </p>
-      </button>
+      </div>
       <button
         type="button"
         onClick={(event) => {
@@ -134,7 +153,7 @@ export default function DocCard({
         <LuStar className="h-4 w-4" fill={isFavorite ? "currentColor" : "none"} />
       </button>
       {isClipped && (
-        <>
+        <div className="absolute bottom-2 right-2">
           <button
             ref={triggerRef}
             type="button"
@@ -146,7 +165,7 @@ export default function DocCard({
             aria-haspopup="dialog"
             aria-label={`Show full details for ${doc.name}`}
             title="Show full title and path"
-            className="absolute bottom-2 right-2 rounded p-1 cursor-pointer text-fg-subtle hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="rounded p-1 cursor-pointer text-fg-subtle hover:text-fg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <LuInfo className="h-4 w-4" />
           </button>
@@ -156,7 +175,7 @@ export default function DocCard({
               role="dialog"
               aria-label={`Full details for ${doc.name}`}
               className={cn(
-                "absolute z-10 right-2 bottom-10 w-64 max-w-[calc(100vw-2rem)] rounded-md border p-3 shadow-lg",
+                "absolute z-10 right-0 bottom-full mb-2 w-64 max-w-[calc(100vw-2rem)] rounded-md border p-3 shadow-lg",
                 themeClasses.background.card,
                 themeClasses.border.card
               )}
@@ -172,7 +191,7 @@ export default function DocCard({
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

@@ -28,6 +28,26 @@ describe('<Editor />', () => {
     expect(screen.getByRole('button', { name: 'Insert table' })).toBeInTheDocument();
   });
 
+  it('renders a smart quotes toggle that reflects state and calls the handler', async () => {
+    const onToggleSmartQuotes = vi.fn();
+    render(
+      <Editor
+        content={initialContent}
+        onChange={() => {}}
+        smartQuotes={false}
+        onToggleSmartQuotes={onToggleSmartQuotes}
+      />
+    );
+
+    const button = await screen.findByRole('button', { name: 'Turn on smart quotes' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => {
+      button.click();
+    });
+    expect(onToggleSmartQuotes).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the initial content', async () => {
     render(<Editor content={initialContent} onChange={() => {}} />);
     expect(await screen.findByText('hello')).toBeInTheDocument();

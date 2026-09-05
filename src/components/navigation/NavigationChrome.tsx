@@ -1,10 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useFocusMode } from "@/lib/use-focus-mode";
+import { useFullscreenMode } from "@/lib/use-fullscreen-mode";
 import { cn } from "@/lib/class-utils";
 
-/** Hides the navbar while in focus mode on the /write page. */
+/** Hides the navbar while in fullscreen mode on the /write page. */
 export default function NavigationChrome({
   navigation,
   children,
@@ -13,8 +13,8 @@ export default function NavigationChrome({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [focusMode] = useFocusMode();
-  const hideNav = pathname === "/write" && focusMode;
+  const [fullscreenMode] = useFullscreenMode();
+  const hideNav = pathname === "/write" && fullscreenMode;
 
   return (
     <>
