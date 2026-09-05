@@ -4,6 +4,7 @@ import {
   computeWordsWrittenToday,
   hasUnsavedDocChanges,
   hasUnsavedSessionChanges,
+  ratchetDocStartWordCount,
 } from "./write-session-math";
 
 describe("computeCurrentDocWordsAdded", () => {
@@ -68,6 +69,53 @@ describe("computeWordsWrittenToday", () => {
         wordCount: 500,
       })
     ).toBe(0);
+  });
+});
+
+describe("ratchetDocStartWordCount", () => {
+  it("leaves docStartWordCount unchanged while the total stays non-negative", () => {
+    expect(
+      ratchetDocStartWordCount({
+        sessionStartWordCount: 0,
+        docStartWordCount: 100,
+        wordCount: 150,
+      })
+    ).toBe(100);
+  });
+
+  it("pulls docStartWordCount up so the total floors at zero", () => {
+    expect(
+      ratchetDocStartWordCount({
+        sessionStartWordCount: 0,
+        docStartWordCount: 100,
+        wordCount: 20,
+      })
+    ).toBe(20);
+  });
+
+  it("lets writing after a ratchet count up from zero immediately", () => {
+    const ratcheted = ratchetDocStartWordCount({
+      sessionStartWordCount: 0,
+      docStartWordCount: 100,
+      wordCount: 20,
+    });
+    expect(
+      computeWordsWrittenToday({
+        sessionStartWordCount: 0,
+        docStartWordCount: ratcheted,
+        wordCount: 25,
+      })
+    ).toBe(5);
+  });
+
+  it("accounts for the session baseline when ratcheting", () => {
+    expect(
+      ratchetDocStartWordCount({
+        sessionStartWordCount: 30,
+        docStartWordCount: 100,
+        wordCount: 50,
+      })
+    ).toBe(80);
   });
 });
 

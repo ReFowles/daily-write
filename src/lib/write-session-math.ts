@@ -10,6 +10,13 @@
  * today (and already got credit for) in the same doc. Clamping only at zero
  * lets deletions of your own prior writing decrement "words today"; the
  * outer clamp keeps a large cleanup pass from producing a negative total.
+ *
+ * Because the clamp only affects the *displayed* total, a deep deletion still
+ * leaves a negative balance sitting behind the scenes that new writing has to
+ * pay off before the display moves again. `ratchetDocStartWordCount` is
+ * called (from an effect, on every wordCount change) to pull the doc-start
+ * baseline up whenever that would happen, so zero is a real floor: any word
+ * typed after hitting it is credited immediately.
  */
 
 export interface DocWordCountInput {
@@ -33,6 +40,20 @@ export function computeWordsWrittenToday(input: SessionWordCountInput): number {
     0,
     input.sessionStartWordCount + (input.wordCount - input.docStartWordCount)
   );
+}
+
+/**
+ * If the raw (unclamped) total has dropped below zero, ratchets
+ * docStartWordCount up so the total reads exactly zero instead of a negative
+ * balance the user would otherwise have to "earn back" with new writing
+ * before the displayed count moves again. Returns the input's
+ * docStartWordCount unchanged when no ratchet is needed.
+ */
+export function ratchetDocStartWordCount(input: SessionWordCountInput): number {
+  const unclamped =
+    input.sessionStartWordCount + (input.wordCount - input.docStartWordCount);
+  if (unclamped >= 0) return input.docStartWordCount;
+  return input.sessionStartWordCount + input.wordCount;
 }
 
 export interface UnsavedDocChangesInput<Doc, Content> {

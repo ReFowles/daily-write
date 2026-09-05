@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { cn } from "@/lib/class-utils";
 import { themeClasses } from "@/lib/theme-utils";
 
 interface NavLinksProps {
   orientation?: "horizontal" | "vertical";
+  isSignedIn: boolean;
 }
 
-export default function NavLinks({ orientation = "horizontal" }: NavLinksProps) {
+export default function NavLinks({
+  orientation = "horizontal",
+  isSignedIn,
+}: NavLinksProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
 
   const navItems = [
     { name: "Dashboard", href: "/", requireAuth: true },
@@ -22,7 +24,7 @@ export default function NavLinks({ orientation = "horizontal" }: NavLinksProps) 
   ];
 
   const visibleItems = navItems.filter(
-    (item) => !item.requireAuth || session
+    (item) => !item.requireAuth || isSignedIn
   );
 
   const isVertical = orientation === "vertical";

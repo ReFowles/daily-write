@@ -17,9 +17,23 @@ const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
 const DOC_FAVORITES_COLLECTION = "docFavorites";
 
-async function requireUserId(expectedUserId: string): Promise<void> {
+// Ownership mismatch is always a hard error; missing session is left to the
+// caller to handle (writes throw, reads no-op) so an in-flight read during
+// sign-out doesn't surface a scary "Unauthorized" in the dev overlay.
+type AuthStatus = "authorized" | "signed-out";
+
+async function checkUserId(expectedUserId: string): Promise<AuthStatus> {
   const session = await auth();
-  if (!session?.user?.email || session.user.email !== expectedUserId) {
+  const email = session?.user?.email;
+  if (!email) return "signed-out";
+  if (email !== expectedUserId) {
+    throw new Error("Unauthorized");
+  }
+  return "authorized";
+}
+
+async function requireUserId(expectedUserId: string): Promise<void> {
+  if ((await checkUserId(expectedUserId)) === "signed-out") {
     throw new Error("Unauthorized");
   }
 }
@@ -66,7 +80,7 @@ async function requireGoalOwnership(
  */
 
 export async function getAllGoals(userId: string): Promise<Goal[]> {
-  await requireUserId(userId);
+  if ((await checkUserId(userId)) === "signed-out") return [];
 
   const snapshot = await getAdminDb()
     .collection(GOALS_COLLECTION)
@@ -142,7 +156,7 @@ export async function getCurrentGoal(userId: string): Promise<Goal | null> {
  */
 
 export async function getAllWritingSessions(userId: string): Promise<WritingSession[]> {
-  await requireUserId(userId);
+  if ((await checkUserId(userId)) === "signed-out") return [];
 
   const snapshot = await getAdminDb()
     .collection(SESSIONS_COLLECTION)
@@ -159,7 +173,7 @@ export async function getWritingSessionByDate(
   userId: string,
   date: string
 ): Promise<WritingSession | null> {
-  await requireUserId(userId);
+  if ((await checkUserId(userId)) === "signed-out") return null;
 
   const snapshot = await getAdminDb()
     .collection(SESSIONS_COLLECTION)
@@ -293,7 +307,7 @@ export async function importDummyData(
  */
 
 export async function getFavoriteDocIds(userId: string): Promise<string[]> {
-  await requireUserId(userId);
+  if ((await checkUserId(userId)) === "signed-out") return [];
 
   const snapshot = await getAdminDb()
     .collection(DOC_FAVORITES_COLLECTION)

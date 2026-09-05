@@ -294,6 +294,7 @@ Keep this table in sync when a component's scope changes. If a route stops impor
 | `CalendarHeader` | `components/goals/` | `MonthlyCalendar` |
 | `GoogleDocsPicker` | `components/write/` | `src/app/write/page.tsx` |
 | `DocumentTabs` | `components/write/` | `src/app/write/page.tsx` |
+| `WritePageClient` | `components/write/` | `src/app/write/page.tsx` |
 | `editor/` (Tiptap) | `components/write/editor/` | `src/app/write/page.tsx` |
 | `AboutPageClient` | `components/about/` | `src/app/about/page.tsx` |
 | `Navigation` | `components/navigation/` | `src/app/layout.tsx` |

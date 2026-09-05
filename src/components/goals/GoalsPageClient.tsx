@@ -12,7 +12,7 @@ import { GoalCard } from "@/components/GoalCard";
 import { CreateGoalForm } from "./CreateGoalForm";
 import { PageHeader } from "@/components/PageHeader";
 import { MonthlyCalendar } from "./MonthlyCalendar";
-import { useCurrentGoal } from "@/lib/use-current-goal";
+import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
 import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb } from "@/lib/data-store";
@@ -101,6 +101,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
       const newGoal = await createGoal({ ...goalData, userId });
       setGoals([newGoal, ...goals]);
       setShowCreateForm(false);
+      invalidateCurrentGoalCache(userId);
     } catch (error) {
       console.error("Error creating goal:", error);
       onError("Failed to create goal. Please try again.");
@@ -111,6 +112,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
     try {
       await deleteGoalFromDb(goalId);
       setGoals(goals.filter((goal) => goal.id !== goalId));
+      invalidateCurrentGoalCache(userId);
     } catch (error) {
       console.error("Error deleting goal:", error);
     }

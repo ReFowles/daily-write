@@ -22,6 +22,10 @@ interface CacheEntry {
 // instead of flashing zeros while each page re-fetches.
 const cache = new Map<string, CacheEntry>();
 
+// Notifies already-mounted hook instances (e.g. nav shortcuts, which persist
+// across route changes) to refetch after another component invalidates the cache.
+const listeners = new Set<() => void>();
+
 function todayDateString(): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -34,6 +38,7 @@ export function invalidateCurrentGoalCache(userId?: string): void {
   } else {
     cache.clear();
   }
+  listeners.forEach((listener) => listener());
 }
 
 export function useCurrentGoal(): CurrentGoalData {
@@ -51,6 +56,15 @@ export function useCurrentGoal(): CurrentGoalData {
     initialFresh ? initialCached!.todayProgress : 0
   );
   const [isLoading, setIsLoading] = useState<boolean>(!initialFresh && !!userEmail);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+
+  useEffect(() => {
+    const listener = () => setRefreshIndex((i) => i + 1);
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
 
   useEffect(() => {
     if (!userEmail) {
@@ -100,7 +114,7 @@ export function useCurrentGoal(): CurrentGoalData {
     return () => {
       mounted = false;
     };
-  }, [userEmail]);
+  }, [userEmail, refreshIndex]);
 
   const todayGoal = currentGoal?.dailyWordTarget || 0;
   const daysLeft = currentGoal ? calculateDaysLeft(currentGoal.endDate) : 0;

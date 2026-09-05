@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { LuTriangleAlert } from "react-icons/lu";
 import { cn } from "@/lib/class-utils";
@@ -8,9 +8,43 @@ import { themeClasses } from "@/lib/theme-utils";
 
 const POPOVER_WIDTH = 288; // px, matches w-72
 const VIEWPORT_MARGIN = 12;
+const DISMISSED_STORAGE_KEY = "unverified-notice-seen";
+
+const seenListeners = new Set<() => void>();
+
+function subscribeToSeen(callback: () => void) {
+  seenListeners.add(callback);
+  return () => {
+    seenListeners.delete(callback);
+  };
+}
+
+function getSeenSnapshot() {
+  try {
+    return localStorage.getItem(DISMISSED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// SSR: pretend the notice was already seen so the animation classes aren't rendered on the server;
+// useSyncExternalStore hydrates cleanly to the real client value.
+function getSeenServerSnapshot() {
+  return true;
+}
+
+function markNoticeSeen() {
+  try {
+    localStorage.setItem(DISMISSED_STORAGE_KEY, "1");
+  } catch {
+    // localStorage may be unavailable (private mode); the animation just replays next mount.
+  }
+  seenListeners.forEach((fn) => fn());
+}
 
 export function UnverifiedAppNotice() {
   const [isOpen, setIsOpen] = useState(false);
+  const hasBeenSeen = useSyncExternalStore(subscribeToSeen, getSeenSnapshot, getSeenServerSnapshot);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -58,15 +92,29 @@ export function UnverifiedAppNotice() {
     };
   }, [isOpen]);
 
+  const attract = !isOpen && !hasBeenSeen;
+
   return (
-    <div className="inline-flex">
+    <div className="relative inline-flex">
+      {attract && (
+        <span
+          aria-hidden
+          className="notice-attract-tap pointer-events-none absolute inset-0 rounded-full border-2 border-amber-500/70 dark:border-amber-400/70"
+        />
+      )}
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={() => {
+          setIsOpen((open) => !open);
+          if (!hasBeenSeen) markNoticeSeen();
+        }}
         aria-expanded={isOpen}
         aria-label="Why does Google show an unverified app warning?"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-500/15 dark:text-amber-400"
+        className={cn(
+          "relative inline-flex h-9 w-9 items-center justify-center rounded-md text-amber-600 transition-colors hover:bg-amber-500/15 dark:text-amber-400",
+          attract && "notice-attract-wiggle"
+        )}
       >
         <LuTriangleAlert className="h-5 w-5" aria-hidden />
       </button>

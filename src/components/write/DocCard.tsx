@@ -160,11 +160,9 @@ export default function DocCard({
             {doc.path}
           </p>
         )}
-        {wordCount !== null && (
-          <p className={cn("text-xs mt-1", themeClasses.text.secondary)}>
-            {formatWordCount(wordCount)} words
-          </p>
-        )}
+        <p className={cn("text-xs mt-1", themeClasses.text.secondary)}>
+          {wordCount !== null ? `${formatWordCount(wordCount)} words` : "…"}
+        </p>
         <p
           className={cn(
             "text-xs mt-1",
@@ -234,11 +232,11 @@ export default function DocCard({
                 )}
                 onClick={(event) => event.stopPropagation()}
               >
-                <p className={cn("text-sm font-medium break-words", themeClasses.text.primary)}>
+                <p className={cn("text-sm font-medium wrap-break-word", themeClasses.text.primary)}>
                   {doc.name}
                 </p>
                 {doc.path && (
-                  <p className={cn("text-xs mt-1 break-words", themeClasses.text.secondary)}>
+                  <p className={cn("text-xs mt-1 wrap-break-word", themeClasses.text.secondary)}>
                     {doc.path}
                   </p>
                 )}

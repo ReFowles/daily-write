@@ -13,7 +13,8 @@ import { NavShortcuts } from "./NavShortcuts";
 
 export default async function Navigation() {
   const session = await auth();
-  const authButton = session ? <SignOutButton /> : <SignInButton />;
+  const isSignedIn = !!session?.user?.email;
+  const authButton = isSignedIn ? <SignOutButton /> : <SignInButton />;
 
   return (
     <nav
@@ -35,17 +36,17 @@ export default async function Navigation() {
             />
             <span
               className={cn(
-                "text-xl font-bold mr-4",
-                session ? "hidden sm:inline" : "sm:hidden",
-                themeClasses.text.link
+                "text-xl font-bold mr-4 sm:inline",
+                isSignedIn && "hidden"
               )}
             >
-              DailyWrite
+              <span className="text-yellow-300">Daily</span>
+              <span className="text-blue-400">Write</span>
             </span>
           </Link>
 
           {/* Shortcut buttons: centered when the mobile menu is active, inline with logo on lg+ */}
-          {session && (
+          {isSignedIn && (
             <div className="flex flex-1 items-center justify-center lg:flex-none lg:justify-start">
               <NavShortcuts />
             </div>
@@ -54,14 +55,14 @@ export default async function Navigation() {
           <div className="ml-auto flex items-center gap-2">
             {/* Desktop-only nav links + theme + auth */}
             <div className="hidden items-center gap-2 lg:flex">
-              <NavLinks />
+              <NavLinks isSignedIn={isSignedIn} />
               <ThemeToggle />
               {authButton}
             </div>
 
             {/* Mobile hamburger + collapsible panel */}
             <MobileNavMenu>
-              <NavLinks orientation="vertical" />
+              <NavLinks orientation="vertical" isSignedIn={isSignedIn} />
               <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 border-inherit">
                 <ThemeToggle align="left" />
                 {authButton}
