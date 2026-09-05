@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { LuInfo } from 'react-icons/lu';
 import type { DocumentTab } from '@/lib/types';
 import { themeClasses } from '@/lib/theme-utils';
 import { cn } from '@/lib/class-utils';
@@ -147,12 +149,112 @@ export default function DocumentTabs({
         );
       })}
 
-      <span
-        className={cn('ml-auto px-2 py-1.5 text-xs cursor-help', themeClasses.text.tertiary)}
-        title="To add, remove, or rename tabs, edit the document directly in Google Docs"
-      >
-        ⓘ
+      <span className="ml-auto">
+        <TabsInfoPopover />
       </span>
     </div>
+  );
+}
+
+const POPOVER_WIDTH = 288; // px
+const POPOVER_MARGIN = 12;
+
+// Portal + fixed-position popover matches the pattern used by
+// CreateGoalForm's InfoPopover / UnverifiedAppNotice / DocCard so it can't
+// be clipped by the tabs bar's horizontal overflow scroll.
+function TabsInfoPopover() {
+  const label = 'About document tabs';
+  const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(
+    null
+  );
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !buttonRef.current) return;
+
+    const reposition = () => {
+      const rect = buttonRef.current!.getBoundingClientRect();
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : POPOVER_WIDTH;
+      const width = Math.min(POPOVER_WIDTH, viewportWidth - POPOVER_MARGIN * 2);
+      const left = Math.min(
+        Math.max(rect.right - width, POPOVER_MARGIN),
+        Math.max(POPOVER_MARGIN, viewportWidth - width - POPOVER_MARGIN)
+      );
+      setPosition({ top: rect.bottom + 8, left, width });
+    };
+
+    reposition();
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      setIsOpen(false);
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isOpen]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        aria-label={label}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className={cn(
+          'px-2 py-1.5 rounded transition-colors',
+          themeClasses.text.tertiary,
+          'hover:text-fg'
+        )}
+      >
+        <LuInfo className="h-4 w-4" aria-hidden />
+      </button>
+      {isOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            role="dialog"
+            aria-label={label}
+            style={
+              position
+                ? { position: 'fixed', top: position.top, left: position.left, width: position.width }
+                : { position: 'fixed', visibility: 'hidden' }
+            }
+            className={cn(
+              'z-50 rounded-md border p-3 text-sm shadow-lg',
+              themeClasses.border.default,
+              themeClasses.background.overlay,
+              themeClasses.text.secondary
+            )}
+          >
+            To add, remove, or rename tabs, edit the document directly in Google Docs
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

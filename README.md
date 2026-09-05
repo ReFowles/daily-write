@@ -101,11 +101,16 @@ pnpm lint         # Run ESLint
 - Fix all linting errors (do not suppress)
 
 ## TODO:
-
-- New goal types?
-  - Set total word count by deadline, recalculate number of words per day every day (live goal) or keep unchanged (static goal)
-- Refreshing the write page takes you back to the doc, not the choice screen (slug support)
-- Tooltip on document tabs not working?
+- Date exclusion on goals
+- Opt-in feature, "cheat days" ; number designated when making goal and/or "earned" when certain conditions have been met (i.e. excess word counts, streaks, etc.)
+- Opt-in feature, "Feed plusses" (excess words from previous days) to "fill up" non-met day
+- Optional setting, "gentle" tracking: tone down the harsh red for unmet goals
+- Optional setting, "shimmer theme" gives every theme border animations like Energy and Ambition
+- Expand Dashboard DND: Collapse cards; Hide cards? Grid?
+- Mobile: the rich text options get kinda hidden when typing
+- Mobile: long docs are hard to scroll down/navigate
+- Add outline pane/flyout toggle
+- When making a new doc, make it so the user can pick which folder it goes in
 - Preserve Google-Docs-only features on paragraphs edited in the app
   - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
 - Reflect preserved Google Docs presets visually in the editor

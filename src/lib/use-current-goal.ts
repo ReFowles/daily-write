@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { calculateDaysLeft, toDateString } from "./date-utils";
-import { getCurrentGoal, getWritingSessionByDate } from "./data-store";
+import { calculateDaysLeft, getEffectiveDailyTarget, toDateString } from "./date-utils";
+import { getCurrentGoal, getWritingSessionByDate, getWritingSessionsInRange } from "./data-store";
 import type { Goal } from "./types";
 
 export interface CurrentGoalData {
@@ -15,6 +15,7 @@ export interface CurrentGoalData {
 interface CacheEntry {
   currentGoal: Goal | undefined;
   todayProgress: number;
+  wordsWrittenBeforeToday: number;
   dateString: string;
 }
 
@@ -55,6 +56,9 @@ export function useCurrentGoal(): CurrentGoalData {
   const [todayProgress, setTodayProgress] = useState<number>(
     initialFresh ? initialCached!.todayProgress : 0
   );
+  const [wordsWrittenBeforeToday, setWordsWrittenBeforeToday] = useState<number>(
+    initialFresh ? initialCached!.wordsWrittenBeforeToday : 0
+  );
   const [isLoading, setIsLoading] = useState<boolean>(!initialFresh && !!userEmail);
   const [refreshIndex, setRefreshIndex] = useState(0);
 
@@ -70,6 +74,7 @@ export function useCurrentGoal(): CurrentGoalData {
     if (!userEmail) {
       setCurrentGoal(undefined);
       setTodayProgress(0);
+      setWordsWrittenBeforeToday(0);
       setIsLoading(false);
       return;
     }
@@ -83,6 +88,7 @@ export function useCurrentGoal(): CurrentGoalData {
       // Show cached values immediately, then refresh in the background.
       setCurrentGoal(cached!.currentGoal);
       setTodayProgress(cached!.todayProgress);
+      setWordsWrittenBeforeToday(cached!.wordsWrittenBeforeToday);
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -97,13 +103,30 @@ export function useCurrentGoal(): CurrentGoalData {
         if (!mounted) return;
         const nextGoal = goal || undefined;
         const nextProgress = todaySession?.wordCount || 0;
+
+        // Live goals need the running total from goal start through yesterday
+        // to recompute today's daily target.
+        let nextWordsBefore = 0;
+        if (nextGoal && nextGoal.mode === "live") {
+          const sessions = await getWritingSessionsInRange(
+            userEmail,
+            nextGoal.startDate,
+            dateString
+          );
+          if (!mounted) return;
+          const total = sessions.reduce((sum, s) => sum + s.wordCount, 0);
+          nextWordsBefore = Math.max(0, total - nextProgress);
+        }
+
         cache.set(userEmail, {
           currentGoal: nextGoal,
           todayProgress: nextProgress,
+          wordsWrittenBeforeToday: nextWordsBefore,
           dateString,
         });
         setCurrentGoal(nextGoal);
         setTodayProgress(nextProgress);
+        setWordsWrittenBeforeToday(nextWordsBefore);
       } catch (error) {
         console.error("Error fetching current goal data:", error);
       } finally {
@@ -116,7 +139,9 @@ export function useCurrentGoal(): CurrentGoalData {
     };
   }, [userEmail, refreshIndex]);
 
-  const todayGoal = currentGoal?.dailyWordTarget || 0;
+  const todayGoal = currentGoal
+    ? getEffectiveDailyTarget(currentGoal, todayDateString(), wordsWrittenBeforeToday)
+    : 0;
   const daysLeft = currentGoal ? calculateDaysLeft(currentGoal.endDate) : 0;
 
   return {

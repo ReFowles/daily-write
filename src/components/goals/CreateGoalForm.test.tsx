@@ -4,18 +4,23 @@ import { CreateGoalForm } from "./CreateGoalForm";
 import type { Goal, WritingSession } from "@/lib/types";
 
 describe("CreateGoalForm", () => {
-  it("submits the form values through onSubmit", () => {
+  it("submits daily/total/mode through onSubmit", () => {
     const onSubmit = vi.fn();
     const onCancel = vi.fn();
     render(<CreateGoalForm onSubmit={onSubmit} onCancel={onCancel} />);
 
     const startInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
     const endInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
-    const targetInput = screen.getByLabelText(/daily word target/i) as HTMLInputElement;
+    const dailyInput = screen.getByLabelText(/daily target/i) as HTMLInputElement;
+    const totalInput = screen.getByLabelText(/total target/i) as HTMLInputElement;
 
     fireEvent.change(startInput, { target: { value: "2026-06-01" } });
     fireEvent.change(endInput, { target: { value: "2026-06-30" } });
-    fireEvent.change(targetInput, { target: { value: "450" } });
+    fireEvent.change(dailyInput, { target: { value: "450" } });
+
+    // Editing the daily target should auto-populate the linked total (30 × 450),
+    // displayed with a thousands separator.
+    expect(totalInput.value).toBe("13,500");
 
     fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
 
@@ -25,7 +30,56 @@ describe("CreateGoalForm", () => {
       startDate: "2026-06-01",
       endDate: "2026-06-30",
       dailyWordTarget: 450,
+      totalWordTarget: 13500,
+      mode: "static",
     });
+  });
+
+  it("recomputes the daily target when the user edits the total", () => {
+    render(<CreateGoalForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/start date/i), {
+      target: { value: "2026-06-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/end date/i), {
+      target: { value: "2026-06-10" },
+    });
+    fireEvent.change(screen.getByLabelText(/total target/i), {
+      target: { value: "1000" },
+    });
+
+    const dailyInput = screen.getByLabelText(/daily target/i) as HTMLInputElement;
+    // 1000 / 10 days = 100/day.
+    expect(dailyInput.value).toBe("100");
+  });
+
+  it("saves the selected mode when the Live radio is chosen", () => {
+    const onSubmit = vi.fn();
+    render(<CreateGoalForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/start date/i), {
+      target: { value: "2026-06-01" },
+    });
+    fireEvent.change(screen.getByLabelText(/end date/i), {
+      target: { value: "2026-06-30" },
+    });
+    fireEvent.change(screen.getByLabelText(/daily target/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: /live/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
+    const [payload] = onSubmit.mock.calls[0];
+    expect(payload.mode).toBe("live");
+  });
+
+  it("reveals an info popover when the mode's info icon is clicked", () => {
+    render(<CreateGoalForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
+    const infoButton = screen.getByRole("button", { name: /about live mode/i });
+    fireEvent.click(infoButton);
+    expect(screen.getByRole("dialog", { name: /about live mode/i })).toHaveTextContent(
+      /recalculates/i
+    );
   });
 
   it("invokes onCancel when the cancel button is clicked", () => {
@@ -43,9 +97,9 @@ describe("CreateGoalForm", () => {
     render(<CreateGoalForm onSubmit={onSubmit} onCancel={vi.fn()} />);
 
     fireEvent.change(screen.getByLabelText(/end date/i), {
-      target: { value: "2026-12-01" },
+      target: { value: "2099-12-01" },
     });
-    fireEvent.change(screen.getByLabelText(/daily word target/i), {
+    fireEvent.change(screen.getByLabelText(/daily target/i), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
@@ -54,7 +108,6 @@ describe("CreateGoalForm", () => {
   });
 
   it("suggests a target based on the last completed goal", () => {
-    // Mock "today" so the completed goal is unambiguously in the past.
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 5, 15));
     try {
@@ -65,9 +118,10 @@ describe("CreateGoalForm", () => {
           startDate: "2026-01-01",
           endDate: "2026-01-10",
           dailyWordTarget: 300,
+          totalWordTarget: 3000,
+          mode: "static",
         },
       ];
-      // 10 days, 3000 words total => avg 300/day => suggested = 320 rounded to 320.
       const sessions: WritingSession[] = Array.from({ length: 10 }, (_, i) => ({
         userId: "u1",
         date: `2026-01-${String(i + 1).padStart(2, "0")}`,
@@ -82,7 +136,7 @@ describe("CreateGoalForm", () => {
           writingSessions={sessions}
         />
       );
-      const target = screen.getByLabelText(/daily word target/i) as HTMLInputElement;
+      const target = screen.getByLabelText(/daily target/i) as HTMLInputElement;
       expect(target.placeholder).toBe("320");
     } finally {
       vi.useRealTimers();
@@ -91,7 +145,7 @@ describe("CreateGoalForm", () => {
 
   it("falls back to a default suggestion when there are no completed goals", () => {
     render(<CreateGoalForm onSubmit={vi.fn()} onCancel={vi.fn()} />);
-    const target = screen.getByLabelText(/daily word target/i) as HTMLInputElement;
+    const target = screen.getByLabelText(/daily target/i) as HTMLInputElement;
     expect(target.placeholder).toBe("500");
   });
 });

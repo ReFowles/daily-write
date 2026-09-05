@@ -53,6 +53,8 @@ const makeGoal = (over: Partial<Goal> = {}): Goal => ({
   startDate: "2026-01-01",
   endDate: "2026-01-31",
   dailyWordTarget: 500,
+  totalWordTarget: 15500,
+  mode: "static",
   ...over,
 });
 
@@ -113,7 +115,7 @@ describe("GoalsPageClient", () => {
     fireEvent.change(screen.getByLabelText(/end date/i), {
       target: { value: "2026-07-15" },
     });
-    fireEvent.change(screen.getByLabelText(/daily word target/i), {
+    fireEvent.change(screen.getByLabelText(/daily target/i), {
       target: { value: "500" },
     });
 
@@ -148,7 +150,7 @@ describe("GoalsPageClient", () => {
     fireEvent.change(screen.getByLabelText(/end date/i), {
       target: { value: newGoal.endDate },
     });
-    fireEvent.change(screen.getByLabelText(/daily word target/i), {
+    fireEvent.change(screen.getByLabelText(/daily target/i), {
       target: { value: "500" },
     });
 

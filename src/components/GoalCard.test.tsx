@@ -9,6 +9,8 @@ const activeGoal: Goal = {
   startDate: "2026-06-01",
   endDate: "2026-06-30",
   dailyWordTarget: 500,
+  totalWordTarget: 15000,
+  mode: "static",
 };
 
 const pastGoal: Goal = {
@@ -17,6 +19,8 @@ const pastGoal: Goal = {
   startDate: "2026-01-01",
   endDate: "2026-01-10",
   dailyWordTarget: 300,
+  totalWordTarget: 3000,
+  mode: "static",
 };
 
 describe("GoalCard", () => {

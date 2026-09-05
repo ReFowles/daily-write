@@ -93,6 +93,8 @@ describe("DashboardClient", () => {
       startDate: "2026-01-01",
       endDate: "2026-01-31",
       dailyWordTarget: 500,
+      totalWordTarget: 15500,
+      mode: "static",
     };
     setGoal({
       todayGoal: 500,
@@ -116,6 +118,8 @@ describe("DashboardClient", () => {
       startDate: "2026-01-01",
       endDate: "2026-01-31",
       dailyWordTarget: 500,
+      totalWordTarget: 15500,
+      mode: "static",
     };
     setGoal({
       todayGoal: 500,

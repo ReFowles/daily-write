@@ -59,7 +59,7 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
 
   const displayedDayCount = Object.keys(wordsByDate).length;
   const totalWordsWritten = goalSessions.reduce((sum, session) => sum + session.wordCount, 0);
-  const targetTotalWords = totalDays * goal.dailyWordTarget;
+  const targetTotalWords = goal.totalWordTarget;
   const progress = Math.min((totalWordsWritten / targetTotalWords) * 100, 100);
   
   // For average calculation: use total days if goal is completed or past, otherwise use elapsed days (excluding today)
@@ -88,9 +88,20 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
                   {progress >= 100 ? "Goal Met ✓" : "Goal Not Met"}
                 </span>
               )}
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wide",
+                  "bg-accent-subtle text-accent-subtle-fg"
+                )}
+                aria-label={`${goal.mode === "live" ? "Live" : "Static"} goal`}
+              >
+                {goal.mode === "live" ? "Live" : "Static"}
+              </span>
             </div>
             <p className={cn("mt-1 text-sm", themeClasses.text.secondary)}>
               {formatWordCount(goal.dailyWordTarget)} words/day for {totalDays} days
+              {" • "}
+              {formatWordCount(goal.totalWordTarget)} total
             </p>
           </div>
           <Button

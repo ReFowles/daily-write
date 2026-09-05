@@ -93,7 +93,7 @@ describe("data-store", () => {
   describe("goals", () => {
     it("getAllGoals filters by userId and sorts by startDate desc", async () => {
       getMock.mockResolvedValueOnce(
-        snapshotFrom<Goal>([
+        snapshotFrom<Partial<Goal>>([
           {
             id: "a",
             userId: "u1",
@@ -124,7 +124,7 @@ describe("data-store", () => {
 
     it("getGoalById returns the goal payload when found", async () => {
       docGetMock.mockResolvedValueOnce(
-        docSnapshotFrom<Goal>({
+        docSnapshotFrom<Partial<Goal>>({
           id: "g1",
           userId: "u1",
           startDate: "2026-01-01",
@@ -137,6 +137,23 @@ describe("data-store", () => {
       expect(goal?.dailyWordTarget).toBe(500);
     });
 
+    it("getGoalById fills in mode/totalWordTarget for legacy docs", async () => {
+      // Pre-migration docs only had dailyWordTarget; toGoal should default the
+      // new fields (static + daily × span) so downstream math still works.
+      docGetMock.mockResolvedValueOnce(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "legacy",
+          userId: "u1",
+          startDate: "2026-06-01",
+          endDate: "2026-06-30",
+          dailyWordTarget: 500,
+        })
+      );
+      const goal = await getGoalById("legacy");
+      expect(goal?.mode).toBe("static");
+      expect(goal?.totalWordTarget).toBe(500 * 30);
+    });
+
     it("createGoal persists the new goal and returns it with an id", async () => {
       addMock.mockResolvedValueOnce({ id: "new-id" });
       const created = await createGoal({
@@ -144,6 +161,8 @@ describe("data-store", () => {
         startDate: "2026-06-01",
         endDate: "2026-06-30",
         dailyWordTarget: 200,
+        totalWordTarget: 6000,
+        mode: "static",
       });
 
       expect(addMock).toHaveBeenCalledTimes(1);
@@ -153,12 +172,14 @@ describe("data-store", () => {
         startDate: "2026-06-01",
         endDate: "2026-06-30",
         dailyWordTarget: 200,
+        totalWordTarget: 6000,
+        mode: "static",
       });
       expect(created.id).toBe("new-id");
     });
 
     it("updateGoal forwards updates + updatedAt timestamp", async () => {
-      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Goal>({ id: "g1", userId: "u1" } as Goal));
+      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Partial<Goal>>({ id: "g1", userId: "u1" } as Goal));
       updateMock.mockResolvedValueOnce(undefined);
       await updateGoal("g1", { dailyWordTarget: 999 });
       const [payload] = updateMock.mock.calls[0];
@@ -167,7 +188,7 @@ describe("data-store", () => {
     });
 
     it("deleteGoal proxies to Firestore delete", async () => {
-      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Goal>({ id: "g1", userId: "u1" } as Goal));
+      docGetMock.mockResolvedValueOnce(docSnapshotFrom<Partial<Goal>>({ id: "g1", userId: "u1" } as Goal));
       deleteMock.mockResolvedValueOnce(undefined);
       await deleteGoal("g1");
       expect(deleteMock).toHaveBeenCalledTimes(1);
@@ -175,7 +196,7 @@ describe("data-store", () => {
 
     it("updateGoal rejects when the goal belongs to another user", async () => {
       docGetMock.mockResolvedValueOnce(
-        docSnapshotFrom<Goal>({ id: "g1", userId: "someone-else" } as Goal)
+        docSnapshotFrom<Partial<Goal>>({ id: "g1", userId: "someone-else" } as Goal)
       );
       await expect(updateGoal("g1", { dailyWordTarget: 999 })).rejects.toThrow("Unauthorized");
     });
@@ -185,7 +206,7 @@ describe("data-store", () => {
       vi.setSystemTime(new Date(2026, 5, 15));
       try {
         getMock.mockResolvedValueOnce(
-          snapshotFrom<Goal>([
+          snapshotFrom<Partial<Goal>>([
             {
               id: "past",
               userId: "u1",
@@ -214,7 +235,7 @@ describe("data-store", () => {
       vi.setSystemTime(new Date(2030, 0, 1));
       try {
         getMock.mockResolvedValueOnce(
-          snapshotFrom<Goal>([
+          snapshotFrom<Partial<Goal>>([
             {
               id: "past",
               userId: "u1",

@@ -27,6 +27,8 @@ describe("WeeklyCalendar", () => {
         startDate: "2026-06-01",
         endDate: "2026-06-30",
         dailyWordTarget: 500,
+        totalWordTarget: 15000,
+        mode: "static",
       },
     ];
     const sessions: WritingSession[] = [

@@ -4,12 +4,20 @@
 
 export type { DocumentContent } from "./document-content";
 
+/**
+ * "static" locks the daily target chosen at creation time. "live" recomputes
+ * today's daily target every day from the remaining total and remaining days.
+ */
+export type GoalMode = "live" | "static";
+
 export interface Goal {
   id: string;
   userId: string;
   startDate: string; // YYYY-MM-DD format
   endDate: string; // YYYY-MM-DD format
   dailyWordTarget: number;
+  totalWordTarget: number;
+  mode: GoalMode;
 }
 
 export interface WritingSession {

@@ -625,6 +625,65 @@ body {
   ::selection {
     background-color: color-mix(in oklab, var(--color-accent) 40%, transparent);
   }
+
+  /* Tell browsers whether to use light or dark defaults for form controls
+     (calendar picker icon, scrollbars, native buttons). Applied to :root so
+     it inherits into every managed theme class below. */
+  :root {
+    color-scheme: light;
+  }
+  .dark,
+  .cherry,
+  .ocean,
+  .sunset,
+  .ambition {
+    color-scheme: dark;
+  }
+
+  /* Native number spinners — hidden so our custom stepper is the only affordance. */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  /* Custom radio: hide the native chrome and paint a themed dot instead. */
+  input[type="radio"].themed-radio {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    border: 1px solid var(--color-line-strong);
+    background-color: var(--color-surface);
+    display: inline-block;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+  input[type="radio"].themed-radio:hover:not(:disabled) {
+    border-color: var(--color-accent-ring);
+  }
+  input[type="radio"].themed-radio:checked {
+    border-color: var(--color-accent);
+    background-image: radial-gradient(
+      circle,
+      var(--color-accent) 0 40%,
+      transparent 45%
+    );
+  }
+  input[type="radio"].themed-radio:focus-visible {
+    outline: 2px solid var(--color-accent-ring);
+    outline-offset: 2px;
+  }
+  input[type="radio"].themed-radio:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 /* ==========================================================================

@@ -52,6 +52,8 @@ describe("NavShortcuts", () => {
         startDate: "2026-01-01",
         endDate: "2026-12-31",
         dailyWordTarget: 500,
+        totalWordTarget: 182500,
+        mode: "static",
       },
     });
     render(<NavShortcuts />);
@@ -69,6 +71,8 @@ describe("NavShortcuts", () => {
         startDate: "2026-01-01",
         endDate: "2026-12-31",
         dailyWordTarget: 500,
+        totalWordTarget: 182500,
+        mode: "static",
       },
     });
     render(<NavShortcuts />);

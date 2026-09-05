@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   calculateDaysLeft,
   calculateWordCount,
+  daysBetweenInclusive,
   formatDate,
   formatDateRange,
   formatDayOfWeek,
@@ -10,6 +11,7 @@ import {
   generateMonthGrid,
   generateWeekWindow,
   getDaysInMonth,
+  getEffectiveDailyTarget,
   getFirstDayOfMonth,
   getFirstDayOfWeek,
   getLastDayOfMonth,
@@ -107,6 +109,60 @@ describe("date-utils", () => {
       expect(calculateDaysLeft("2026-06-20")).toBe(5);
       expect(calculateDaysLeft("2026-06-15")).toBe(0);
       expect(calculateDaysLeft("2026-06-10")).toBe(-5);
+    });
+  });
+
+  describe("daysBetweenInclusive", () => {
+    it("counts both endpoints", () => {
+      expect(daysBetweenInclusive("2026-06-01", "2026-06-30")).toBe(30);
+      expect(daysBetweenInclusive("2026-06-01", "2026-06-01")).toBe(1);
+    });
+
+    it("returns 0 for reversed or missing ranges", () => {
+      expect(daysBetweenInclusive("2026-06-30", "2026-06-01")).toBe(0);
+      expect(daysBetweenInclusive("", "2026-06-01")).toBe(0);
+      expect(daysBetweenInclusive("2026-06-01", "")).toBe(0);
+    });
+  });
+
+  describe("getEffectiveDailyTarget", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 5, 15));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const baseGoal: Goal = {
+      id: "g",
+      userId: "u",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      dailyWordTarget: 500,
+      totalWordTarget: 15000,
+      mode: "static",
+    };
+
+    it("returns the stored daily target for static goals", () => {
+      expect(getEffectiveDailyTarget(baseGoal, "2026-06-15", 3000)).toBe(500);
+    });
+
+    it("recomputes for live goals from remaining words / remaining days", () => {
+      const live: Goal = { ...baseGoal, mode: "live" };
+      // 15000 - 3000 = 12000 remaining; 2026-06-15 through 2026-06-30 = 16 days.
+      expect(getEffectiveDailyTarget(live, "2026-06-15", 3000)).toBe(750);
+    });
+
+    it("returns 0 for live goals whose end date has passed", () => {
+      const live: Goal = { ...baseGoal, mode: "live" };
+      expect(getEffectiveDailyTarget(live, "2026-07-01", 0)).toBe(0);
+    });
+
+    it("clamps live remaining words at 0 when the user overshoots", () => {
+      const live: Goal = { ...baseGoal, mode: "live" };
+      expect(getEffectiveDailyTarget(live, "2026-06-15", 20000)).toBe(0);
     });
   });
 
@@ -236,6 +292,8 @@ describe("date-utils", () => {
           startDate: "2026-06-01",
           endDate: "2026-06-30",
           dailyWordTarget: 500,
+          totalWordTarget: 15000,
+          mode: "static",
         },
       ];
       const sessions: WritingSession[] = [

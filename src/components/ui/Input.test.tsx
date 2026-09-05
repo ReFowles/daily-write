@@ -39,4 +39,22 @@ describe("Input", () => {
     render(<Input value="x" onChange={vi.fn()} disabled aria-label="d" />);
     expect(screen.getByLabelText("d")).toBeDisabled();
   });
+
+  it("displays comma-formatted digits but reports raw digits through onChange", () => {
+    const onChange = vi.fn();
+    render(
+      <Input
+        value="13500"
+        onChange={onChange}
+        formatWithCommas
+        aria-label="total"
+      />
+    );
+    const el = screen.getByLabelText("total") as HTMLInputElement;
+    expect(el.value).toBe("13,500");
+
+    fireEvent.change(el, { target: { value: "1,2,3,4" } });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].target.value).toBe("1234");
+  });
 });

@@ -10,8 +10,8 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "./firebase-admin";
 import { auth } from "./auth";
-import { toDateString } from "./date-utils";
-import type { Goal, WritingSession } from "./types";
+import { daysBetweenInclusive, toDateString } from "./date-utils";
+import type { Goal, GoalMode, WritingSession } from "./types";
 
 const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
@@ -39,12 +39,23 @@ async function requireUserId(expectedUserId: string): Promise<void> {
 }
 
 function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
+  const dailyWordTarget: number = data.dailyWordTarget;
+  // Legacy docs pre-date `mode`/`totalWordTarget`; treat them as static goals
+  // and derive the total from the daily target × span so downstream math works.
+  const mode: GoalMode = data.mode === "live" ? "live" : "static";
+  const totalWordTarget: number =
+    typeof data.totalWordTarget === "number"
+      ? data.totalWordTarget
+      : dailyWordTarget * daysBetweenInclusive(data.startDate, data.endDate);
+
   return {
     id,
     userId: data.userId,
     startDate: data.startDate,
     endDate: data.endDate,
-    dailyWordTarget: data.dailyWordTarget,
+    dailyWordTarget,
+    totalWordTarget,
+    mode,
   };
 }
 

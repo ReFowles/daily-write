@@ -9,6 +9,50 @@ export function parseLocalDate(dateString: string): Date {
 }
 
 /**
+ * Inclusive day count between two YYYY-MM-DD strings. Returns 0 if end < start
+ * or either input is missing/invalid.
+ */
+export function daysBetweenInclusive(startDateString: string, endDateString: string): number {
+  if (!startDateString || !endDateString) return 0;
+  const start = parseLocalDate(startDateString);
+  const end = parseLocalDate(endDateString);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  const ms = end.getTime() - start.getTime();
+  if (ms < 0) return 0;
+  return Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+}
+
+/**
+ * Effective daily target for a given goal on a given day. For "static" goals
+ * this is just the stored daily target. For "live" goals it recomputes as
+ * ceil(remainingWords / remainingDaysIncludingToday) so the user always has
+ * a fresh number that would land them on the total by the end date.
+ */
+export function getEffectiveDailyTarget(
+  goal: Goal,
+  todayDateString: string,
+  wordsWrittenBeforeToday: number
+): number {
+  if (goal.mode === "static") return goal.dailyWordTarget;
+
+  const today = parseLocalDate(todayDateString);
+  const start = parseLocalDate(goal.startDate);
+  const end = parseLocalDate(goal.endDate);
+
+  if (today > end) return 0;
+  // Before the goal has started, live goals fall back to the even split so
+  // the header stat isn't misleadingly high.
+  if (today < start) return goal.dailyWordTarget;
+
+  const remainingWords = Math.max(0, goal.totalWordTarget - wordsWrittenBeforeToday);
+  const remainingDays = Math.max(
+    1,
+    Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  );
+  return Math.ceil(remainingWords / remainingDays);
+}
+
+/**
  * Generate a 5-day window of day data (2 days before, today, 2 days after)
  */
 export function generateWeekWindow(
