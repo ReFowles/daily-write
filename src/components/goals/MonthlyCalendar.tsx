@@ -39,6 +39,8 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
     return null;
   };
 
+  const todayDateString = toDateString(new Date());
+
   const monthGrid = generateMonthGrid(currentYear, currentMonth, writingSessions);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -137,7 +139,12 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                           wordsWritten={day.wordsWritten}
                           goal={
                             goal && day.date
-                              ? getEffectiveDailyTargetForDate(goal, toDateString(day.date), writingSessions)
+                              ? getEffectiveDailyTargetForDate(
+                                  goal,
+                                  toDateString(day.date),
+                                  writingSessions,
+                                  todayDateString
+                                )
                               : null
                           }
                           isToday={day.isToday}

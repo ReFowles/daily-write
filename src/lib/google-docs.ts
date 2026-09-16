@@ -226,42 +226,24 @@ export async function getGoogleDocsByIds(accessToken: string, ids: string[]): Pr
   return results.filter((doc): doc is GoogleDoc => doc !== null);
 }
 
-/**
- * Get all tabs within a Google Doc
- */
-export async function getDocumentTabs(
-  accessToken: string,
-  documentId: string
-): Promise<DocumentTab[]> {
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
+// Local shape for parsing tabs from a documents.get response; the googleapis
+// types don't include the `tabs` field.
+interface RawTabNode {
+  tabProperties?: {
+    tabId?: string | null;
+    title?: string | null;
+    index?: number | null;
+    nestingLevel?: number | null;
+    parentTabId?: string | null;
+  };
+  childTabs?: RawTabNode[];
+}
 
-  const docs = google.docs({ version: "v1", auth });
-
-  const response = await docs.documents.get({
-    documentId,
-    includeTabsContent: true,
-  });
-
+function parseDocumentTabs(rawTabs: RawTabNode[] | undefined): DocumentTab[] {
   const tabs: DocumentTab[] = [];
-
-  // Define interface for tab structure since types may not be up to date
-  interface TabData {
-    tabProperties?: {
-      tabId?: string | null;
-      title?: string | null;
-      index?: number | null;
-      nestingLevel?: number | null;
-      parentTabId?: string | null;
-    };
-    childTabs?: TabData[];
-  }
-
-  // Helper function to recursively extract tabs
-  const extractTabs = (tabList: TabData[] | undefined, parentTabId?: string) => {
-    if (!tabList) return;
-
-    for (const tab of tabList) {
+  const walk = (list: RawTabNode[] | undefined, parentTabId?: string) => {
+    if (!list) return;
+    for (const tab of list) {
       if (tab.tabProperties) {
         tabs.push({
           tabId: tab.tabProperties.tabId || "",
@@ -271,24 +253,140 @@ export async function getDocumentTabs(
           parentTabId: parentTabId || tab.tabProperties.parentTabId || undefined,
         });
       }
-
-      // Process child tabs recursively
       if (tab.childTabs && tab.childTabs.length > 0) {
-        extractTabs(tab.childTabs, tab.tabProperties?.tabId || undefined);
+        walk(tab.childTabs, tab.tabProperties?.tabId || undefined);
       }
     }
   };
-
-  // googleapis types omit the `tabs` field on Document; cast to our local shape.
-  extractTabs(response.data.tabs as unknown as TabData[]);
-
+  walk(rawTabs);
   return tabs;
 }
 
-// NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs programmatically.
-// Tabs are read-only via the API. Users must manage tabs directly in Google Docs.
-// The following functions (createDocumentTab, deleteDocumentTab, updateDocumentTab) have been removed
-// because these operations are not supported by the Google Docs API.
+// Reads a document's tabs plus its current revisionId in one request, so tab
+// mutations can hand the caller a fresh drift baseline.
+async function fetchTabsWithRevision(
+  accessToken: string,
+  documentId: string
+): Promise<{ tabs: DocumentTab[]; revisionId: string }> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: "v1", auth });
+  const response = await docs.documents.get({ documentId, includeTabsContent: true });
+
+  return {
+    tabs: parseDocumentTabs(response.data.tabs as unknown as RawTabNode[] | undefined),
+    revisionId: response.data.revisionId ?? "",
+  };
+}
+
+/**
+ * Get all tabs within a Google Doc
+ */
+export async function getDocumentTabs(
+  accessToken: string,
+  documentId: string
+): Promise<DocumentTab[]> {
+  return (await fetchTabsWithRevision(accessToken, documentId)).tabs;
+}
+
+// The googleapis Docs types don't yet include the tab request variants
+// (addDocumentTab / deleteTab / updateDocumentTabProperties), so requests are
+// built as plain objects and sent through a locally-typed batchUpdate.
+async function runTabsBatchUpdate(
+  accessToken: string,
+  documentId: string,
+  requests: object[]
+): Promise<void> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: "v1", auth });
+  await docs.documents.batchUpdate({
+    documentId,
+    requestBody: { requests },
+  });
+}
+
+export interface CreateDocumentTabOptions {
+  title?: string;
+  // Set to nest the new tab as a child of an existing tab (a sub-tab).
+  parentTabId?: string;
+  // Zero-based position within the parent; appended when omitted.
+  index?: number;
+}
+
+// Adds a tab (a sub-tab when `parentTabId` is set), then re-reads the tabs. The
+// Docs API's addDocumentTab reply doesn't expose the new tab's ID, so `created`
+// is resolved by diffing tab IDs before and after.
+export async function createDocumentTab(
+  accessToken: string,
+  documentId: string,
+  options: CreateDocumentTabOptions = {}
+): Promise<{ tabs: DocumentTab[]; created: DocumentTab | null; revisionId: string }> {
+  const beforeIds = new Set((await getDocumentTabs(accessToken, documentId)).map((t) => t.tabId));
+
+  const tabProperties: Record<string, string | number> = {};
+  if (options.title) tabProperties.title = options.title;
+  if (options.parentTabId) tabProperties.parentTabId = options.parentTabId;
+  if (typeof options.index === "number") tabProperties.index = options.index;
+
+  await runTabsBatchUpdate(accessToken, documentId, [{ addDocumentTab: { tabProperties } }]);
+
+  const { tabs, revisionId } = await fetchTabsWithRevision(accessToken, documentId);
+  const created = tabs.find((t) => !beforeIds.has(t.tabId)) ?? null;
+  return { tabs, created, revisionId };
+}
+
+// Deletes a tab. Any child tabs are deleted with it (Docs API behavior).
+export async function deleteDocumentTab(
+  accessToken: string,
+  documentId: string,
+  tabId: string
+): Promise<{ tabs: DocumentTab[]; revisionId: string }> {
+  await runTabsBatchUpdate(accessToken, documentId, [{ deleteTab: { tabId } }]);
+  return fetchTabsWithRevision(accessToken, documentId);
+}
+
+export interface UpdateDocumentTabOptions {
+  title?: string;
+  // Re-parent the tab; pass an empty string to promote it to the root level.
+  parentTabId?: string;
+  index?: number;
+}
+
+// Updates a tab's properties (rename, re-parent, reorder). Only the supplied
+// fields are sent in the update mask.
+export async function updateDocumentTab(
+  accessToken: string,
+  documentId: string,
+  tabId: string,
+  updates: UpdateDocumentTabOptions
+): Promise<{ tabs: DocumentTab[]; revisionId: string }> {
+  const tabProperties: Record<string, string | number> = { tabId };
+  const fields: string[] = [];
+  if (updates.title !== undefined) {
+    tabProperties.title = updates.title;
+    fields.push("title");
+  }
+  if (updates.parentTabId !== undefined) {
+    tabProperties.parentTabId = updates.parentTabId;
+    fields.push("parentTabId");
+  }
+  if (updates.index !== undefined) {
+    tabProperties.index = updates.index;
+    fields.push("index");
+  }
+
+  if (fields.length === 0) {
+    return fetchTabsWithRevision(accessToken, documentId);
+  }
+
+  await runTabsBatchUpdate(accessToken, documentId, [
+    { updateDocumentTabProperties: { tabProperties, fields: fields.join(",") } },
+  ]);
+  return fetchTabsWithRevision(accessToken, documentId);
+}
 
 /**
  * Get the content and word count of a Google Doc, summed across every tab

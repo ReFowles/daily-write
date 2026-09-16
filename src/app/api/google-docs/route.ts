@@ -5,6 +5,9 @@ import {
   updateGoogleDocFromContent,
   createGoogleDoc,
   getDocumentTabs,
+  createDocumentTab,
+  deleteDocumentTab,
+  updateDocumentTab,
   searchGoogleDocs,
   getGoogleDocsByIds,
   getGoogleDocContent,
@@ -65,6 +68,53 @@ export async function POST(request: Request) {
         return NextResponse.json({ tabs });
       }
 
+      case "createTab": {
+        const { documentId, title, parentTabId, index } = body;
+
+        if (!documentId) {
+          return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+        }
+
+        const result = await createDocumentTab(session.accessToken, documentId, {
+          title: typeof title === "string" ? title : undefined,
+          parentTabId: typeof parentTabId === "string" ? parentTabId : undefined,
+          index: typeof index === "number" ? index : undefined,
+        });
+        return NextResponse.json(result);
+      }
+
+      case "updateTab": {
+        const { documentId, tabId, title, parentTabId, index } = body;
+
+        if (!documentId) {
+          return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+        }
+        if (!tabId || typeof tabId !== "string") {
+          return NextResponse.json({ error: "Tab ID is required" }, { status: 400 });
+        }
+
+        const result = await updateDocumentTab(session.accessToken, documentId, tabId, {
+          title: typeof title === "string" ? title : undefined,
+          parentTabId: typeof parentTabId === "string" ? parentTabId : undefined,
+          index: typeof index === "number" ? index : undefined,
+        });
+        return NextResponse.json(result);
+      }
+
+      case "deleteTab": {
+        const { documentId, tabId } = body;
+
+        if (!documentId) {
+          return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+        }
+        if (!tabId || typeof tabId !== "string") {
+          return NextResponse.json({ error: "Tab ID is required" }, { status: 400 });
+        }
+
+        const result = await deleteDocumentTab(session.accessToken, documentId, tabId);
+        return NextResponse.json(result);
+      }
+
       case "search": {
         const { query } = body;
 
@@ -117,9 +167,6 @@ export async function POST(request: Request) {
         );
         return NextResponse.json({ ok: true, revisionId });
       }
-
-      // NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs.
-      // Tabs are read-only via the API. Users must manage tabs directly in Google Docs.
 
       default: {
         // Default behavior: get document content

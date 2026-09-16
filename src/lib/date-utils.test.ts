@@ -12,6 +12,7 @@ import {
   generateWeekWindow,
   getDaysInMonth,
   getEffectiveDailyTarget,
+  getEffectiveDailyTargetForDate,
   getFirstDayOfMonth,
   getFirstDayOfWeek,
   getLastDayOfMonth,
@@ -163,6 +164,57 @@ describe("date-utils", () => {
     it("clamps live remaining words at 0 when the user overshoots", () => {
       const live: Goal = { ...baseGoal, mode: "live" };
       expect(getEffectiveDailyTarget(live, "2026-06-15", 20000)).toBe(0);
+    });
+  });
+
+  describe("getEffectiveDailyTargetForDate", () => {
+    const live: Goal = {
+      id: "g",
+      userId: "u",
+      startDate: "2026-06-01",
+      endDate: "2026-06-04",
+      dailyWordTarget: 50,
+      totalWordTarget: 200,
+      mode: "live",
+    };
+
+    it("shows an even split across all days before any progress exists", () => {
+      for (const date of ["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04"]) {
+        expect(getEffectiveDailyTargetForDate(live, date, [], "2026-06-01")).toBe(50);
+      }
+    });
+
+    it("freezes a past day's target at what it was when it was current, and shares today's recalculated target across today and future days", () => {
+      // Day 1 (06-01) was completed with 80 words written; "today" is now day 2 (06-02).
+      const sessions: WritingSession[] = [{ userId: "u", date: "2026-06-01", wordCount: 80 }];
+
+      // Past day stays frozen at the original 50, regardless of the 80 actually written.
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-01", sessions, "2026-06-02")).toBe(50);
+
+      // (200 - 80) / 3 remaining days = 40, shared by today and both future days.
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-02", sessions, "2026-06-02")).toBe(40);
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-03", sessions, "2026-06-02")).toBe(40);
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-04", sessions, "2026-06-02")).toBe(40);
+    });
+
+    it("recomputes again once another day passes", () => {
+      // Day 2 (06-02) was completed with only 20 words; "today" is now day 3 (06-03).
+      const sessions: WritingSession[] = [
+        { userId: "u", date: "2026-06-01", wordCount: 80 },
+        { userId: "u", date: "2026-06-02", wordCount: 20 },
+      ];
+
+      // Day 2 freezes at the 40 it showed when it was current.
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-02", sessions, "2026-06-03")).toBe(40);
+
+      // (200 - 100) / 2 remaining days = 50, shared by today and the final day.
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-03", sessions, "2026-06-03")).toBe(50);
+      expect(getEffectiveDailyTargetForDate(live, "2026-06-04", sessions, "2026-06-03")).toBe(50);
+    });
+
+    it("returns the stored daily target for static goals regardless of date", () => {
+      const staticGoal: Goal = { ...live, mode: "static" };
+      expect(getEffectiveDailyTargetForDate(staticGoal, "2026-06-04", [], "2026-06-02")).toBe(50);
     });
   });
 

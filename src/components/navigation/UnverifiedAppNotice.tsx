@@ -140,7 +140,7 @@ export function UnverifiedAppNotice() {
               Full verification requires a paid security review, so during sign-in you&apos;ll see
               a &quot;Google hasn&apos;t verified this app&quot; screen. Click{" "}
               <strong>Advanced</strong>, then{" "}
-              <strong>Go to DailyWrite (unsafe)</strong> to continue — this is expected, and your
+              <strong>Go to DailyWrite (unsafe)</strong> to continue. This is expected, and your
               data stays private to your own Google account.
             </p>
           </div>,

@@ -502,6 +502,15 @@
   content: none;
 }
 
+/* Opt a single bordered element out of the global rainbow border (e.g. the
+   sub-tab depth badge) while keeping its native border color. The compound
+   `[class*="border"].no-rainbow-border` outranks the general pseudo rule
+   regardless of source order. */
+:where(.energy, .ambition) [class*="border"].no-rainbow-border::before,
+:where(.energy, .ambition) [class*="border"].no-rainbow-border::after {
+  content: none;
+}
+
 /* Monotonic top-left → bottom-right pan by animating a length variable.
    Because `--rainbow-pan` is `inherits: true`, the value flows to every
    descendant so their `background-position` calc resolves to the same

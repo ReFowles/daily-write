@@ -22,7 +22,29 @@ vi.mock("googleapis", () => ({
   },
 }));
 
-import { getGoogleDocContent, applyManuscriptFormat, removeManuscriptFormat } from "./google-docs";
+import {
+  getGoogleDocContent,
+  applyManuscriptFormat,
+  removeManuscriptFormat,
+  createDocumentTab,
+  deleteDocumentTab,
+  updateDocumentTab,
+} from "./google-docs";
+
+// getDocumentTabs reads tabs from a documents.get response; this builds one.
+function tabsResponse(
+  tabs: Array<{ tabId: string; title: string; index?: number }>,
+  revisionId = "rev-tabs"
+) {
+  return {
+    data: {
+      revisionId,
+      tabs: tabs.map((t) => ({
+        tabProperties: { tabId: t.tabId, title: t.title, index: t.index ?? 0, nestingLevel: 0 },
+      })),
+    },
+  };
+}
 
 describe("getGoogleDocContent", () => {
   beforeEach(() => {
@@ -133,6 +155,89 @@ describe("applyManuscriptFormat / removeManuscriptFormat", () => {
     const revisionId = await removeManuscriptFormat("token", "doc-1");
 
     expect(revisionId).toBe("rev-9");
+  });
+});
+
+describe("tab mutations", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("createDocumentTab adds a sub-tab and resolves the newly-created tab by diffing IDs", async () => {
+    documentsGetMock
+      .mockResolvedValueOnce(tabsResponse([{ tabId: "t1", title: "Chapter 1" }])) // before
+      .mockResolvedValueOnce(
+        tabsResponse([
+          { tabId: "t1", title: "Chapter 1" },
+          { tabId: "t2", title: "New sub-tab", index: 1 },
+        ])
+      ); // after
+    documentsBatchUpdateMock.mockResolvedValueOnce({});
+
+    const { tabs, created, revisionId } = await createDocumentTab("token", "doc-1", {
+      title: "New sub-tab",
+      parentTabId: "t1",
+    });
+
+    expect(documentsBatchUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: "doc-1",
+        requestBody: {
+          requests: [
+            { addDocumentTab: { tabProperties: { title: "New sub-tab", parentTabId: "t1" } } },
+          ],
+        },
+      })
+    );
+    expect(tabs).toHaveLength(2);
+    expect(created).toMatchObject({ tabId: "t2" });
+    expect(revisionId).toBe("rev-tabs");
+  });
+
+  it("deleteDocumentTab sends a deleteTab request and returns the refreshed list", async () => {
+    documentsBatchUpdateMock.mockResolvedValueOnce({});
+    documentsGetMock.mockResolvedValueOnce(tabsResponse([{ tabId: "t1", title: "Chapter 1" }]));
+
+    const { tabs } = await deleteDocumentTab("token", "doc-1", "t2");
+
+    expect(documentsBatchUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: { requests: [{ deleteTab: { tabId: "t2" } }] },
+      })
+    );
+    expect(tabs).toEqual([
+      expect.objectContaining({ tabId: "t1", title: "Chapter 1" }),
+    ]);
+  });
+
+  it("updateDocumentTab builds a field mask from the supplied updates", async () => {
+    documentsBatchUpdateMock.mockResolvedValueOnce({});
+    documentsGetMock.mockResolvedValueOnce(tabsResponse([{ tabId: "t1", title: "Prologue" }]));
+
+    await updateDocumentTab("token", "doc-1", "t1", { title: "Prologue" });
+
+    expect(documentsBatchUpdateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: {
+          requests: [
+            {
+              updateDocumentTabProperties: {
+                tabProperties: { tabId: "t1", title: "Prologue" },
+                fields: "title",
+              },
+            },
+          ],
+        },
+      })
+    );
+  });
+
+  it("updateDocumentTab skips the batch update when there are no changes", async () => {
+    documentsGetMock.mockResolvedValueOnce(tabsResponse([{ tabId: "t1", title: "Prologue" }]));
+
+    await updateDocumentTab("token", "doc-1", "t1", {});
+
+    expect(documentsBatchUpdateMock).not.toHaveBeenCalled();
   });
 });
 

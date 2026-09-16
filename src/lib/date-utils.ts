@@ -56,19 +56,25 @@ export function getEffectiveDailyTarget(
  * Effective daily target for a goal on a specific calendar date, deriving
  * wordsWrittenBeforeToday from the goal's own writing sessions so calendar
  * views stay in sync with live goals as days pass, not just the header stat.
+ *
+ * Past dates freeze at whatever target was in effect that day (based on
+ * progress up to that point); today and future dates all share today's
+ * recalculated target, since it only updates once per day as "today" advances.
  */
 export function getEffectiveDailyTargetForDate(
   goal: Goal,
   dateString: string,
-  writingSessions: WritingSession[]
+  writingSessions: WritingSession[],
+  todayDateString: string
 ): number {
   if (goal.mode === "static") return goal.dailyWordTarget;
 
+  const referenceDate = dateString < todayDateString ? dateString : todayDateString;
   const wordsWrittenBeforeDate = writingSessions
-    .filter((session) => session.date >= goal.startDate && session.date < dateString)
+    .filter((session) => session.date >= goal.startDate && session.date < referenceDate)
     .reduce((sum, session) => sum + session.wordCount, 0);
 
-  return getEffectiveDailyTarget(goal, dateString, wordsWrittenBeforeDate);
+  return getEffectiveDailyTarget(goal, referenceDate, wordsWrittenBeforeDate);
 }
 
 /**
@@ -88,6 +94,7 @@ export function generateWeekWindow(
   });
   
   const days: DayData[] = [];
+  const todayDateString = toDateString(today);
   for (let i = -2; i <= 2; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
@@ -99,7 +106,7 @@ export function generateWeekWindow(
     days.push({
       date,
       wordsWritten: sessionMap.get(dateString) || 0,
-      goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions) : null,
+      goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions, todayDateString) : null,
     });
   }
   

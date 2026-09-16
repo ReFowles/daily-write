@@ -603,8 +603,8 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
     q: "Can I create or delete document tabs?",
     a: (
       <p>
-        Document tabs are <strong>read-only</strong> inside DailyWrite. You can pick which tab to
-        write in, but creating and removing tabs can only happen inside Google Docs.
+        Yes. You can add, rename, and delete tabs—including nested sub-tabs—right from the tab bar
+        above the editor, and the changes are saved straight to Google Docs.
       </p>
     ),
   },

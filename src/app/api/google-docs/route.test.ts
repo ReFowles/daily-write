@@ -13,6 +13,9 @@ vi.mock("@/lib/google-docs", async () => {
     updateGoogleDocFromContent: vi.fn(),
     createGoogleDoc: vi.fn(),
     getDocumentTabs: vi.fn(),
+    createDocumentTab: vi.fn(),
+    deleteDocumentTab: vi.fn(),
+    updateDocumentTab: vi.fn(),
     searchGoogleDocs: vi.fn(),
     getGoogleDocsByIds: vi.fn(),
     getGoogleDocContent: vi.fn(),
@@ -25,6 +28,9 @@ import { auth } from "@/lib/auth";
 import {
   createGoogleDoc,
   getDocumentTabs,
+  createDocumentTab,
+  deleteDocumentTab,
+  updateDocumentTab,
   getGoogleDocAsContent,
   getGoogleDocContent,
   getGoogleDocsByIds,
@@ -45,6 +51,9 @@ const authMock = vi.mocked(auth as unknown as () => Promise<MinimalSession>);
 const listGoogleDocsMock = vi.mocked(listGoogleDocs);
 const createGoogleDocMock = vi.mocked(createGoogleDoc);
 const getDocumentTabsMock = vi.mocked(getDocumentTabs);
+const createDocumentTabMock = vi.mocked(createDocumentTab);
+const deleteDocumentTabMock = vi.mocked(deleteDocumentTab);
+const updateDocumentTabMock = vi.mocked(updateDocumentTab);
 const getGoogleDocAsContentMock = vi.mocked(getGoogleDocAsContent);
 const updateGoogleDocFromContentMock = vi.mocked(updateGoogleDocFromContent);
 const searchGoogleDocsMock = vi.mocked(searchGoogleDocs);
@@ -165,6 +174,85 @@ describe("google-docs API route", () => {
       const res = await POST(makeRequest({ action: "getTabs", documentId: "doc-1" }));
       expect(res.status).toBe(200);
       expect(getDocumentTabsMock).toHaveBeenCalledWith("test-token", "doc-1");
+    });
+
+    it("rejects createTab without documentId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "createTab", title: "Chapter 2" }));
+      expect(res.status).toBe(400);
+      expect(createDocumentTabMock).not.toHaveBeenCalled();
+    });
+
+    it("creates a tab (including sub-tabs) and returns the refreshed list", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const created = { tabId: "t2", title: "Chapter 2", index: 1, nestingLevel: 1, parentTabId: "t1" };
+      createDocumentTabMock.mockResolvedValueOnce({
+        tabs: [{ tabId: "t1", title: "Chapter 1", index: 0, nestingLevel: 0 }, created],
+        created,
+        revisionId: "rev-1",
+      });
+
+      const res = await POST(
+        makeRequest({
+          action: "createTab",
+          documentId: "doc-1",
+          title: "Chapter 2",
+          parentTabId: "t1",
+        })
+      );
+      expect(res.status).toBe(200);
+      expect(createDocumentTabMock).toHaveBeenCalledWith("test-token", "doc-1", {
+        title: "Chapter 2",
+        parentTabId: "t1",
+        index: undefined,
+      });
+      await expect(res.json()).resolves.toMatchObject({ created: { tabId: "t2" } });
+    });
+
+    it("rejects updateTab without a tabId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "updateTab", documentId: "doc-1", title: "x" }));
+      expect(res.status).toBe(400);
+      expect(updateDocumentTabMock).not.toHaveBeenCalled();
+    });
+
+    it("renames a tab via updateTab", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      updateDocumentTabMock.mockResolvedValueOnce({
+        tabs: [{ tabId: "t1", title: "Prologue", index: 0, nestingLevel: 0 }],
+        revisionId: "rev-1",
+      });
+
+      const res = await POST(
+        makeRequest({ action: "updateTab", documentId: "doc-1", tabId: "t1", title: "Prologue" })
+      );
+      expect(res.status).toBe(200);
+      expect(updateDocumentTabMock).toHaveBeenCalledWith("test-token", "doc-1", "t1", {
+        title: "Prologue",
+        parentTabId: undefined,
+        index: undefined,
+      });
+    });
+
+    it("rejects deleteTab without a tabId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "deleteTab", documentId: "doc-1" }));
+      expect(res.status).toBe(400);
+      expect(deleteDocumentTabMock).not.toHaveBeenCalled();
+    });
+
+    it("deletes a tab and returns the refreshed list", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      deleteDocumentTabMock.mockResolvedValueOnce({
+        tabs: [{ tabId: "t1", title: "Chapter 1", index: 0, nestingLevel: 0 }],
+        revisionId: "rev-1",
+      });
+
+      const res = await POST(
+        makeRequest({ action: "deleteTab", documentId: "doc-1", tabId: "t2" })
+      );
+      expect(res.status).toBe(200);
+      expect(deleteDocumentTabMock).toHaveBeenCalledWith("test-token", "doc-1", "t2");
     });
 
     it("default action returns content and revisionId for the document", async () => {

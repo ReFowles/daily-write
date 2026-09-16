@@ -325,6 +325,32 @@ export default function WritePageClient() {
     }
   }, [selectedDoc, selectedTab, commitCurrentDocContribution]);
 
+  // Flushes any unsaved edits in the current tab before a tab action mutates the
+  // document server-side, mirroring the SMF format flow. Returns false (aborting
+  // the tab action) if the flush hit drift or an error.
+  const flushPendingDocEdits = useCallback(async (): Promise<boolean> => {
+    if (!selectedDoc) return true;
+    if (content && !contentsEqual(content, lastSavedContent)) {
+      setSaveStatus('saving');
+      const saved = await saveToGoogleDocs(selectedDoc.id, content, selectedTab?.tabId);
+      if (!saved) {
+        setSaveStatus('unsaved');
+        return false;
+      }
+      setSaveStatus('saved');
+    }
+    return true;
+  }, [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs]);
+
+  // A tab action bumps the document's revisionId server-side; adopt the fresh
+  // revision as the new drift baseline so the next autosave doesn't conflict.
+  const handleTabsPersisted = useCallback((revisionId?: string) => {
+    if (revisionId) {
+      setBaseRevisionId(revisionId);
+      setDriftBlocked(false);
+    }
+  }, []);
+
   // Applies or restores manuscript formatting on the underlying Google Doc.
   // This is a deliberate, one-time action (not a toggle): it rewrites the doc
   // server-side and can't be undone from DailyWrite.
@@ -700,6 +726,8 @@ export default function WritePageClient() {
               documentId={selectedDoc.id}
               selectedTabId={selectedTab?.tabId ?? urlTabId ?? undefined}
               onSelectTab={handleSelectTab}
+              onBeforeMutate={flushPendingDocEdits}
+              onTabsPersisted={handleTabsPersisted}
             />
             
             {loadingContent ? (
@@ -790,7 +818,7 @@ export default function WritePageClient() {
       open={formatDialog !== null}
       title={
         formatDialog === 'restore'
-          ? 'Apply Google Docs defaults?'
+          ? 'Apply Google Docs default formatting?'
           : 'Apply Standard Manuscript Format?'
       }
       description={
@@ -804,7 +832,7 @@ export default function WritePageClient() {
         ) : (
           <>
             This reformats{selectedDoc ? ` “${selectedDoc.name}”` : ' this document'} in Google
-            Docs — US Letter, 1-inch margins, 12pt Times New Roman, double spaced, half-inch
+            Docs: US Letter, 1-inch margins, 12pt Times New Roman, double spaced, half-inch
             first-line indents, with centered chapter headings on their own page. Your text and
             bold/italic emphasis are kept. This changes the Google Doc itself and can’t be undone
             from DailyWrite.
