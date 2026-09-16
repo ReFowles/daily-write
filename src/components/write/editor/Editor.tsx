@@ -26,6 +26,10 @@ export interface EditorProps {
   paragraphIndent?: boolean;
   smartQuotes?: boolean;
   onToggleSmartQuotes?: () => void;
+  onApplyManuscriptFormat?: () => void;
+  onRestoreDefaultFormat?: () => void;
+  manuscriptFormatDisabled?: boolean;
+  manuscriptFormatBusy?: boolean;
 }
 
 export type LineSpacing = 'normal' | 'relaxed' | 'spacious';
@@ -57,6 +61,10 @@ export function Editor({
   paragraphIndent = false,
   smartQuotes = true,
   onToggleSmartQuotes,
+  onApplyManuscriptFormat,
+  onRestoreDefaultFormat,
+  manuscriptFormatDisabled = false,
+  manuscriptFormatBusy = false,
 }: EditorProps) {
   const extensions = useMemo(
     () => [
@@ -112,7 +120,15 @@ export function Editor({
 
   return (
     <div className="editor-root flex h-full min-h-0 flex-col">
-      <Toolbar editor={editor} smartQuotes={smartQuotes} onToggleSmartQuotes={onToggleSmartQuotes} />
+      <Toolbar
+        editor={editor}
+        smartQuotes={smartQuotes}
+        onToggleSmartQuotes={onToggleSmartQuotes}
+        onApplyManuscriptFormat={onApplyManuscriptFormat}
+        onRestoreDefaultFormat={onRestoreDefaultFormat}
+        manuscriptFormatDisabled={manuscriptFormatDisabled}
+        manuscriptFormatBusy={manuscriptFormatBusy}
+      />
       <div
         className={cn(
           'min-h-0 flex-1 overflow-y-auto',

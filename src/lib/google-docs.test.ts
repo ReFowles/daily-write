@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { documentsGetMock, docsMock, driveMock } = vi.hoisted(() => {
+const { documentsGetMock, documentsBatchUpdateMock, docsMock, driveMock } = vi.hoisted(() => {
   const documentsGetMock = vi.fn();
-  const docsMock = vi.fn(() => ({ documents: { get: documentsGetMock } }));
+  const documentsBatchUpdateMock = vi.fn();
+  const docsMock = vi.fn(() => ({
+    documents: { get: documentsGetMock, batchUpdate: documentsBatchUpdateMock },
+  }));
   const driveMock = vi.fn();
-  return { documentsGetMock, docsMock, driveMock };
+  return { documentsGetMock, documentsBatchUpdateMock, docsMock, driveMock };
 });
 
 vi.mock("googleapis", () => ({
@@ -19,7 +22,7 @@ vi.mock("googleapis", () => ({
   },
 }));
 
-import { getGoogleDocContent } from "./google-docs";
+import { getGoogleDocContent, applyManuscriptFormat, removeManuscriptFormat } from "./google-docs";
 
 describe("getGoogleDocContent", () => {
   beforeEach(() => {
@@ -92,3 +95,44 @@ describe("getGoogleDocContent", () => {
     );
   });
 });
+
+describe("applyManuscriptFormat / removeManuscriptFormat", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const docWithBody = {
+    data: {
+      revisionId: "rev-1",
+      body: {
+        content: [
+          { endIndex: 12, paragraph: { elements: [{ textRun: { content: "hello world" } }] } },
+        ],
+      },
+    },
+  };
+
+  it("returns the post-update revisionId so callers can refresh their drift baseline", async () => {
+    documentsGetMock
+      .mockResolvedValueOnce(docWithBody) // initial read for bodyEndIndex
+      .mockResolvedValueOnce({ data: { revisionId: "rev-2" } }); // post-update read
+    documentsBatchUpdateMock.mockResolvedValueOnce({});
+
+    const revisionId = await applyManuscriptFormat("token", "doc-1", "tab-1");
+
+    expect(documentsBatchUpdateMock).toHaveBeenCalledTimes(1);
+    expect(revisionId).toBe("rev-2");
+  });
+
+  it("removeManuscriptFormat also returns the post-update revisionId", async () => {
+    documentsGetMock
+      .mockResolvedValueOnce(docWithBody)
+      .mockResolvedValueOnce({ data: { revisionId: "rev-9" } });
+    documentsBatchUpdateMock.mockResolvedValueOnce({});
+
+    const revisionId = await removeManuscriptFormat("token", "doc-1");
+
+    expect(revisionId).toBe("rev-9");
+  });
+});
+

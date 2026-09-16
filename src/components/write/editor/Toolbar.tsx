@@ -11,7 +11,6 @@ import {
   LuLink,
   LuList,
   LuListOrdered,
-  LuQuote,
   LuRedo2,
   LuStrikethrough,
   LuTable,
@@ -19,11 +18,16 @@ import {
   LuUndo2,
 } from 'react-icons/lu';
 import { cn } from '@/lib/class-utils';
+import { DocumentSettingsMenu } from './DocumentSettingsMenu';
 
 interface ToolbarProps {
   editor: Editor | null;
   smartQuotes?: boolean;
   onToggleSmartQuotes?: () => void;
+  onApplyManuscriptFormat?: () => void;
+  onRestoreDefaultFormat?: () => void;
+  manuscriptFormatDisabled?: boolean;
+  manuscriptFormatBusy?: boolean;
 }
 
 interface ToolbarButtonProps {
@@ -74,7 +78,15 @@ function ToolbarDivider() {
   );
 }
 
-export function Toolbar({ editor, smartQuotes = true, onToggleSmartQuotes }: ToolbarProps) {
+export function Toolbar({
+  editor,
+  smartQuotes = true,
+  onToggleSmartQuotes,
+  onApplyManuscriptFormat,
+  onRestoreDefaultFormat,
+  manuscriptFormatDisabled = false,
+  manuscriptFormatBusy = false,
+}: ToolbarProps) {
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -184,11 +196,13 @@ export function Toolbar({ editor, smartQuotes = true, onToggleSmartQuotes }: Too
         }
       />
       <ToolbarDivider />
-      <ToolbarButton
-        icon={<LuQuote aria-hidden />}
-        ariaLabel={smartQuotes ? "Turn off smart quotes" : "Turn on smart quotes"}
-        active={smartQuotes}
-        onClick={() => onToggleSmartQuotes?.()}
+      <DocumentSettingsMenu
+        smartQuotes={smartQuotes}
+        onToggleSmartQuotes={() => onToggleSmartQuotes?.()}
+        onApplyManuscriptFormat={() => onApplyManuscriptFormat?.()}
+        onRestoreDefaultFormat={() => onRestoreDefaultFormat?.()}
+        manuscriptFormatDisabled={manuscriptFormatDisabled}
+        manuscriptFormatBusy={manuscriptFormatBusy}
       />
       <div className="ml-auto flex items-center gap-1">
         <ToolbarButton

@@ -8,6 +8,8 @@ import {
   searchGoogleDocs,
   getGoogleDocsByIds,
   getGoogleDocContent,
+  applyManuscriptFormat,
+  removeManuscriptFormat,
   DocumentDriftError,
 } from "@/lib/google-docs";
 import { isDocumentContent } from "@/lib/document-content";
@@ -96,6 +98,26 @@ export async function POST(request: Request) {
         return NextResponse.json({ wordCount });
       }
 
+      case "applyManuscriptFormat":
+      case "removeManuscriptFormat": {
+        const { documentId, tabId } = body;
+
+        if (!documentId) {
+          return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
+        }
+
+        const runner =
+          body.action === "applyManuscriptFormat"
+            ? applyManuscriptFormat
+            : removeManuscriptFormat;
+        const revisionId = await runner(
+          session.accessToken,
+          documentId,
+          typeof tabId === "string" ? tabId : undefined
+        );
+        return NextResponse.json({ ok: true, revisionId });
+      }
+
       // NOTE: The Google Docs API does NOT support creating, deleting, or renaming tabs.
       // Tabs are read-only via the API. Users must manage tabs directly in Google Docs.
 
@@ -107,13 +129,13 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Document ID is required" }, { status: 400 });
         }
 
-        const { content, revisionId } = await getGoogleDocAsContent(
+        const { content, revisionId, isManuscriptFormat } = await getGoogleDocAsContent(
           session.accessToken,
           documentId,
           tabId
         );
 
-        return NextResponse.json({ content, revisionId });
+        return NextResponse.json({ content, revisionId, isManuscriptFormat });
       }
     }
   } catch (error) {

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PageHeader } from "@/components/PageHeader";
 import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
 import { createOrUpdateWritingSession, getWritingSessionByDate } from "@/lib/data-store";
@@ -102,6 +103,8 @@ export default function WritePageClient() {
     true,
     booleanFromLocalStorage
   );
+  const [manuscriptFormatBusy, setManuscriptFormatBusy] = useState(false);
+  const [formatDialog, setFormatDialog] = useState<'apply' | 'restore' | null>(null);
 
   // Ref to track if we're currently saving to avoid race conditions
   const isSavingToDoc = useRef(false);
@@ -291,6 +294,91 @@ export default function WritePageClient() {
     setLoadingContent(false);
     syncUrl(doc.id, null);
   };
+
+  // Re-reads the current doc/tab into the editor. Used after a server-side
+  // format change so the editor holds the freshly-formatted content (and its
+  // new revisionId); otherwise the next autosave would diff against pre-format
+  // content and undo the change.
+  const reloadSelectedDocContent = useCallback(async () => {
+    if (!selectedDoc) return;
+    setLoadingContent(true);
+    try {
+      const response = await fetch('/api/google-docs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: selectedDoc.id, tabId: selectedTab?.tabId }),
+      });
+      if (!response.ok) throw new Error('Failed to reload document content');
+      const data = await response.json();
+      const loadedContent: DocumentContent = data.content ?? emptyDocument();
+      setContent(loadedContent);
+      setLastSavedContent(loadedContent);
+      setBaseRevisionId(typeof data.revisionId === 'string' ? data.revisionId : null);
+      setDriftBlocked(false);
+      const refreshedCount = calculateWordCount(getPlainText(loadedContent));
+      // Preserve credit for words written before the reload replaced the baseline.
+      commitCurrentDocContribution();
+      setWordCount(refreshedCount);
+      setDocStartWordCount(refreshedCount);
+    } finally {
+      setLoadingContent(false);
+    }
+  }, [selectedDoc, selectedTab, commitCurrentDocContribution]);
+
+  // Applies or restores manuscript formatting on the underlying Google Doc.
+  // This is a deliberate, one-time action (not a toggle): it rewrites the doc
+  // server-side and can't be undone from DailyWrite.
+  const runManuscriptFormatChange = useCallback(
+    async (mode: 'apply' | 'restore') => {
+      if (!selectedDoc) return;
+      setManuscriptFormatBusy(true);
+      setDocSaveError(null);
+      setSaveStatus('saving');
+      try {
+        // Flush pending local edits first so the server-side format change acts
+        // on the latest text and the reload below doesn't discard unsaved work.
+        if (content && !contentsEqual(content, lastSavedContent)) {
+          const saved = await saveToGoogleDocs(selectedDoc.id, content, selectedTab?.tabId);
+          if (!saved) return; // drift/error already surfaced to the user
+        }
+        const response = await fetch('/api/google-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: mode === 'apply' ? 'applyManuscriptFormat' : 'removeManuscriptFormat',
+            documentId: selectedDoc.id,
+            tabId: selectedTab?.tabId,
+          }),
+        });
+        if (!response.ok) {
+          setSaveStatus('unsaved');
+          const message =
+            (await response.json().catch(() => null))?.error ??
+            'Failed to update document format';
+          setDocSaveError(message);
+          return;
+        }
+        await reloadSelectedDocContent();
+        setSaveStatus('saved');
+      } catch (error) {
+        setSaveStatus('unsaved');
+        console.error('Failed to update manuscript format:', error);
+        setDocSaveError(
+          error instanceof Error ? error.message : 'Failed to update document format'
+        );
+      } finally {
+        setManuscriptFormatBusy(false);
+      }
+    },
+    [selectedDoc, selectedTab, content, lastSavedContent, saveToGoogleDocs, reloadSelectedDocContent]
+  );
+
+  const confirmFormatDialog = useCallback(async () => {
+    const mode = formatDialog;
+    if (!mode) return;
+    await runManuscriptFormatChange(mode);
+    setFormatDialog(null);
+  }, [formatDialog, runManuscriptFormatChange]);
 
   const handleSelectTab = useCallback(async (tab: DocumentTab) => {
     // Save current content before switching tabs
@@ -536,6 +624,7 @@ export default function WritePageClient() {
   const isFullPage = fullscreenMode;
 
   return (
+    <>
     <main
       className={cn(
         "surface-page",
@@ -632,6 +721,10 @@ export default function WritePageClient() {
                     paragraphIndent={paragraphIndent}
                     smartQuotes={smartQuotes}
                     onToggleSmartQuotes={() => setSmartQuotes((v) => !v)}
+                    onApplyManuscriptFormat={() => setFormatDialog('apply')}
+                    onRestoreDefaultFormat={() => setFormatDialog('restore')}
+                    manuscriptFormatBusy={manuscriptFormatBusy}
+                    manuscriptFormatDisabled={!selectedDoc || loadingContent}
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line p-3 sm:p-4">
@@ -693,5 +786,36 @@ export default function WritePageClient() {
         )}
       </div>
     </main>
+    <ConfirmDialog
+      open={formatDialog !== null}
+      title={
+        formatDialog === 'restore'
+          ? 'Apply Google Docs defaults?'
+          : 'Apply Standard Manuscript Format?'
+      }
+      description={
+        formatDialog === 'restore' ? (
+          <>
+            This reformats{selectedDoc ? ` “${selectedDoc.name}”` : ' this document'} in Google
+            Docs to the default layout (Arial 11pt, single spaced, 1-inch margins, no first-line
+            indent). Your text and bold/italic emphasis are kept. This changes the Google Doc
+            itself and can’t be undone from DailyWrite.
+          </>
+        ) : (
+          <>
+            This reformats{selectedDoc ? ` “${selectedDoc.name}”` : ' this document'} in Google
+            Docs — US Letter, 1-inch margins, 12pt Times New Roman, double spaced, half-inch
+            first-line indents, with centered chapter headings on their own page. Your text and
+            bold/italic emphasis are kept. This changes the Google Doc itself and can’t be undone
+            from DailyWrite.
+          </>
+        )
+      }
+      confirmLabel={formatDialog === 'restore' ? 'Apply defaults' : 'Apply format'}
+      confirmBusy={manuscriptFormatBusy}
+      onConfirm={confirmFormatDialog}
+      onCancel={() => setFormatDialog(null)}
+    />
+    </>
   );
 }

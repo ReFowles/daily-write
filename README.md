@@ -101,6 +101,8 @@ pnpm lint         # Run ESLint
 - Fix all linting errors (do not suppress)
 
 ## TODO:
+- Code Audit
+- Update Fonts? Change font by theme?
 - Date exclusion on goals
 - Opt-in feature, "cheat days" ; number designated when making goal and/or "earned" when certain conditions have been met (i.e. excess word counts, streaks, etc.)
 - Opt-in feature, "Feed plusses" (excess words from previous days) to "fill up" non-met day
@@ -117,6 +119,23 @@ pnpm lint         # Run ESLint
   - Preset `paragraphStyle` and `textStyle` fields (font family, font size, line spacing, paragraph spacing, first-line indent, text/background color, paragraph alignment) already round-trip via `attrs.docStyle` and the `docStyle` mark. They are not rendered in the editor today, so the writing view still uses Tailwind `prose` defaults. Follow-up: swap the passthrough extensions' `renderHTML` for translations to inline `style` (e.g. `lineSpacing: 150` → `line-height: 1.5`, `weightedFontFamily` → `font-family`, `foregroundColor` → `color`) and add toolbar controls that mutate the passthrough attrs/marks so users can see and edit the presets.
 - First-class table structural edits
   - Add/remove row and column ops (`insertTableRow`, `deleteTableRow`, column equivalents) instead of the current table-scoped delete + `insertTable` fallback. Requires the round-trip test harness to grow support for those requests first.
+- About Page: 
+  - Explain why word counts and having a daily word count is a valuable tool when building a habit or writing a full manuscript
+  - Explain why word counts specifically, and not pages or chapters
+  - Offer DailyWrite as a tool for writing without goals, because the themes are great
+  - Make a more blatant explanation that DailyWrite is good for writing but not editing—leave that to Google Docs
+  - No images, sorry!
+  - The app can't count what you write in Google Docs directly, only what you write through the app itself.
+- Live goals aren't visually updating the following days' (plus the new "current day") word count goals at midnight...
+- Add subtabs in addition to tabs (Forgot about those)
+- Can't delete tables.
+- `i` icons probably need more contrast. An entire a11y pass for the themes would probably be good.
+- Editor settings menu needs an info bar explaining everything in there doesn't affect the actual doc, just the DailyWrite app.
+- Tab info needs to be on every doc, probably, not just docs with tabs already present.
+- Editor walkthrough/tutorial?
+- Document Settings flyout menu in the toolbar: should contain the smart quotes and indentation (First line .5" globally)
+- Possible to add "untouchable box" in editor that represents images, preventing accidental image deletion?
+- Fix page break bug weirdness?
 
 ## License
 

@@ -16,6 +16,8 @@ vi.mock("@/lib/google-docs", async () => {
     searchGoogleDocs: vi.fn(),
     getGoogleDocsByIds: vi.fn(),
     getGoogleDocContent: vi.fn(),
+    applyManuscriptFormat: vi.fn(),
+    removeManuscriptFormat: vi.fn(),
   };
 });
 
@@ -29,6 +31,8 @@ import {
   listGoogleDocs,
   searchGoogleDocs,
   updateGoogleDocFromContent,
+  applyManuscriptFormat,
+  removeManuscriptFormat,
   DocumentDriftError,
 } from "@/lib/google-docs";
 import { GET, POST, PUT } from "./route";
@@ -46,6 +50,8 @@ const updateGoogleDocFromContentMock = vi.mocked(updateGoogleDocFromContent);
 const searchGoogleDocsMock = vi.mocked(searchGoogleDocs);
 const getGoogleDocsByIdsMock = vi.mocked(getGoogleDocsByIds);
 const getGoogleDocContentMock = vi.mocked(getGoogleDocContent);
+const applyManuscriptFormatMock = vi.mocked(applyManuscriptFormat);
+const removeManuscriptFormatMock = vi.mocked(removeManuscriptFormat);
 
 function makeRequest(body: unknown): Request {
   return new Request("http://localhost/api/google-docs", {
@@ -166,6 +172,7 @@ describe("google-docs API route", () => {
       getGoogleDocAsContentMock.mockResolvedValueOnce({
         content: sampleContent,
         revisionId: "rev-abc",
+        isManuscriptFormat: false,
       });
 
       const res = await POST(makeRequest({ documentId: "doc-1", tabId: "t1" }));
@@ -174,6 +181,7 @@ describe("google-docs API route", () => {
       await expect(res.json()).resolves.toEqual({
         content: sampleContent,
         revisionId: "rev-abc",
+        isManuscriptFormat: false,
       });
     });
 
@@ -247,6 +255,41 @@ describe("google-docs API route", () => {
       expect(res.status).toBe(200);
       expect(getGoogleDocContentMock).toHaveBeenCalledWith("test-token", "doc-1");
       await expect(res.json()).resolves.toEqual({ wordCount: 2 });
+    });
+
+    it("applyManuscriptFormat rejects without a documentId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      const res = await POST(makeRequest({ action: "applyManuscriptFormat" }));
+      expect(res.status).toBe(400);
+      expect(applyManuscriptFormatMock).not.toHaveBeenCalled();
+    });
+
+    it("applyManuscriptFormat forwards documentId and tabId and returns the new revisionId", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      applyManuscriptFormatMock.mockResolvedValueOnce("rev-2");
+
+      const res = await POST(
+        makeRequest({
+          action: "applyManuscriptFormat",
+          documentId: "doc-1",
+          tabId: "t1",
+        })
+      );
+      expect(res.status).toBe(200);
+      expect(applyManuscriptFormatMock).toHaveBeenCalledWith("test-token", "doc-1", "t1");
+      await expect(res.json()).resolves.toEqual({ ok: true, revisionId: "rev-2" });
+    });
+
+    it("removeManuscriptFormat forwards documentId when no tabId is supplied", async () => {
+      authMock.mockResolvedValueOnce(authenticatedSession);
+      removeManuscriptFormatMock.mockResolvedValueOnce("rev-3");
+
+      const res = await POST(
+        makeRequest({ action: "removeManuscriptFormat", documentId: "doc-1" })
+      );
+      expect(res.status).toBe(200);
+      expect(removeManuscriptFormatMock).toHaveBeenCalledWith("test-token", "doc-1", undefined);
+      await expect(res.json()).resolves.toEqual({ ok: true, revisionId: "rev-3" });
     });
   });
 

@@ -5,6 +5,17 @@ import { getPlainText } from "./document-content";
 import { googleDocsToContent, type GoogleDocsDocument } from "./google-docs-to-content";
 import { contentToGoogleDocsRequests } from "./content-to-google-docs";
 import { diffDocumentContent } from "./document-content-diff";
+import {
+  buildBoldPreservationRequests,
+  buildDefaultFormatRequests,
+  buildManuscriptFormatRequests,
+  buildManuscriptHeadingRequests,
+  computeBodyEndIndex,
+  detectManuscriptFormat,
+  DEFAULT_FONT_FAMILY,
+  SMF_FONT_FAMILY,
+  type RawDocumentForDetection,
+} from "./manuscript-format";
 
 export type { GoogleDoc, DocumentTab };
 
@@ -99,7 +110,9 @@ async function toGoogleDoc(
 }
 
 /**
- * Create a new Google Doc with the given title
+ * Create a new Google Doc with the given title. New DailyWrite-created docs
+ * are formatted with Standard Manuscript Format immediately so authors get
+ * agent-ready formatting by default.
  */
 export async function createGoogleDoc(accessToken: string, title: string): Promise<GoogleDoc> {
   const auth = new google.auth.OAuth2();
@@ -113,6 +126,14 @@ export async function createGoogleDoc(accessToken: string, title: string): Promi
   });
 
   const documentId = createResponse.data.documentId!;
+
+  // Best-effort SMF apply; a failure here shouldn't block returning the new
+  // doc to the user, who can retry from the toolbar toggle.
+  try {
+    await applyManuscriptFormat(accessToken, documentId);
+  } catch (error) {
+    console.error("Failed to apply SMF to new doc", documentId, error);
+  }
 
   const fileResponse = await drive.files.get({
     fileId: documentId,
@@ -380,12 +401,13 @@ export async function getWordCountDelta(
 
 // Fetches a Google Doc and returns it in the editor-agnostic DocumentContent
 // wire format used by the client, alongside the current revisionId so the
-// client can send it back as a drift baseline on save.
+// client can send it back as a drift baseline on save, and a flag indicating
+// whether the doc currently matches Standard Manuscript Format.
 export async function getGoogleDocAsContent(
   accessToken: string,
   documentId: string,
   tabId?: string
-): Promise<{ content: DocumentContent; revisionId: string }> {
+): Promise<{ content: DocumentContent; revisionId: string; isManuscriptFormat: boolean }> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
 
@@ -396,7 +418,93 @@ export async function getGoogleDocAsContent(
   });
 
   const content = googleDocsToContent(response.data as unknown as GoogleDocsDocument, tabId);
-  return { content, revisionId: response.data.revisionId ?? "" };
+  const isManuscriptFormat = detectManuscriptFormat(
+    response.data as unknown as RawDocumentForDetection,
+    tabId
+  );
+  return {
+    content,
+    revisionId: response.data.revisionId ?? "",
+    isManuscriptFormat,
+  };
+}
+
+// Applies Standard Manuscript Format to the given document (optionally scoped
+// to a specific tab). Fetches the doc first to learn the body's end index.
+// Returns the document's revisionId after the update so callers can refresh
+// their drift baseline (the batchUpdate changes the doc server-side).
+export async function applyManuscriptFormat(
+  accessToken: string,
+  documentId: string,
+  tabId?: string
+): Promise<string> {
+  return runFormatBatchUpdate(
+    accessToken,
+    documentId,
+    tabId,
+    buildManuscriptFormatRequests,
+    SMF_FONT_FAMILY,
+    true
+  );
+}
+
+// Applies Google Docs' built-in defaults (Arial 11pt, single spaced, 1"
+// margins, no first-line indent, left aligned) over the given document/tab.
+// Returns the post-update revisionId (see applyManuscriptFormat).
+export async function removeManuscriptFormat(
+  accessToken: string,
+  documentId: string,
+  tabId?: string
+): Promise<string> {
+  return runFormatBatchUpdate(
+    accessToken,
+    documentId,
+    tabId,
+    buildDefaultFormatRequests,
+    DEFAULT_FONT_FAMILY,
+    false
+  );
+}
+
+type FormatRequestBuilder = (opts: {
+  bodyEndIndex: number;
+  tabId?: string;
+}) => object[];
+
+async function runFormatBatchUpdate(
+  accessToken: string,
+  documentId: string,
+  tabId: string | undefined,
+  buildRequests: FormatRequestBuilder,
+  boldFontFamily: string,
+  formatHeadings: boolean
+): Promise<string> {
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+
+  const docs = google.docs({ version: "v1", auth });
+  const doc = await docs.documents.get({ documentId, includeTabsContent: true });
+  const rawDoc = doc.data as unknown as RawDocumentForDetection;
+  const bodyEndIndex = computeBodyEndIndex(rawDoc, tabId);
+
+  // Heading and bold passes run after the blanket paragraph/text style so their
+  // overrides win: headings get centered/page-broken, bold is re-asserted (the
+  // blanket text style forces weight 400, which would otherwise flatten bold).
+  const requests = [
+    ...buildRequests({ bodyEndIndex, tabId }),
+    ...(formatHeadings ? buildManuscriptHeadingRequests(rawDoc, tabId) : []),
+    ...buildBoldPreservationRequests(rawDoc, boldFontFamily, tabId),
+  ];
+  // No formatting changes needed — the current revision is still the baseline.
+  if (requests.length === 0) return doc.data.revisionId ?? "";
+
+  await docs.documents.batchUpdate({
+    documentId,
+    requestBody: { requests },
+  });
+
+  const postDoc = await docs.documents.get({ documentId });
+  return postDoc.data.revisionId ?? doc.data.revisionId ?? "";
 }
 
 export interface UpdateGoogleDocOptions {

@@ -28,7 +28,7 @@ describe('<Editor />', () => {
     expect(screen.getByRole('button', { name: 'Insert table' })).toBeInTheDocument();
   });
 
-  it('renders a smart quotes toggle that reflects state and calls the handler', async () => {
+  it('renders a smart quotes toggle inside the document settings menu that reflects state and calls the handler', async () => {
     const onToggleSmartQuotes = vi.fn();
     render(
       <Editor
@@ -39,11 +39,16 @@ describe('<Editor />', () => {
       />
     );
 
-    const button = await screen.findByRole('button', { name: 'Turn on smart quotes' });
-    expect(button).toHaveAttribute('aria-pressed', 'false');
+    const menuButton = await screen.findByRole('button', { name: /document settings/i });
+    act(() => {
+      menuButton.click();
+    });
+
+    const smartQuotesItem = screen.getByRole('menuitemcheckbox', { name: /smart quotes/i });
+    expect(smartQuotesItem).toHaveAttribute('aria-checked', 'false');
 
     act(() => {
-      button.click();
+      smartQuotesItem.click();
     });
     expect(onToggleSmartQuotes).toHaveBeenCalledTimes(1);
   });

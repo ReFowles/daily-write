@@ -96,7 +96,7 @@ function Hero({ signInSlot, showCta }: { signInSlot: ReactNode; showCta: boolean
         </h1>
         <p className={cn("mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl", themeClasses.text.secondary)}>
           DailyWrite tracks the words you write each day, straight from Google Docs, so you can
-          focus on the story — not the spreadsheet.
+          focus on the story—not the spreadsheet.
         </p>
 
         {showCta && (
@@ -600,16 +600,6 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
     ),
   },
   {
-    q: "What kinds of goals can I set?",
-    a: (
-      <p>
-        Today, DailyWrite supports one goal type: a daily word count target over a fixed date range.
-        Project-based goals (finish a novel by a deadline, with an auto-recalculating daily target)
-        are on the roadmap.
-      </p>
-    ),
-  },
-  {
     q: "Can I create or delete document tabs?",
     a: (
       <p>
@@ -624,6 +614,17 @@ const LIMITATIONS: ReadonlyArray<{ q: string; a: ReactNode }> = [
       <p>
         No. Only word counts, goals, and timestamps are stored. Every character you write lives in
         your Google Drive. If you ever abandon DailyWrite, your writing will still be accessible there.
+      </p>
+    ),
+  },
+  {
+    q: "What kinds of goals can I set?",
+    a: (
+      <p>
+        A start date, an end date, and a total word target—DailyWrite splits that into a daily
+        target for you. Choose <strong>static</strong> mode to lock in the same daily target for
+        the whole run, or <strong>live</strong> mode to have it recalculate each day from whatever
+        words remain.
       </p>
     ),
   },
