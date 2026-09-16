@@ -6,9 +6,11 @@ import { CalendarHeader } from "./CalendarHeader";
 import type { Goal, WritingSession } from "@/lib/types";
 import {
   generateMonthGrid,
+  getEffectiveDailyTargetForDate,
   getMonthName,
   isDateInRange,
   isSameDate,
+  toDateString,
 } from "@/lib/date-utils";
 import { cn } from "@/lib/class-utils";
 import { useCalendarNavigation } from "@/lib/use-calendar-navigation";
@@ -133,7 +135,11 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                           variant="compact"
                           date={day.date}
                           wordsWritten={day.wordsWritten}
-                          goal={goal?.dailyWordTarget ?? null}
+                          goal={
+                            goal && day.date
+                              ? getEffectiveDailyTargetForDate(goal, toDateString(day.date), writingSessions)
+                              : null
+                          }
                           isToday={day.isToday}
                           isFuture={day.isFuture}
                         />

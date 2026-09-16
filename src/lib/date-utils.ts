@@ -53,6 +53,25 @@ export function getEffectiveDailyTarget(
 }
 
 /**
+ * Effective daily target for a goal on a specific calendar date, deriving
+ * wordsWrittenBeforeToday from the goal's own writing sessions so calendar
+ * views stay in sync with live goals as days pass, not just the header stat.
+ */
+export function getEffectiveDailyTargetForDate(
+  goal: Goal,
+  dateString: string,
+  writingSessions: WritingSession[]
+): number {
+  if (goal.mode === "static") return goal.dailyWordTarget;
+
+  const wordsWrittenBeforeDate = writingSessions
+    .filter((session) => session.date >= goal.startDate && session.date < dateString)
+    .reduce((sum, session) => sum + session.wordCount, 0);
+
+  return getEffectiveDailyTarget(goal, dateString, wordsWrittenBeforeDate);
+}
+
+/**
  * Generate a 5-day window of day data (2 days before, today, 2 days after)
  */
 export function generateWeekWindow(
@@ -80,7 +99,7 @@ export function generateWeekWindow(
     days.push({
       date,
       wordsWritten: sessionMap.get(dateString) || 0,
-      goal: goal?.dailyWordTarget ?? null,
+      goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions) : null,
     });
   }
   
