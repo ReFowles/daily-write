@@ -23,7 +23,7 @@ fi
 
 pnpm build
 
-ssh "$DROPLET_HOST" "cd $REMOTE_DIR && git fetch --prune && git reset --hard origin/main && pnpm install --frozen-lockfile && sudo systemctl restart dailywrite"
+ssh "$DROPLET_HOST" "cd $REMOTE_DIR && git fetch --prune && git reset --hard origin/main && CI=true pnpm install --frozen-lockfile && sudo systemctl restart dailywrite"
 
 rsync -avz --delete .next/ "$DROPLET_HOST:$REMOTE_DIR/.next/"
 
