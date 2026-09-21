@@ -166,86 +166,16 @@ describe('contentToGoogleDocsRequests', () => {
     expect(bullets?.createParagraphBullets.bulletPreset).toBe('NUMBERED_DECIMAL_ALPHA_ROMAN');
   });
 
-  it('emits insertTable and records pendingTables for a table', () => {
+  it('drops opaque tables from full-replace requests (cannot recreate them)', () => {
     const result = contentToGoogleDocsRequests(
       doc(
         { type: 'paragraph', content: [{ type: 'text', text: 'before' }] },
-        {
-          type: 'table',
-          content: [
-            {
-              type: 'tableRow',
-              content: [
-                {
-                  type: 'tableCell',
-                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }],
-                },
-                {
-                  type: 'tableCell',
-                  content: [{ type: 'paragraph', content: [{ type: 'text', text: 'b' }] }],
-                },
-              ],
-            },
-          ],
-        },
+        { type: 'table', attrs: { span: 12 } },
         { type: 'paragraph', content: [{ type: 'text', text: 'after' }] }
       )
     );
     expect(result.plainText).toBe('before\nafter\n');
-    const insertTable = result.requests.find(
-      (r): r is { insertTable: { rows: number; columns: number; location: { index: number } } } =>
-        'insertTable' in (r as object)
-    );
-    expect(insertTable?.insertTable).toEqual({
-      rows: 1,
-      columns: 2,
-      location: { index: 8 },
-    });
-    expect(result.pendingTables).toHaveLength(1);
-    expect(result.pendingTables[0].rows).toBe(1);
-    expect(result.pendingTables[0].cols).toBe(2);
-  });
-
-  it('inserts multiple tables in reverse position order', () => {
-    const result = contentToGoogleDocsRequests(
-      doc(
-        {
-          type: 'table',
-          content: [
-            {
-              type: 'tableRow',
-              content: [
-                {
-                  type: 'tableCell',
-                  content: [{ type: 'paragraph', content: [{ type: 'text', text: '1' }] }],
-                },
-              ],
-            },
-          ],
-        },
-        { type: 'paragraph', content: [{ type: 'text', text: 'middle' }] },
-        {
-          type: 'table',
-          content: [
-            {
-              type: 'tableRow',
-              content: [
-                {
-                  type: 'tableCell',
-                  content: [{ type: 'paragraph', content: [{ type: 'text', text: '2' }] }],
-                },
-              ],
-            },
-          ],
-        }
-      )
-    );
-    const inserts = result.requests.filter(
-      (r): r is { insertTable: { location: { index: number } } } =>
-        'insertTable' in (r as object)
-    );
-    expect(inserts).toHaveLength(2);
-    expect(inserts[0].insertTable.location.index).toBeGreaterThan(inserts[1].insertTable.location.index);
+    expect(result.requests.some((r) => 'insertTable' in (r as object))).toBe(false);
   });
 
   it('resets inherited styles on the inserted range before applying marks', () => {

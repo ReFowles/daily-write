@@ -10,8 +10,6 @@ import type {
   OrderedListNode,
   ParagraphNode,
   HeadingNode,
-  TableNode,
-  TableRowNode,
   TextNode,
 } from './document-content';
 import { isNonEmptyDocStyle } from './document-content';
@@ -37,6 +35,8 @@ interface DocsTextRun {
 
 interface DocsParagraphElement {
   textRun?: DocsTextRun | null;
+  inlineObjectElement?: { inlineObjectId?: string | null } | null;
+  pageBreak?: { textStyle?: DocsTextStyle | null } | null;
 }
 
 interface DocsBullet {
@@ -56,21 +56,11 @@ interface DocsParagraph {
   bullet?: DocsBullet | null;
 }
 
-interface DocsTableCell {
-  content?: DocsStructuralElement[] | null;
-}
-
-interface DocsTableRow {
-  tableCells?: DocsTableCell[] | null;
-}
-
-interface DocsTable {
-  tableRows?: DocsTableRow[] | null;
-}
-
 interface DocsStructuralElement {
+  startIndex?: number | null;
+  endIndex?: number | null;
   paragraph?: DocsParagraph | null;
-  table?: DocsTable | null;
+  table?: Record<string, unknown> | null;
 }
 
 interface DocsBody {
@@ -222,6 +212,15 @@ function extractPreservedParagraphStyle(
 function paragraphToInlines(paragraph: DocsParagraph): InlineNode[] {
   const inlines: InlineNode[] = [];
   for (const element of paragraph.elements ?? []) {
+    if (element.inlineObjectElement) {
+      const objectId = element.inlineObjectElement.inlineObjectId;
+      inlines.push(objectId ? { type: 'image', attrs: { objectId } } : { type: 'image' });
+      continue;
+    }
+    if (element.pageBreak) {
+      inlines.push({ type: 'pageBreak' });
+      continue;
+    }
     const run = element.textRun;
     if (!run?.content) continue;
     // Google Docs stores a trailing newline on the last run of each paragraph;
@@ -324,20 +323,13 @@ function collectListFrom(
   return { node, consumed: index - startIndex };
 }
 
-function tableToBlock(table: DocsTable): TableNode {
-  const rows: TableRowNode[] = [];
-  for (const row of table.tableRows ?? []) {
-    const cells: TableRowNode['content'] = [];
-    for (const cell of row.tableCells ?? []) {
-      const cellBlocks = elementsToBlocks(cell.content ?? [], {});
-      cells!.push({
-        type: 'tableCell',
-        content: cellBlocks.length > 0 ? cellBlocks : [{ type: 'paragraph' }],
-      });
-    }
-    rows.push({ type: 'tableRow', content: cells });
-  }
-  return { type: 'table', content: rows };
+// Tables are opaque: we don't model cells, only reserve the exact index span
+// the original table occupies so the diff can hold its position. Span comes
+// from the structural element's [startIndex, endIndex) range.
+function tableSpan(element: DocsStructuralElement): number {
+  const start = element.startIndex ?? 0;
+  const end = element.endIndex ?? 0;
+  return Math.max(0, end - start);
 }
 
 function elementsToBlocks(
@@ -364,7 +356,7 @@ function elementsToBlocks(
     }
 
     if (element.table) {
-      blocks.push(tableToBlock(element.table));
+      blocks.push({ type: 'table', attrs: { span: tableSpan(element) } });
       i++;
       continue;
     }

@@ -20,7 +20,7 @@ A Next.js application for tracking daily writing habits and progress. Log writin
 - **Styling**: Tailwind CSS 4.x
 - **Authentication**: NextAuth.js with Google OAuth
 - **Database**: Firebase Firestore
-- **Package Manager**: pnpm (v10.20.0)
+- **Package Manager**: pnpm (v11.8.0)
 
 ## Getting Started
 
@@ -108,6 +108,7 @@ pnpm lint         # Run ESLint
 - Opt-in feature, "Feed plusses" (excess words from previous days) to "fill up" non-met day
 - Optional setting, "gentle" tracking: tone down the harsh red for unmet goals
 - Optional setting, "shimmer theme" gives every theme border animations like Energy and Ambition
+- Optional setting OR Opt-in feature: locked word count & tracked deletions
 - Expand Dashboard DND: Collapse cards; Hide cards? Grid?
 - Mobile: the rich text options get kinda hidden when typing
 - Mobile: long docs are hard to scroll down/navigate
@@ -117,8 +118,7 @@ pnpm lint         # Run ESLint
   - Comments, custom text colors, images, footnotes, and other paragraph attributes that `DocumentContent` does not model are still lost when the user edits *that* paragraph. Diff-based autosave protects unchanged paragraphs; expanding `DocumentContent` to carry opaque style attributes is a follow-up.
 - Reflect preserved Google Docs presets visually in the editor
   - Preset `paragraphStyle` and `textStyle` fields (font family, font size, line spacing, paragraph spacing, first-line indent, text/background color, paragraph alignment) already round-trip via `attrs.docStyle` and the `docStyle` mark. They are not rendered in the editor today, so the writing view still uses Tailwind `prose` defaults. Follow-up: swap the passthrough extensions' `renderHTML` for translations to inline `style` (e.g. `lineSpacing: 150` → `line-height: 1.5`, `weightedFontFamily` → `font-family`, `foregroundColor` → `color`) and add toolbar controls that mutate the passthrough attrs/marks so users can see and edit the presets.
-- First-class table structural edits
-  - Add/remove row and column ops (`insertTableRow`, `deleteTableRow`, column equivalents) instead of the current table-scoped delete + `insertTable` fallback. Requires the round-trip test harness to grow support for those requests first.
+- ~~First-class table structural edits~~ Superseded: tables are now read-only, locked placeholder chips (like images and page breaks). The editor no longer models table structure; the diff preserves a table in place via its Google Docs index span, and a rare full-replace drops it (can't be recreated). Re-adding first-class table editing would be a larger, separate effort.
 - About Page: 
   - Explain why word counts and having a daily word count is a valuable tool when building a habit or writing a full manuscript
   - Explain why word counts specifically, and not pages or chapters
@@ -126,16 +126,14 @@ pnpm lint         # Run ESLint
   - Make a more blatant explanation that DailyWrite is good for writing but not editing—leave that to Google Docs
   - No images, sorry!
   - The app can't count what you write in Google Docs directly, only what you write through the app itself.
-- Live goals aren't visually updating the following days' (plus the new "current day") word count goals at midnight...
-- Add subtabs in addition to tabs (Forgot about those)
-- Can't delete tables.
+- ~~Can't delete tables.~~ Tables are now locked chips — intentionally not deletable/editable in the app; manage them in Google Docs.
 - `i` icons probably need more contrast. An entire a11y pass for the themes would probably be good.
 - Editor settings menu needs an info bar explaining everything in there doesn't affect the actual doc, just the DailyWrite app.
-- Tab info needs to be on every doc, probably, not just docs with tabs already present.
 - Editor walkthrough/tutorial?
-- Document Settings flyout menu in the toolbar: should contain the smart quotes and indentation (First line .5" globally)
-- Possible to add "untouchable box" in editor that represents images, preventing accidental image deletion?
-- Fix page break bug weirdness?
+- ~~Possible to add "untouchable box" in editor that represents images, preventing accidental image deletion?~~ Done: images and page breaks now render as read-only placeholder chips that delete as a single unit; they occupy one index unit so diff-based saves stay aligned and don't clobber them.
+- ~~Fix page break bug weirdness?~~ Addressed alongside the image placeholders above.
+- Days Left says 2, but I'd include today as one of the days left. Should read 3.
+- "Logged Days" seems to show the current day. We don't really want that, we only want fully completed days.
 
 ## License
 

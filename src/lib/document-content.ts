@@ -24,6 +24,18 @@ export type TextNode = {
   marks?: Mark[];
 };
 
+// Inline atoms the editor renders as read-only placeholder chips. We don't own
+// their pixels (they live in Google Docs) but we track their position so edits
+// around them stay aligned and users can't silently backspace over them.
+export type ImageNode = {
+  type: 'image';
+  attrs?: { objectId?: string | null; alt?: string | null };
+};
+
+export type PageBreakNode = {
+  type: 'pageBreak';
+};
+
 export type ParagraphNode = {
   type: 'paragraph';
   attrs?: { docStyle?: DocStyle | null };
@@ -52,29 +64,15 @@ export type OrderedListNode = {
   content?: ListItemNode[];
 };
 
-export type TableCellNode = {
-  type: 'tableCell';
-  attrs?: { colspan?: number; rowspan?: number };
-  content?: BlockNode[];
-};
-
-export type TableHeaderNode = {
-  type: 'tableHeader';
-  attrs?: { colspan?: number; rowspan?: number };
-  content?: BlockNode[];
-};
-
-export type TableRowNode = {
-  type: 'tableRow';
-  content?: Array<TableCellNode | TableHeaderNode>;
-};
-
+// Opaque placeholder for a Google Docs table. We don't model its contents; the
+// editor shows a locked chip and the diff holds its position via `span`, the
+// number of Google Docs index units the original table occupies.
 export type TableNode = {
   type: 'table';
-  content?: TableRowNode[];
+  attrs: { span: number };
 };
 
-export type InlineNode = TextNode;
+export type InlineNode = TextNode | ImageNode | PageBreakNode;
 
 export type BlockNode =
   | ParagraphNode
@@ -83,7 +81,7 @@ export type BlockNode =
   | OrderedListNode
   | TableNode;
 
-export type ContentNode = BlockNode | InlineNode | ListItemNode | TableRowNode | TableCellNode | TableHeaderNode;
+export type ContentNode = BlockNode | InlineNode | ListItemNode;
 
 export interface DocumentContent {
   type: 'doc';
@@ -132,9 +130,6 @@ export function getPlainText(content: DocumentContent | null | undefined): strin
           walkBlocks(node.content);
           break;
         case 'table':
-          for (const row of node.content ?? []) {
-            for (const cell of row.content ?? []) walkBlocks(cell.content);
-          }
           break;
       }
     }
@@ -206,25 +201,7 @@ function canonicalizeBlock(node: BlockNode): BlockNode {
         content: node.content?.map(canonicalizeListItem),
       };
     case 'table':
-      return {
-        type: 'table',
-        content: node.content?.map((row) => ({
-          type: 'tableRow',
-          content: row.content?.map((cell) =>
-            cell.type === 'tableHeader'
-              ? {
-                  type: 'tableHeader',
-                  attrs: cell.attrs,
-                  content: canonicalizeBlocks(cell.content),
-                }
-              : {
-                  type: 'tableCell',
-                  attrs: cell.attrs,
-                  content: canonicalizeBlocks(cell.content),
-                }
-          ),
-        })),
-      };
+      return { type: 'table', attrs: { span: node.attrs.span } };
   }
 }
 
@@ -244,13 +221,27 @@ function canonicalizeInlines(nodes: InlineNode[] | undefined): InlineNode[] | un
   if (!nodes || nodes.length === 0) return undefined;
   const out: InlineNode[] = [];
   for (const node of nodes) {
-    if (node.type !== 'text') continue;
-    const marks = canonicalizeMarks(node.marks);
-    const next: TextNode = { type: 'text', text: node.text };
-    if (marks && marks.length > 0) next.marks = marks;
-    out.push(next);
+    if (node.type === 'text') {
+      const marks = canonicalizeMarks(node.marks);
+      const next: TextNode = { type: 'text', text: node.text };
+      if (marks && marks.length > 0) next.marks = marks;
+      out.push(next);
+    } else if (node.type === 'image') {
+      out.push(canonicalizeImage(node));
+    } else if (node.type === 'pageBreak') {
+      out.push({ type: 'pageBreak' });
+    }
   }
   return out.length > 0 ? out : undefined;
+}
+
+// Drops attrs the editor emits at their defaults (alt/objectId: null) so the
+// wire payload and equality checks stay stable across a load/edit round-trip.
+function canonicalizeImage(node: ImageNode): ImageNode {
+  const attrs: NonNullable<ImageNode['attrs']> = {};
+  if (node.attrs?.objectId) attrs.objectId = node.attrs.objectId;
+  if (node.attrs?.alt) attrs.alt = node.attrs.alt;
+  return Object.keys(attrs).length > 0 ? { type: 'image', attrs } : { type: 'image' };
 }
 
 function canonicalizeMarks(marks: Mark[] | undefined): Mark[] | undefined {
@@ -264,4 +255,62 @@ function canonicalizeMarks(marks: Mark[] | undefined): Mark[] | undefined {
     out.push(mark);
   }
   return out;
+}
+
+interface LockedObjectCounts {
+  images: number;
+  pageBreaks: number;
+  tables: number;
+}
+
+// Visits every placeholder host: `onInlines` for paragraph/heading content
+// (images, page breaks) and `onTable` for each opaque table block, recursing
+// through list items.
+function forEachObjectHost(
+  blocks: BlockNode[] | undefined,
+  onInlines: (inlines: InlineNode[] | undefined) => void,
+  onTable: () => void
+): void {
+  for (const node of blocks ?? []) {
+    switch (node.type) {
+      case 'paragraph':
+      case 'heading':
+        onInlines(node.content);
+        break;
+      case 'bulletList':
+      case 'orderedList':
+        for (const item of node.content ?? []) forEachObjectHost(item.content, onInlines, onTable);
+        break;
+      case 'table':
+        onTable();
+        break;
+    }
+  }
+}
+
+function countLockedObjects(content: DocumentContent): LockedObjectCounts {
+  const counts: LockedObjectCounts = { images: 0, pageBreaks: 0, tables: 0 };
+  forEachObjectHost(
+    content.content,
+    (inlines) => {
+      for (const node of inlines ?? []) {
+        if (node.type === 'image') counts.images += 1;
+        else if (node.type === 'pageBreak') counts.pageBreaks += 1;
+      }
+    },
+    () => {
+      counts.tables += 1;
+    }
+  );
+  return counts;
+}
+
+// Images, page breaks, and tables are locked in the editor, so their counts can
+// only change via a fresh load. If two snapshots disagree, the editor state has
+// desynced from the document and saving it would add or drop an object — the
+// caller should reload instead. Returns true when the object counts match.
+export function lockedObjectsMatch(a: DocumentContent, b: DocumentContent): boolean {
+  const ca = countLockedObjects(a);
+  const cb = countLockedObjects(b);
+  return ca.images === cb.images && ca.pageBreaks === cb.pageBreaks && ca.tables === cb.tables;
 }

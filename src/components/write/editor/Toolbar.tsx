@@ -13,7 +13,6 @@ import {
   LuListOrdered,
   LuRedo2,
   LuStrikethrough,
-  LuTable,
   LuUnderline,
   LuUndo2,
 } from 'react-icons/lu';
@@ -187,13 +186,6 @@ export function Toolbar({
         ariaLabel="Insert link"
         active={state.isLink}
         onClick={promptForLink}
-      />
-      <ToolbarButton
-        icon={<LuTable aria-hidden />}
-        ariaLabel="Insert table"
-        onClick={() =>
-          editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: false }).run()
-        }
       />
       <ToolbarDivider />
       <DocumentSettingsMenu

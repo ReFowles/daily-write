@@ -14,7 +14,7 @@ import { cn } from "@/lib/class-utils";
 import { formatWordCount } from "@/lib/format-utils";
 import type { GoogleDoc, DocumentTab } from "@/lib/types";
 import type { DocumentContent } from "@/lib/document-content";
-import { contentsEqual, emptyDocument, getPlainText } from "@/lib/document-content";
+import { contentsEqual, emptyDocument, getPlainText, lockedObjectsMatch } from "@/lib/document-content";
 import GoogleDocsPicker from "@/components/write/GoogleDocsPicker";
 import DocumentTabs from "@/components/write/DocumentTabs";
 import { LuExternalLink, LuMaximize2, LuMinimize2 } from "react-icons/lu";
@@ -222,6 +222,10 @@ export default function WritePageClient() {
   const saveStateRef = useRef({ lastSavedContent, baseRevisionId });
   saveStateRef.current = { lastSavedContent, baseRevisionId };
 
+  // Assigned once reloadSelectedDocContent is defined below; lets the stable
+  // save callback trigger a reload when it detects a locked-object desync.
+  const reloadRef = useRef<(() => Promise<void>) | null>(null);
+
   const saveToGoogleDocs = useCallback(async (docId: string, docContent: DocumentContent, tabId?: string) => {
     if (isSavingToDoc.current) return false;
 
@@ -230,6 +234,16 @@ export default function WritePageClient() {
 
     try {
       const { lastSavedContent: prevContent, baseRevisionId: baseline } = saveStateRef.current;
+
+      // Images, page breaks, and tables are locked, so their counts can't change
+      // through editing. A mismatch means the editor desynced from the document;
+      // reload to restore the objects instead of saving a version that would
+      // silently add or drop them.
+      if (prevContent && !lockedObjectsMatch(docContent, prevContent)) {
+        await reloadRef.current?.();
+        return false;
+      }
+
       const response = await fetch('/api/google-docs', {
         method: 'PUT',
         headers: {
@@ -324,6 +338,9 @@ export default function WritePageClient() {
       setLoadingContent(false);
     }
   }, [selectedDoc, selectedTab, commitCurrentDocContribution]);
+
+  // Let the stable save callback reach the latest reload without depending on it.
+  reloadRef.current = reloadSelectedDocContent;
 
   // Flushes any unsaved edits in the current tab before a tab action mutates the
   // document server-side, mirroring the SMF format flow. Returns false (aborting
@@ -461,7 +478,7 @@ export default function WritePageClient() {
   const handleContentChange = useCallback((next: DocumentContent) => {
     setContent(next);
     setSaveStatus('unsaved');
-    
+
     // Debounce word count calculation slightly to avoid blocking on every keystroke
     requestAnimationFrame(() => {
       const currentCount = calculateWordCount(getPlainText(next));

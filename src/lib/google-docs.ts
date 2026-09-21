@@ -728,7 +728,8 @@ function findTabByIdForEnd(
 
 // Deletes the existing content (if any) and reinserts everything from
 // `content`. Kept as the fallback path when diff is unavailable or the planner
-// bails out (e.g. tables present, backwards-compat legacy payload).
+// bails out (e.g. no baseline, unsized table, backwards-compat legacy payload).
+// Note: images, page breaks, and tables can't be recreated here and are dropped.
 function buildFullReplaceRequests(
   currentDocData: {
     tabs?: unknown;

@@ -8,12 +8,11 @@ function doc(...content: DocumentContent['content']): DocumentContent {
 
 function assertDiff(plan: ReturnType<typeof diffDocumentContent>): {
   requests: object[];
-  pendingTables: unknown;
 } {
   if (plan.mode !== 'diff') {
     throw new Error(`expected mode:'diff', got mode:'${plan.mode}'`);
   }
-  return { requests: plan.requests, pendingTables: plan.pendingTables };
+  return { requests: plan.requests };
 }
 
 function findRequest<T extends string>(
@@ -237,30 +236,42 @@ describe('diffDocumentContent', () => {
     }
   });
 
-  it('falls back to replace when either side contains tables', () => {
-    const prev = doc({
-      type: 'paragraph',
-      content: [{ type: 'text', text: 'a' }],
-    });
+  it('preserves an unchanged table (by span) when text around it is edited', () => {
+    const table = { type: 'table' as const, attrs: { span: 12 } };
+    const prev = doc(
+      { type: 'paragraph', content: [{ type: 'text', text: 'intro' }] },
+      table,
+      { type: 'paragraph', content: [{ type: 'text', text: 'after' }] }
+    );
+    const next = doc(
+      { type: 'paragraph', content: [{ type: 'text', text: 'intro!' }] },
+      table,
+      { type: 'paragraph', content: [{ type: 'text', text: 'after' }] }
+    );
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    // The 12 table anchors occupy indices 7..18; the edit lands before them and
+    // no request may write or span that range.
+    const inserts = findAll(plan.requests, 'insertText') as Array<{
+      insertText: { location: { index: number }; text: string };
+    }>;
+    for (const ins of inserts) {
+      expect(ins.insertText.text).not.toContain('\uFFFC');
+    }
+    expect(inserts).toEqual([{ insertText: { location: { index: 6 }, text: '!' } }]);
+    expect(findAll(plan.requests, 'deleteContentRange')).toHaveLength(0);
+  });
+
+  it('falls back to replace for a table with an unknown span', () => {
+    const prev = doc({ type: 'paragraph', content: [{ type: 'text', text: 'a' }] });
     const next = doc(
       { type: 'paragraph', content: [{ type: 'text', text: 'a' }] },
-      {
-        type: 'table',
-        content: [
-          {
-            type: 'tableRow',
-            content: [
-              {
-                type: 'tableCell',
-                content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }],
-              },
-            ],
-          },
-        ],
-      }
+      { type: 'table', attrs: { span: 0 } }
     );
     const plan = diffDocumentContent(prev, next);
     expect(plan.mode).toBe('replace');
+    if (plan.mode === 'replace') {
+      expect(plan.reason).toBe('table span unavailable');
+    }
   });
 
 
@@ -395,5 +406,119 @@ describe('diffDocumentContent', () => {
     const reapply = textUpdates.find((r) => 'fontSize' in r.updateTextStyle.textStyle);
     expect(reapply).toBeDefined();
     expect(reapply!.updateTextStyle.textStyle).toEqual({ fontSize: { magnitude: 14, unit: 'PT' } });
+  });
+
+  it('leaves an image untouched when an unrelated paragraph is edited', () => {
+    const withImage = {
+      type: 'paragraph' as const,
+      content: [
+        { type: 'text' as const, text: 'caption' },
+        { type: 'image' as const, attrs: { objectId: 'obj-1' } },
+      ],
+    };
+    const prev = doc(withImage, {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'hello' }],
+    });
+    const next = doc(withImage, {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'hello!' }],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    // Only the second paragraph's insert should be emitted; the image anchor is
+    // shared context so nothing deletes or reinserts around it.
+    expect(findAll(plan.requests, 'deleteContentRange')).toHaveLength(0);
+    const inserts = findAll(plan.requests, 'insertText');
+    expect(inserts).toHaveLength(1);
+    // "caption" (7) + image anchor (1) + "\n" (1) = index 10 starts the 2nd
+    // paragraph; the "!" lands after "hello" at 15, proving the anchor was counted.
+    expect(inserts[0]).toEqual({
+      insertText: { location: { index: 15 }, text: '!' },
+    });
+  });
+
+  it('computes a delete range past an image anchor rather than into it', () => {
+    const prev = doc({
+      type: 'paragraph',
+      content: [
+        { type: 'image', attrs: { objectId: 'obj-1' } },
+        { type: 'text', text: 'hello' },
+      ],
+    });
+    const next = doc({
+      type: 'paragraph',
+      content: [
+        { type: 'image', attrs: { objectId: 'obj-1' } },
+        { type: 'text', text: 'hell' },
+      ],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    const deletes = findAll(plan.requests, 'deleteContentRange') as Array<{
+      deleteContentRange: { range: { startIndex: number; endIndex: number } };
+    }>;
+    expect(deletes).toHaveLength(1);
+    // Anchor occupies index 1; the removed "o" sits at index 6, never the image.
+    expect(deletes[0].deleteContentRange.range).toEqual({ startIndex: 6, endIndex: 7 });
+  });
+
+  it('falls back to replace rather than writing an anchor for a new inline object', () => {
+    const prev = doc({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'caption' }],
+    });
+    const next = doc({
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'caption' },
+        { type: 'image', attrs: { objectId: 'obj-1' } },
+      ],
+    });
+    const plan = diffDocumentContent(prev, next);
+    expect(plan.mode).toBe('replace');
+    if (plan.mode === 'replace') {
+      expect(plan.reason).toBe('cannot reinsert inline object');
+    }
+  });
+
+  it('rewrites text on both sides of an image without touching the anchor', () => {
+    const image = { type: 'image' as const, attrs: { objectId: 'obj-1' } };
+    const prev = doc({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'hello ' }, image, { type: 'text', text: ' world' }],
+    });
+    const next = doc({
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'HELLO ' }, image, { type: 'text', text: ' WORLD' }],
+    });
+    const plan = assertDiff(diffDocumentContent(prev, next));
+    const inserts = findAll(plan.requests, 'insertText') as Array<{
+      insertText: { location: { index: number }; text: string };
+    }>;
+    const deletes = findAll(plan.requests, 'deleteContentRange') as Array<{
+      deleteContentRange: { range: { startIndex: number; endIndex: number } };
+    }>;
+    // The image anchor sits at index 7; no op may write it or span it.
+    for (const ins of inserts) {
+      expect(ins.insertText.text).not.toContain('\uFFFC');
+      expect(ins.insertText.location.index).not.toBe(7);
+    }
+    for (const del of deletes) {
+      const { startIndex, endIndex } = del.deleteContentRange.range;
+      expect(startIndex >= 7 || endIndex <= 7).toBe(true);
+    }
+  });
+
+  it('keeps the diff for a large edit when the document holds an image', () => {
+    const image = { type: 'image' as const, attrs: { objectId: 'obj-1' } };
+    const prev = doc({
+      type: 'paragraph',
+      content: [image, { type: 'text', text: 'a b c d e f g h' }],
+    });
+    const next = doc({
+      type: 'paragraph',
+      content: [image, { type: 'text', text: 'A B C D E F G H' }],
+    });
+    // Enough scattered edits to blow the op budget; the anchor keeps us on diff.
+    expect(diffDocumentContent(prev, next).mode).toBe('diff');
   });
 });

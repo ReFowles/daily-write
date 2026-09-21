@@ -226,25 +226,16 @@ describe('googleDocsToContent', () => {
     }
   });
 
-  it('maps a simple table', () => {
+  it('maps a table to an opaque span node from its index range', () => {
     const doc: GoogleDocsDocument = {
       body: {
         content: [
           {
+            startIndex: 1,
+            endIndex: 13,
             table: {
               tableRows: [
-                {
-                  tableCells: [
-                    { content: [paragraph('r1c1')] },
-                    { content: [paragraph('r1c2')] },
-                  ],
-                },
-                {
-                  tableCells: [
-                    { content: [paragraph('r2c1')] },
-                    { content: [paragraph('r2c2')] },
-                  ],
-                },
+                { tableCells: [{ content: [paragraph('r1c1')] }] },
               ],
             },
           },
@@ -252,16 +243,7 @@ describe('googleDocsToContent', () => {
       },
     };
     const result = googleDocsToContent(doc);
-    const table = result.content[0];
-    expect(table.type).toBe('table');
-    if (table.type === 'table') {
-      expect(table.content?.length).toBe(2);
-      expect(table.content?.[0].content?.length).toBe(2);
-      expect(table.content?.[1].content?.[1].content?.[0]).toMatchObject({
-        type: 'paragraph',
-        content: [{ type: 'text', text: 'r2c2' }],
-      });
-    }
+    expect(result.content[0]).toEqual({ type: 'table', attrs: { span: 12 } });
   });
 
   it('reads from the requested tab', () => {
@@ -488,5 +470,92 @@ describe('googleDocsToContent', () => {
       weightedFontFamily: { fontFamily: 'Georgia' },
     });
     expect(docStyleMark.attrs.style).not.toHaveProperty('wackyExperimental');
+  });
+
+  it('maps an inline image element to an image node', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [
+                { inlineObjectElement: { inlineObjectId: 'obj-1' } },
+                { textRun: { content: '\n' } },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    expect(googleDocsToContent(doc)).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'image', attrs: { objectId: 'obj-1' } }],
+        },
+      ],
+    });
+  });
+
+  it('keeps an image alongside surrounding text in reading order', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [
+                { textRun: { content: 'before ' } },
+                { inlineObjectElement: { inlineObjectId: 'obj-2' } },
+                { textRun: { content: ' after\n' } },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    expect(googleDocsToContent(doc)).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'before ' },
+            { type: 'image', attrs: { objectId: 'obj-2' } },
+            { type: 'text', text: ' after' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('maps a page-break element to a pageBreak node', () => {
+    const doc: GoogleDocsDocument = {
+      body: {
+        content: [
+          {
+            paragraph: {
+              elements: [
+                { textRun: { content: 'end of page' } },
+                { pageBreak: {} },
+                { textRun: { content: '\n' } },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    expect(googleDocsToContent(doc)).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'end of page' },
+            { type: 'pageBreak' },
+          ],
+        },
+      ],
+    });
   });
 });

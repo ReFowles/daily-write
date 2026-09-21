@@ -35,34 +35,40 @@ export interface BlockIndexEntry {
   sourcePath: number[];
 }
 
-export interface TableIndexEntry {
-  insertIndex: number;
-  rows: number;
-  cols: number;
-  // cellContents[row][col] holds the blocks that belong in that cell.
-  cellContents: BlockNode[][][];
-  sourcePath: number[];
-}
-
 export interface DocIndex {
   plainText: string;
   blocks: BlockIndexEntry[];
-  tables: TableIndexEntry[];
   // Always equal to plainText.length + 1; kept for symmetry with Google Docs.
   endIndex: number;
 }
+
+export interface BuildDocIndexOptions {
+  // When true, image, page-break, and table nodes reserve their Google Docs
+  // index footprint as U+FFFC anchors (one per image/page break, `span` per
+  // table) so plainText positions line up with the real document. The diff
+  // planner needs this; the full-replace writer leaves it off because it can't
+  // recreate those objects and must not insert the anchor.
+  includeAnchors?: boolean;
+}
+
+// Object-replacement character used as a one-unit placeholder for inline
+// objects (images) and page breaks, mirroring how Google Docs indexes them.
+export const OBJECT_ANCHOR = '\uFFFC';
 
 // Walks a DocumentContent tree and produces the 1-based Google-Docs-index map
 // used by both the full-document writer and the diff planner. Mirrors the
 // paragraph/heading/list-flattening rules that Google Docs itself enforces on
 // the insert side.
-export function buildDocIndex(content: DocumentContent): DocIndex {
+export function buildDocIndex(
+  content: DocumentContent,
+  options: BuildDocIndexOptions = {}
+): DocIndex {
+  const includeAnchors = options.includeAnchors ?? false;
   const blocks: BlockIndexEntry[] = [];
-  const tables: TableIndexEntry[] = [];
   let plainText = '';
 
   const appendBlock = (
-    inlines: Array<{ text: string; marks: Mark[] }>,
+    inlines: Array<{ text: string; marks: Mark[]; isAnchor?: boolean }>,
     kind: ParagraphKind,
     sourcePath: number[],
     opts: {
@@ -76,6 +82,13 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
     let text = '';
     for (const inline of inlines) {
       if (inline.text.length === 0) continue;
+      // Anchors advance the index like a character but carry no styling, so
+      // they never become a run the style pass would try to (re)format.
+      if (inline.isAnchor) {
+        plainText += inline.text;
+        text += inline.text;
+        continue;
+      }
       const runStart = plainText.length + 1;
       plainText += inline.text;
       text += inline.text;
@@ -105,11 +118,13 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
 
   const collectInlines = (
     nodes: InlineNode[] | undefined
-  ): Array<{ text: string; marks: Mark[] }> => {
-    const out: Array<{ text: string; marks: Mark[] }> = [];
+  ): Array<{ text: string; marks: Mark[]; isAnchor?: boolean }> => {
+    const out: Array<{ text: string; marks: Mark[]; isAnchor?: boolean }> = [];
     for (const node of nodes ?? []) {
       if (node.type === 'text') {
         out.push({ text: node.text, marks: node.marks ?? [] });
+      } else if (includeAnchors && (node.type === 'image' || node.type === 'pageBreak')) {
+        out.push({ text: OBJECT_ANCHOR, marks: [], isAnchor: true });
       }
     }
     return out;
@@ -162,18 +177,11 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
           break;
         }
         case 'table': {
-          const rows = node.content ?? [];
-          const cols = rows[0]?.content?.length ?? 0;
-          if (rows.length === 0 || cols === 0) break;
-          tables.push({
-            insertIndex: plainText.length + 1,
-            rows: rows.length,
-            cols,
-            cellContents: rows.map((r) =>
-              (r.content ?? []).map((c) => (c.content ?? []) as BlockNode[])
-            ),
-            sourcePath: path,
-          });
+          // Opaque: reserve the table's Google Docs index footprint so the diff
+          // holds its position, but emit no styleable block entry.
+          if (includeAnchors && node.attrs.span > 0) {
+            plainText += OBJECT_ANCHOR.repeat(node.attrs.span);
+          }
           break;
         }
       }
@@ -185,7 +193,6 @@ export function buildDocIndex(content: DocumentContent): DocIndex {
   return {
     plainText,
     blocks,
-    tables,
     endIndex: plainText.length + 1,
   };
 }

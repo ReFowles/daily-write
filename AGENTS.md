@@ -10,7 +10,7 @@
 - **Runtime**: React 19.2.0
 - **Language**: TypeScript 5.x
 - **Styling**: Tailwind CSS 4.x
-- **Package Manager**: **pnpm** (v10.20.0)
+- **Package Manager**: **pnpm** (v11.8.0)
 - **Linting**: ESLint 9.x with Next.js config
 - **Formatting**: Prettier 3.x
 - **Compiler**: React Compiler (babel-plugin-react-compiler 1.0.0)

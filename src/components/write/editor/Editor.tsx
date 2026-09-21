@@ -6,14 +6,17 @@ import { StarterKit } from '@tiptap/starter-kit';
 import { Underline } from '@tiptap/extension-underline';
 import { Link } from '@tiptap/extension-link';
 import { Placeholder } from '@tiptap/extension-placeholder';
-import { Table } from '@tiptap/extension-table';
-import { TableRow } from '@tiptap/extension-table-row';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
 import { cn } from '@/lib/class-utils';
 import { canonicalizeContent, contentsEqual, type DocumentContent } from '@/lib/document-content';
 import { Toolbar } from './Toolbar';
 import { DocParagraphStylePassthrough, DocTextStyleMark } from './doc-style-passthrough';
+import {
+  ImagePlaceholder,
+  MediaPlaceholderGuard,
+  MEDIA_GUARD_BYPASS_META,
+  PageBreakPlaceholder,
+  TablePlaceholder,
+} from './media-placeholders';
 import { SmartQuotes } from './smart-quotes';
 
 export interface EditorProps {
@@ -76,12 +79,12 @@ export function Editor({
       Underline,
       Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({ placeholder: placeholder ?? 'Start writing...' }),
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
       DocParagraphStylePassthrough,
       DocTextStyleMark,
+      ImagePlaceholder,
+      PageBreakPlaceholder,
+      TablePlaceholder,
+      MediaPlaceholderGuard,
       SmartQuotes,
     ],
     [placeholder]
@@ -109,7 +112,16 @@ export function Editor({
     if (!editor) return;
     const currentJson = editor.getJSON() as DocumentContent;
     if (content && !contentsEqual(currentJson, content)) {
-      editor.commands.setContent(content, { emitUpdate: false });
+      // Loading/reconciling is the only sanctioned way to add or remove locked
+      // placeholder chips, so flag this programmatic swap past the guard.
+      editor
+        .chain()
+        .command(({ tr }) => {
+          tr.setMeta(MEDIA_GUARD_BYPASS_META, true);
+          return true;
+        })
+        .setContent(content, { emitUpdate: false })
+        .run();
     }
   }, [content, editor]);
 

@@ -1,8 +1,9 @@
 import fastDiff from 'fast-diff';
-import type { DocStyle, DocumentContent, Mark } from './document-content';
+import type { BlockNode, DocStyle, DocumentContent, Mark } from './document-content';
 import {
   buildDocIndex,
   blockSignature,
+  OBJECT_ANCHOR,
   type BlockIndexEntry,
   type RunEntry,
 } from './document-content-index';
@@ -11,11 +12,10 @@ import {
   extractRunDocStyle,
   marksToTextStyle,
   withTab,
-  type PendingTable,
 } from './content-to-google-docs';
 
 export type DiffPlan =
-  | { mode: 'diff'; requests: object[]; pendingTables: PendingTable[] }
+  | { mode: 'diff'; requests: object[] }
   | { mode: 'replace'; reason: string };
 
 // Bounded overhead: after this many text ops it's cheaper to full-replace.
@@ -32,21 +32,36 @@ export function diffDocumentContent(
   next: DocumentContent,
   tabId?: string
 ): DiffPlan {
-  const prevIndex = buildDocIndex(prev);
-  const nextIndex = buildDocIndex(next);
+  const prevIndex = buildDocIndex(prev, { includeAnchors: true });
+  const nextIndex = buildDocIndex(next, { includeAnchors: true });
 
-  // Real Google Docs indices flow through table content that buildDocIndex
-  // treats as zero-width, so plainText positions can't be translated verbatim
-  // when tables are present. Fall back until we ship a real-position map.
-  if (prevIndex.tables.length > 0 || nextIndex.tables.length > 0) {
-    return { mode: 'replace', reason: 'tables present' };
+  // A table whose span we couldn't read can't be positioned, so its anchors
+  // wouldn't match the real document. Fall back to a full replace (which drops
+  // the table) rather than misalign everything after it.
+  if (hasUnsizedTable(prev.content) || hasUnsizedTable(next.content)) {
+    return { mode: 'replace', reason: 'table span unavailable' };
   }
 
   const textOps = computeTextOps(prevIndex.plainText, nextIndex.plainText);
 
+  // An anchor in an insert means `next` holds an image/page break the document
+  // doesn't have and we can't recreate (no source to re-embed). Writing the raw
+  // anchor would leave a stray object-replacement character, so fall back to a
+  // full replace, which drops the object cleanly instead. In practice the
+  // client reconciles these away before saving, so this is a safety net.
+  if (textOps.some((op) => op.insertText.includes(OBJECT_ANCHOR))) {
+    return { mode: 'replace', reason: 'cannot reinsert inline object' };
+  }
+
+  // A full replace can't recreate inline objects, so once the document holds
+  // any anchor we always keep the (segment-aligned) diff rather than bail on
+  // size — losing every image/page break is never worth a smaller batch.
+  const hasAnchors =
+    prevIndex.plainText.includes(OBJECT_ANCHOR) ||
+    nextIndex.plainText.includes(OBJECT_ANCHOR);
   const opCount = textOps.length;
   const fallbackBudget = Math.max(1, nextIndex.blocks.length) * DIFF_OP_FALLBACK_MULTIPLIER;
-  if (opCount > fallbackBudget) {
+  if (!hasAnchors && opCount > fallbackBudget) {
     return { mode: 'replace', reason: 'diff exceeds full-replace budget' };
   }
 
@@ -88,13 +103,57 @@ export function diffDocumentContent(
     ...emitStyleRequests(prevIndex.blocks, nextIndex.blocks, alignedNextIdx, tabId)
   );
 
-  return { mode: 'diff', requests, pendingTables: [] };
+  return { mode: 'diff', requests };
 }
 
+// True when any table node lacks a positive span (its Google Docs footprint is
+// unknown), which would leave the diff's anchor model misaligned.
+function hasUnsizedTable(blocks: BlockNode[]): boolean {
+  for (const node of blocks) {
+    if (node.type === 'table') {
+      if (!(node.attrs.span > 0)) return true;
+    } else if (node.type === 'bulletList' || node.type === 'orderedList') {
+      for (const item of node.content ?? []) {
+        if (hasUnsizedTable(item.content ?? [])) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Diffs plain text while treating each object anchor as an immovable fixed
+// point: prev/next are split on the anchor and corresponding segments are
+// diffed independently, so an unchanged image/page break can never land inside
+// a delete or insert op (which would drop it or write a stray anchor). When the
+// anchor counts differ we can't align segment-for-segment, so fall back to a
+// whole-string diff and let the caller's guard decide.
 function computeTextOps(prevText: string, nextText: string): TextOp[] {
+  const prevSegments = prevText.split(OBJECT_ANCHOR);
+  const nextSegments = nextText.split(OBJECT_ANCHOR);
+  if (prevSegments.length !== nextSegments.length) {
+    return computeSegmentOps(prevText, nextText, 1);
+  }
+
+  const ops: TextOp[] = [];
+  let cursor = 1;
+  for (let i = 0; i < prevSegments.length; i++) {
+    for (const op of computeSegmentOps(prevSegments[i], nextSegments[i], cursor)) {
+      ops.push(op);
+    }
+    // Advance past this segment plus the one-unit anchor that follows it.
+    cursor += prevSegments[i].length + (i < prevSegments.length - 1 ? 1 : 0);
+  }
+  return ops;
+}
+
+function computeSegmentOps(
+  prevText: string,
+  nextText: string,
+  startCursor: number
+): TextOp[] {
   const diff = fastDiff(prevText, nextText);
   const ops: TextOp[] = [];
-  let prevCursor = 1;
+  let prevCursor = startCursor;
   for (const [op, text] of diff) {
     if (op === 0) {
       prevCursor += text.length;

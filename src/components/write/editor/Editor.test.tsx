@@ -25,7 +25,6 @@ describe('<Editor />', () => {
     expect(screen.getByRole('button', { name: 'Bullet list' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Numbered list' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Insert link' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Insert table' })).toBeInTheDocument();
   });
 
   it('renders a smart quotes toggle inside the document settings menu that reflects state and calls the handler', async () => {
@@ -125,7 +124,10 @@ describe('<Editor />', () => {
       docStyle: { lineSpacing: 150, indentFirstLine: { magnitude: 36, unit: 'PT' } },
     });
     const run = block.content?.[0];
-    expect(run?.marks).toEqual(
+    if (!run || run.type !== 'text') {
+      throw new Error('expected a text run');
+    }
+    expect(run.marks).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: 'docStyle',

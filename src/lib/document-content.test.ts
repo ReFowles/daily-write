@@ -5,6 +5,7 @@ import {
   emptyDocument,
   getPlainText,
   isDocumentContent,
+  lockedObjectsMatch,
   type DocumentContent,
 } from './document-content';
 
@@ -70,7 +71,7 @@ describe('getPlainText', () => {
     expect(getPlainText(doc)).toBe('plain bold');
   });
 
-  it('walks headings, lists, and tables', () => {
+  it('walks headings and lists, ignoring opaque tables', () => {
     const doc: DocumentContent = {
       type: 'doc',
       content: [
@@ -96,25 +97,10 @@ describe('getPlainText', () => {
             },
           ],
         },
-        {
-          type: 'table',
-          content: [
-            {
-              type: 'tableRow',
-              content: [
-                {
-                  type: 'tableCell',
-                  content: [
-                    { type: 'paragraph', content: [{ type: 'text', text: 'cell' }] },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
+        { type: 'table', attrs: { span: 8 } },
       ],
     };
-    expect(getPlainText(doc)).toBe('Title\none\ntwo\ncell');
+    expect(getPlainText(doc)).toBe('Title\none\ntwo');
   });
 });
 
@@ -270,5 +256,131 @@ describe('canonicalizeContent', () => {
         },
       ],
     });
+  });
+
+  it('preserves image and pageBreak nodes and drops their default attrs', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'a' },
+            { type: 'image', attrs: { objectId: 'obj-1', alt: null } },
+            { type: 'pageBreak' },
+          ],
+        },
+      ],
+    };
+    expect(canonicalizeContent(input)).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'a' },
+            { type: 'image', attrs: { objectId: 'obj-1' } },
+            { type: 'pageBreak' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('drops a fully-default image attrs bag', () => {
+    const input: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'image', attrs: { objectId: null, alt: null } }],
+        },
+      ],
+    };
+    expect(canonicalizeContent(input)).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'image' }] }],
+    });
+  });
+});
+
+describe('lockedObjectsMatch', () => {
+  it('is true for identical object counts', () => {
+    const a: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'a' },
+            { type: 'image', attrs: { objectId: 'obj-1' } },
+            { type: 'pageBreak' },
+          ],
+        },
+        { type: 'table', attrs: { span: 10 } },
+      ],
+    };
+    const b: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'a-edited' },
+            { type: 'image', attrs: { objectId: 'obj-1' } },
+            { type: 'pageBreak' },
+          ],
+        },
+        { type: 'table', attrs: { span: 10 } },
+      ],
+    };
+    expect(lockedObjectsMatch(a, b)).toBe(true);
+  });
+
+  it('is true when there are no objects at all', () => {
+    const a: DocumentContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }],
+    };
+    const b: DocumentContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'ab' }] }],
+    };
+    expect(lockedObjectsMatch(a, b)).toBe(true);
+  });
+
+  it('is false when an image is missing', () => {
+    const withImage: DocumentContent = {
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text: 'a' }, { type: 'image', attrs: { objectId: 'obj-1' } }],
+        },
+      ],
+    };
+    const withoutImage: DocumentContent = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a' }] }],
+    };
+    expect(lockedObjectsMatch(withImage, withoutImage)).toBe(false);
+  });
+
+  it('is false when a page break or table count differs', () => {
+    const one: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'pageBreak' }] },
+        { type: 'table', attrs: { span: 8 } },
+      ],
+    };
+    const two: DocumentContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'pageBreak' }, { type: 'pageBreak' }] },
+        { type: 'table', attrs: { span: 8 } },
+      ],
+    };
+    expect(lockedObjectsMatch(one, two)).toBe(false);
   });
 });

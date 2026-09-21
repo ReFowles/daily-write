@@ -1,21 +1,9 @@
-import type { BlockNode, DocStyle, DocumentContent, Mark } from './document-content';
+import type { DocStyle, DocumentContent, Mark } from './document-content';
 import { buildDocIndex, type BlockIndexEntry } from './document-content-index';
-
-// Second-pass description of a table's cell content. The updater applies this
-// after the initial batch by re-fetching the doc to learn each cell's real
-// index (Google Docs cell indices can't be predicted reliably from the insert
-// request alone).
-export interface PendingTable {
-  rows: number;
-  cols: number;
-  // cellContents[row][col] holds the blocks that belong in that cell.
-  cellContents: BlockNode[][][];
-}
 
 export interface ConverterResult {
   requests: object[];
   plainText: string;
-  pendingTables: PendingTable[];
 }
 
 export function withTab<T extends Record<string, unknown>>(
@@ -90,7 +78,7 @@ export function contentToGoogleDocsRequests(
   tabId?: string
 ): ConverterResult {
   const index = buildDocIndex(content);
-  const { plainText, blocks, tables } = index;
+  const { plainText, blocks } = index;
 
   const requests: object[] = [];
 
@@ -226,30 +214,7 @@ export function contentToGoogleDocsRequests(
     });
   }
 
-  const pendingTables: PendingTable[] = [];
-  const orderedSlots = [...tables].sort((a, b) => b.insertIndex - a.insertIndex);
-  for (const slot of orderedSlots) {
-    requests.push({
-      insertTable: withTab(
-        {
-          rows: slot.rows,
-          columns: slot.cols,
-          location: { index: slot.insertIndex },
-        },
-        tabId,
-        'location'
-      ),
-    });
-  }
-  for (const slot of tables) {
-    pendingTables.push({
-      rows: slot.rows,
-      cols: slot.cols,
-      cellContents: slot.cellContents,
-    });
-  }
-
-  return { requests, plainText, pendingTables };
+  return { requests, plainText };
 }
 
 export type { BlockIndexEntry };
