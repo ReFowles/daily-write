@@ -95,6 +95,7 @@ describe("DashboardClient", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15500,
       mode: "static",
+      casual: false,
     };
     setGoal({
       todayGoal: 500,
@@ -120,6 +121,7 @@ describe("DashboardClient", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15500,
       mode: "static",
+      casual: false,
     };
     setGoal({
       todayGoal: 500,

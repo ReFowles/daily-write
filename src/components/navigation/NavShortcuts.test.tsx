@@ -54,6 +54,7 @@ describe("NavShortcuts", () => {
         dailyWordTarget: 500,
         totalWordTarget: 182500,
         mode: "static",
+        casual: false,
       },
     });
     render(<NavShortcuts />);
@@ -73,6 +74,7 @@ describe("NavShortcuts", () => {
         dailyWordTarget: 500,
         totalWordTarget: 182500,
         mode: "static",
+        casual: false,
       },
     });
     render(<NavShortcuts />);

@@ -55,6 +55,7 @@ const makeGoal = (over: Partial<Goal> = {}): Goal => ({
   dailyWordTarget: 500,
   totalWordTarget: 15500,
   mode: "static",
+  casual: false,
   ...over,
 });
 

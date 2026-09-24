@@ -163,6 +163,7 @@ describe("data-store", () => {
         dailyWordTarget: 200,
         totalWordTarget: 6000,
         mode: "static",
+        casual: false,
       });
 
       expect(addMock).toHaveBeenCalledTimes(1);
@@ -174,6 +175,7 @@ describe("data-store", () => {
         dailyWordTarget: 200,
         totalWordTarget: 6000,
         mode: "static",
+        casual: false,
       });
       expect(created.id).toBe("new-id");
     });

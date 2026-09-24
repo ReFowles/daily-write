@@ -53,6 +53,7 @@ describe("useCurrentGoal", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15000,
       mode: "static",
+      casual: false,
     });
     getSessionByDateMock.mockResolvedValueOnce({
       userId: "user@example.com",
@@ -81,6 +82,7 @@ describe("useCurrentGoal", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15000,
       mode: "static",
+      casual: false,
     });
     getSessionByDateMock.mockResolvedValueOnce(null);
 
@@ -116,6 +118,7 @@ describe("useCurrentGoal", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15000,
       mode: "live",
+      casual: false,
     });
     getSessionByDateMock.mockResolvedValueOnce(null);
     getSessionsInRangeMock.mockResolvedValueOnce([

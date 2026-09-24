@@ -141,19 +141,25 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               <div className="flex flex-wrap gap-2">
                 {Object.entries(wordsByDate)
                   .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-                  .map(([date, words]) => (
-                    <div
-                      key={date}
-                      className={`rounded-md px-3 py-2 text-sm ${
-                        words >= goal.dailyWordTarget
-                          ? "bg-green-500/15 text-green-700 dark:text-green-300"
-                          : "bg-red-500/15 text-red-700 dark:text-red-300"
-                      }`}
-                    >
-                      <div className="font-medium">{formatDate(date)}</div>
-                      <div className="text-xs opacity-75">{formatWordCount(words)} words</div>
-                    </div>
-                  ))}
+                  .map(([date, words]) => {
+                    const meetsGoal = words >= goal.dailyWordTarget;
+                    const casualMiss = !meetsGoal && goal.casual && words === 0;
+                    return (
+                      <div
+                        key={date}
+                        className={`rounded-md px-3 py-2 text-sm ${
+                          meetsGoal
+                            ? "bg-green-500/15 text-green-700 dark:text-green-300"
+                            : casualMiss
+                              ? cn("bg-surface-sunken", themeClasses.text.secondary)
+                              : "bg-red-500/15 text-red-700 dark:text-red-300"
+                        }`}
+                      >
+                        <div className="font-medium">{formatDate(date)}</div>
+                        <div className="text-xs opacity-75">{formatWordCount(words)} words</div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>

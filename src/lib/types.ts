@@ -18,6 +18,8 @@ export interface Goal {
   dailyWordTarget: number;
   totalWordTarget: number;
   mode: GoalMode;
+  // Casual goals don't flag zero-word days red in the calendars.
+  casual: boolean;
 }
 
 export interface WritingSession {
@@ -30,6 +32,7 @@ export interface DayData {
   date: Date;
   wordsWritten: number;
   goal: number | null;
+  casual: boolean;
 }
 
 export interface CalendarDay {

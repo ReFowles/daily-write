@@ -107,6 +107,7 @@ export function generateWeekWindow(
       date,
       wordsWritten: sessionMap.get(dateString) || 0,
       goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions, todayDateString) : null,
+      casual: goal?.casual ?? false,
     });
   }
   

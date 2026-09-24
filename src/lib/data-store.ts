@@ -56,6 +56,7 @@ function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
     dailyWordTarget,
     totalWordTarget,
     mode,
+    casual: data.casual === true,
   };
 }
 

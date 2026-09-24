@@ -29,6 +29,7 @@ describe("WeeklyCalendar", () => {
         dailyWordTarget: 500,
         totalWordTarget: 15000,
         mode: "static",
+        casual: false,
       },
     ];
     const sessions: WritingSession[] = [

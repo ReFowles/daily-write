@@ -28,6 +28,7 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
   const [totalValue, setTotalValue] = useState("");
   const [lastEdited, setLastEdited] = useState<LastEdited>("daily");
   const [mode, setMode] = useState<GoalMode>("static");
+  const [casual, setCasual] = useState(false);
   const [error, setError] = useState("");
 
   const days = daysBetweenInclusive(startDate, endDate);
@@ -130,6 +131,7 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         dailyWordTarget: daily,
         totalWordTarget: total,
         mode,
+        casual,
       },
       (errorMessage: string) => {
         setError(errorMessage);
@@ -236,6 +238,20 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
             />
           </div>
         </fieldset>
+
+        <label className={cn("flex items-center gap-2 text-base", themeClasses.text.primary)}>
+          <input
+            type="checkbox"
+            checked={casual}
+            onChange={(e) => setCasual(e.target.checked)}
+            className="themed-checkbox"
+          />
+          <span className="font-bold">Casual</span>
+          <InfoPopover label="About Casual goals">
+            Days with no writing show up neutral gray instead of red, so a missed
+            day doesn&apos;t look like a failure.
+          </InfoPopover>
+        </label>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" variant="primary" className="flex-1">

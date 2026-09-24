@@ -11,6 +11,7 @@ const activeGoal: Goal = {
   dailyWordTarget: 500,
   totalWordTarget: 15000,
   mode: "static",
+  casual: false,
 };
 
 const pastGoal: Goal = {
@@ -21,6 +22,7 @@ const pastGoal: Goal = {
   dailyWordTarget: 300,
   totalWordTarget: 3000,
   mode: "static",
+  casual: false,
 };
 
 describe("GoalCard", () => {
@@ -74,5 +76,26 @@ describe("GoalCard", () => {
     // A day with no session shows up as 0 words.
     expect(screen.getByText("Jun 1, 2026")).toBeInTheDocument();
     expect(screen.getAllByText(/0 words/).length).toBeGreaterThan(0);
+  });
+
+  it("renders zero-word logged days gray for a casual goal, red otherwise", () => {
+    const sessions: WritingSession[] = [];
+    const { rerender } = render(
+      <GoalCard goal={activeGoal} writingSessions={sessions} onDelete={vi.fn()} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /logged days/i }));
+    const redChip = screen.getByText("Jun 1, 2026").parentElement;
+    expect(redChip).toHaveClass("bg-red-500/15");
+
+    rerender(
+      <GoalCard
+        goal={{ ...activeGoal, casual: true }}
+        writingSessions={sessions}
+        onDelete={vi.fn()}
+      />
+    );
+    const grayChip = screen.getByText("Jun 1, 2026").parentElement;
+    expect(grayChip).not.toHaveClass("bg-red-500/15");
+    expect(grayChip).toHaveClass("bg-surface-sunken");
   });
 });

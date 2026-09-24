@@ -61,4 +61,29 @@ describe("DayCard", () => {
     const cell = screen.getByRole("gridcell");
     expect(cell.getAttribute("aria-label")).not.toContain("goal:");
   });
+
+  it("marks a zero-word past miss red for a non-casual goal", () => {
+    render(
+      <DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={false} />
+    );
+    const header = screen.getByRole("gridcell").firstChild;
+    expect(header).toHaveClass("bg-red-500/70");
+  });
+
+  it("renders a zero-word past miss neutral gray for a casual goal", () => {
+    render(
+      <DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={false} casual />
+    );
+    const header = screen.getByRole("gridcell").firstChild;
+    expect(header).not.toHaveClass("bg-red-500/70");
+    expect(header).toHaveClass("bg-surface-sunken/50");
+  });
+
+  it("still marks a partial (non-zero) casual day red", () => {
+    render(
+      <DayCard date={day} wordsWritten={100} goal={500} isToday={false} isFuture={false} casual />
+    );
+    const header = screen.getByRole("gridcell").firstChild;
+    expect(header).toHaveClass("bg-red-500/70");
+  });
 });

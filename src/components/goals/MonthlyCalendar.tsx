@@ -149,6 +149,7 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                           }
                           isToday={day.isToday}
                           isFuture={day.isFuture}
+                          casual={goal?.casual ?? false}
                         />
                       </div>
                     );

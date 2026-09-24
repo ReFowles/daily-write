@@ -693,6 +693,38 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  /* Custom checkbox: hide the native chrome and paint a themed check instead. */
+  input[type="checkbox"].themed-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--color-line-strong);
+    background-color: var(--color-surface);
+    display: inline-block;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease;
+  }
+  input[type="checkbox"].themed-checkbox:hover:not(:disabled) {
+    border-color: var(--color-accent-ring);
+  }
+  input[type="checkbox"].themed-checkbox:checked {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+    background-size: 100% 100%;
+  }
+  input[type="checkbox"].themed-checkbox:focus-visible {
+    outline: 2px solid var(--color-accent-ring);
+    outline-offset: 2px;
+  }
+  input[type="checkbox"].themed-checkbox:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 /* ==========================================================================

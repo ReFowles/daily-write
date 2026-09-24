@@ -9,6 +9,7 @@ interface DayCardProps {
   goal: number | null;
   isToday: boolean;
   isFuture: boolean;
+  casual?: boolean;
 }
 
 export function DayCard({
@@ -18,6 +19,7 @@ export function DayCard({
   goal,
   isToday,
   isFuture,
+  casual = false,
 }: DayCardProps) {
   if (!date) {
     return <div className={variant === "compact" ? "min-h-12 sm:min-h-15" : ""} />;
@@ -29,6 +31,12 @@ export function DayCard({
   const showDifference = !isFuture && hasGoal;
   const isCompact = variant === "compact";
 
+  // A past day below its target. Casual goals treat a zero-word miss as a
+  // neutral (gray) day rather than a red "failed" day.
+  const isMiss = !isToday && !isFuture && !meetsGoal && hasGoal;
+  const casualMiss = isMiss && casual && wordsWritten === 0;
+  const redMiss = isMiss && !casualMiss;
+
   const containerClasses = cn(
     "flex flex-col overflow-hidden transition-all",
     isCompact ? "rounded-md min-h-12 sm:min-h-15" : "rounded-lg",
@@ -37,7 +45,8 @@ export function DayCard({
     isToday && meetsGoal && "border-2 border-green-500",
     isToday && !meetsGoal && "border-2 border-line-strong",
     !isToday && !isFuture && meetsGoal && "border-2 border-green-500/30",
-    !isToday && !isFuture && !meetsGoal && hasGoal && "border-2 border-red-500/30",
+    redMiss && "border-2 border-red-500/30",
+    casualMiss && "border-2 border-line/50",
     !isToday && !isFuture && !hasGoal && "border-2 border-line/50"
   );
 
@@ -47,7 +56,8 @@ export function DayCard({
     isToday && meetsGoal && "bg-green-500",
     isToday && !meetsGoal && "bg-surface-sunken/50",
     !isToday && !isFuture && meetsGoal && "bg-green-500/70",
-    !isToday && !isFuture && !meetsGoal && hasGoal && "bg-red-500/70",
+    redMiss && "bg-red-500/70",
+    casualMiss && "bg-surface-sunken/50",
     !isToday && !isFuture && !hasGoal && "bg-surface-sunken/50"
   );
 
@@ -59,7 +69,8 @@ export function DayCard({
     isToday && meetsGoal && "text-white",
     isToday && !meetsGoal && "text-fg",
     !isToday && !isFuture && meetsGoal && "text-white",
-    !isToday && !isFuture && !meetsGoal && hasGoal && "text-white",
+    redMiss && "text-white",
+    casualMiss && "text-fg",
     !isToday && !isFuture && !hasGoal && "text-fg"
   );
 
@@ -70,14 +81,15 @@ export function DayCard({
     isToday && meetsGoal && "text-white",
     isToday && !meetsGoal && "text-fg",
     !isToday && !isFuture && meetsGoal && "text-white",
-    !isToday && !isFuture && !meetsGoal && hasGoal && "text-white",
+    redMiss && "text-white",
+    casualMiss && "text-fg",
     !isToday && !isFuture && !hasGoal && "text-fg"
   );
 
   const bodyBackgroundClasses = cn(
     (isFuture || isToday) && "bg-transparent",
     !isFuture && !isToday && meetsGoal && "bg-green-500/10",
-    !isFuture && !isToday && !meetsGoal && hasGoal && "bg-red-500/10"
+    redMiss && "bg-red-500/10"
   );
 
   const wordCountClasses = cn(
@@ -87,7 +99,8 @@ export function DayCard({
     !isFuture && isToday && meetsGoal && "text-green-700",
     !isFuture && isToday && !meetsGoal && "text-fg",
     !isFuture && !isToday && meetsGoal && "text-green-700/70",
-    !isFuture && !isToday && !meetsGoal && hasGoal && "text-red-700/70",
+    !isFuture && redMiss && "text-red-700/70",
+    !isFuture && casualMiss && "text-fg",
     !isFuture && !isToday && !hasGoal && "text-fg"
   );
 
@@ -97,7 +110,8 @@ export function DayCard({
     meetsGoal && isToday && "text-green-700",
     meetsGoal && !isToday && "text-green-700/70",
     !meetsGoal && isToday && "text-fg",
-    !meetsGoal && !isToday && "text-red-700/70"
+    !meetsGoal && !isToday && casualMiss && "text-fg-subtle",
+    !meetsGoal && !isToday && !casualMiss && "text-red-700/70"
   );
 
   return (

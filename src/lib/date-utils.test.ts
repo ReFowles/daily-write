@@ -144,6 +144,7 @@ describe("date-utils", () => {
       dailyWordTarget: 500,
       totalWordTarget: 15000,
       mode: "static",
+      casual: false,
     };
 
     it("returns the stored daily target for static goals", () => {
@@ -176,6 +177,7 @@ describe("date-utils", () => {
       dailyWordTarget: 50,
       totalWordTarget: 200,
       mode: "live",
+      casual: false,
     };
 
     it("shows an even split across all days before any progress exists", () => {
@@ -346,6 +348,7 @@ describe("date-utils", () => {
           dailyWordTarget: 500,
           totalWordTarget: 15000,
           mode: "static",
+          casual: false,
         },
       ];
       const sessions: WritingSession[] = [

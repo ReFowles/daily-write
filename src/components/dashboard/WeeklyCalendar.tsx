@@ -28,6 +28,7 @@ export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) 
             goal={day.goal}
             isToday={isToday(day.date)}
             isFuture={isFuture(day.date)}
+            casual={day.casual}
           />
         ))}
       </div>
