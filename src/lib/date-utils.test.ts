@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   calculateDaysLeft,
   calculateWordCount,
+  countGoalWritingDays,
   daysBetweenInclusive,
   formatDate,
   formatDateRange,
@@ -13,12 +14,16 @@ import {
   getDaysInMonth,
   getEffectiveDailyTarget,
   getEffectiveDailyTargetForDate,
+  getEffectiveTotalTarget,
   getFirstDayOfMonth,
   getFirstDayOfWeek,
   getLastDayOfMonth,
   getMonthName,
+  isCheatDay,
   isDateInRange,
+  isExcludedDay,
   isFuture,
+  isNonWritingDay,
   isSameDate,
   isToday,
   parseLocalDate,
@@ -165,6 +170,111 @@ describe("date-utils", () => {
     it("clamps live remaining words at 0 when the user overshoots", () => {
       const live: Goal = { ...baseGoal, mode: "live" };
       expect(getEffectiveDailyTarget(live, "2026-06-15", 20000)).toBe(0);
+    });
+
+    it("spreads a live target over fewer days when rest days remain", () => {
+      // 16 calendar days remain (06-15..06-30); excluding two future rest days
+      // leaves 14 writing days. 12000 / 14 = 858 (rounded up).
+      const live: Goal = {
+        ...baseGoal,
+        mode: "live",
+        excludedDays: ["2026-06-20", "2026-06-21"],
+      };
+      expect(getEffectiveDailyTarget(live, "2026-06-15", 3000)).toBe(Math.ceil(12000 / 14));
+    });
+
+    it("drops spent cheat days from the live remaining-days denominator", () => {
+      const live: Goal = {
+        ...baseGoal,
+        mode: "live",
+        cheatDaysUsed: ["2026-06-18"],
+      };
+      // 15 writing days remain after removing one cheat day. 12000 / 15 = 800.
+      expect(getEffectiveDailyTarget(live, "2026-06-15", 3000)).toBe(800);
+    });
+
+    it("lowers the live target when cheat days deduct from the total", () => {
+      const live: Goal = {
+        ...baseGoal,
+        mode: "live",
+        cheatDaysUsed: ["2026-06-18"],
+        cheatDaysReduceTotal: true,
+      };
+      // Total drops by one daily target (15000 - 500 = 14500); remaining
+      // 14500 - 3000 = 11500 over 15 writing days = ceil(766.67) = 767.
+      expect(getEffectiveDailyTarget(live, "2026-06-15", 3000)).toBe(Math.ceil(11500 / 15));
+    });
+  });
+
+  describe("getEffectiveTotalTarget", () => {
+    const goal: Goal = {
+      id: "g",
+      userId: "u",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      dailyWordTarget: 500,
+      totalWordTarget: 15000,
+      mode: "static",
+      casual: false,
+      cheatDaysAllowed: 3,
+      cheatDaysUsed: ["2026-06-05", "2026-06-06"],
+    };
+
+    it("returns the stored total when cheat days don't reduce it", () => {
+      expect(getEffectiveTotalTarget(goal)).toBe(15000);
+    });
+
+    it("subtracts one daily target per spent cheat day when enabled", () => {
+      expect(getEffectiveTotalTarget({ ...goal, cheatDaysReduceTotal: true })).toBe(14000);
+    });
+
+    it("never drops below 0", () => {
+      const tiny: Goal = {
+        ...goal,
+        totalWordTarget: 400,
+        cheatDaysReduceTotal: true,
+      };
+      expect(getEffectiveTotalTarget(tiny)).toBe(0);
+    });
+  });
+
+  describe("rest and cheat day helpers", () => {
+    const goal: Goal = {
+      id: "g",
+      userId: "u",
+      startDate: "2026-06-01",
+      endDate: "2026-06-10",
+      dailyWordTarget: 100,
+      totalWordTarget: 1000,
+      mode: "static",
+      casual: false,
+      excludedDays: ["2026-06-03"],
+      cheatDaysAllowed: 2,
+      cheatDaysUsed: ["2026-06-05"],
+    };
+
+    it("identifies excluded, cheat, and non-writing days", () => {
+      expect(isExcludedDay(goal, "2026-06-03")).toBe(true);
+      expect(isExcludedDay(goal, "2026-06-04")).toBe(false);
+      expect(isCheatDay(goal, "2026-06-05")).toBe(true);
+      expect(isCheatDay(goal, "2026-06-03")).toBe(false);
+      expect(isNonWritingDay(goal, "2026-06-03")).toBe(true);
+      expect(isNonWritingDay(goal, "2026-06-05")).toBe(true);
+      expect(isNonWritingDay(goal, "2026-06-06")).toBe(false);
+    });
+
+    it("counts only writing days in a range, excluding rest and cheat days", () => {
+      // 06-01..06-10 is 10 days; minus one rest (06-03) and one cheat (06-05) = 8.
+      expect(countGoalWritingDays(goal, "2026-06-01", "2026-06-10")).toBe(8);
+    });
+
+    it("returns 0 for an inverted range", () => {
+      expect(countGoalWritingDays(goal, "2026-06-10", "2026-06-01")).toBe(0);
+    });
+
+    it("treats goals without rest/cheat data as all writing days", () => {
+      const plain: Goal = { ...goal, excludedDays: undefined, cheatDaysUsed: undefined };
+      expect(countGoalWritingDays(plain, "2026-06-01", "2026-06-10")).toBe(10);
     });
   });
 

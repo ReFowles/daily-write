@@ -9,7 +9,7 @@ import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
-import { formatDate, parseLocalDate, toDateString } from "@/lib/date-utils";
+import { formatDate, getEffectiveTotalTarget, parseLocalDate, toDateString } from "@/lib/date-utils";
 
 interface GoalCardProps {
   goal: Goal;
@@ -30,6 +30,9 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
   const totalDays = Math.ceil(
     (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   ) + 1;
+
+  const excludedSet = new Set(goal.excludedDays ?? []);
+  const cheatSet = new Set(goal.cheatDaysUsed ?? []);
 
   // Filter writing sessions that fall within this goal's date range
   const goalSessions = writingSessions.filter((session) => {
@@ -57,17 +60,37 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
     }
   }
 
-  const displayedDayCount = Object.keys(wordsByDate).length;
-  const totalWordsWritten = goalSessions.reduce((sum, session) => sum + session.wordCount, 0);
-  const targetTotalWords = goal.totalWordTarget;
+  // Cheat days never appear; rest days appear only if the writer wrote anyway.
+  const visibleDays = Object.entries(wordsByDate)
+    .filter(([date, words]) => {
+      if (cheatSet.has(date)) return false;
+      if (excludedSet.has(date) && words === 0) return false;
+      return true;
+    })
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB));
+
+  const displayedDayCount = visibleDays.length;
+  // Cheat-day words don't count toward the total.
+  const totalWordsWritten = goalSessions.reduce(
+    (sum, session) => (cheatSet.has(session.date) ? sum : sum + session.wordCount),
+    0
+  );
+  const targetTotalWords = getEffectiveTotalTarget(goal);
   const progress = Math.min((totalWordsWritten / targetTotalWords) * 100, 100);
-  
+
   // For average calculation: use total days if goal is completed or past, otherwise use elapsed days (excluding today)
   const goalIsInPast = endDate < now;
   const elapsedDays = goalIsInPast 
     ? totalDays 
     : Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-  const averageWordsPerDay = goalSessions.length > 0 ? Math.round(totalWordsWritten / elapsedDays) : 0;
+  // Rest and cheat days aren't writing days, so they don't dilute the average.
+  const nonWritingElapsed = [...excludedSet, ...cheatSet].filter((date) => {
+    const d = parseLocalDate(date);
+    return d >= startDate && d <= lastVisibleDay;
+  }).length;
+  const elapsedWritingDays = Math.max(1, elapsedDays - nonWritingElapsed);
+  const averageWordsPerDay =
+    goalSessions.length > 0 ? Math.round(totalWordsWritten / elapsedWritingDays) : 0;
 
   return (
     <Card className={`p-6 ${isCompleted ? "opacity-75" : ""}`}>
@@ -102,6 +125,9 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
               {formatWordCount(goal.dailyWordTarget)} words/day for {totalDays} days
               {" • "}
               {formatWordCount(goal.totalWordTarget)} total
+              {excludedSet.size > 0 && ` • ${excludedSet.size} rest day${excludedSet.size === 1 ? "" : "s"}`}
+              {(goal.cheatDaysAllowed ?? 0) > 0 &&
+                ` • ${cheatSet.size}/${goal.cheatDaysAllowed} cheat days`}
             </p>
           </div>
           <Button
@@ -139,18 +165,18 @@ export function GoalCard({ goal, writingSessions, onDelete }: GoalCardProps) {
             </button>
             {showLoggedDays && (
               <div className="flex flex-wrap gap-2">
-                {Object.entries(wordsByDate)
-                  .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-                  .map(([date, words]) => {
+                {visibleDays.map(([date, words]) => {
                     const meetsGoal = words >= goal.dailyWordTarget;
-                    const casualMiss = !meetsGoal && goal.casual && words === 0;
+                    const isExcluded = excludedSet.has(date);
+                    const neutralMiss =
+                      !meetsGoal && ((goal.casual && words === 0) || isExcluded);
                     return (
                       <div
                         key={date}
                         className={`rounded-md px-3 py-2 text-sm ${
                           meetsGoal
                             ? "bg-green-500/15 text-green-700 dark:text-green-300"
-                            : casualMiss
+                            : neutralMiss
                               ? cn("bg-surface-sunken", themeClasses.text.secondary)
                               : "bg-red-500/15 text-red-700 dark:text-red-300"
                         }`}

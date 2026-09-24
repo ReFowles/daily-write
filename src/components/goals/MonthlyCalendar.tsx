@@ -8,7 +8,9 @@ import {
   generateMonthGrid,
   getEffectiveDailyTargetForDate,
   getMonthName,
+  isCheatDay,
   isDateInRange,
+  isExcludedDay,
   isSameDate,
   toDateString,
 } from "@/lib/date-utils";
@@ -20,9 +22,10 @@ import { themeClasses } from "@/lib/theme-utils";
 interface MonthlyCalendarProps {
   goals: Goal[];
   writingSessions: WritingSession[];
+  onToggleCheatDay?: (goalId: string, date: string) => void;
 }
 
-export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps) {
+export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay }: MonthlyCalendarProps) {
   const { year: currentYear, month: currentMonth, goToPreviousMonth, goToNextMonth, goToToday } = useCalendarNavigation();
   const { isOpen: isExpanded, toggle: toggleExpanded } = useToggle(true);
 
@@ -130,6 +133,14 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                 <div className="relative grid grid-cols-7">
                   {week.map((day, dayIndex) => {
                     const goal = getGoalForDate(day.date);
+                    const dateString = day.date ? toDateString(day.date) : null;
+                    const excluded = goal && dateString ? isExcludedDay(goal, dateString) : false;
+                    const cheatDay = goal && dateString ? isCheatDay(goal, dateString) : false;
+                    const cheatRemaining = goal
+                      ? (goal.cheatDaysAllowed ?? 0) - (goal.cheatDaysUsed ?? []).length
+                      : 0;
+                    const canToggleCheat =
+                      !!goal && !!dateString && !!onToggleCheatDay && (cheatDay || cheatRemaining > 0);
 
                     return (
                       <div key={dayIndex} className="min-w-0 px-0.5 py-0.5 sm:px-2 sm:py-2 md:px-4 md:py-3">
@@ -150,6 +161,14 @@ export function MonthlyCalendar({ goals, writingSessions }: MonthlyCalendarProps
                           isToday={day.isToday}
                           isFuture={day.isFuture}
                           casual={goal?.casual ?? false}
+                          excludedDay={excluded}
+                          cheatDay={cheatDay}
+                          canToggleCheat={canToggleCheat}
+                          onToggleCheat={
+                            goal && dateString && onToggleCheatDay
+                              ? () => onToggleCheatDay(goal.id, dateString)
+                              : undefined
+                          }
                         />
                       </div>
                     );

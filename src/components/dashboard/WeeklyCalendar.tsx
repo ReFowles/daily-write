@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/Card";
 import { DayCard } from "@/components/DayCard";
-import { generateWeekWindow, isToday, isFuture } from "@/lib/date-utils";
+import { generateWeekWindow, isToday, isFuture, toDateString } from "@/lib/date-utils";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import type { WritingSession, Goal } from "@/lib/types";
@@ -8,9 +8,10 @@ import type { WritingSession, Goal } from "@/lib/types";
 interface WeeklyCalendarProps {
   goals: Goal[];
   writingSessions: WritingSession[];
+  onToggleCheatDay?: (goalId: string, date: string) => void;
 }
 
-export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ goals, writingSessions, onToggleCheatDay }: WeeklyCalendarProps) {
   const days = generateWeekWindow(goals, writingSessions);
 
   return (
@@ -29,6 +30,14 @@ export function WeeklyCalendar({ goals, writingSessions }: WeeklyCalendarProps) 
             isToday={isToday(day.date)}
             isFuture={isFuture(day.date)}
             casual={day.casual}
+            excludedDay={day.excluded}
+            cheatDay={day.cheatDay}
+            canToggleCheat={day.canToggleCheat && !!onToggleCheatDay}
+            onToggleCheat={
+              day.goalId && onToggleCheatDay
+                ? () => onToggleCheatDay(day.goalId!, toDateString(day.date))
+                : undefined
+            }
           />
         ))}
       </div>

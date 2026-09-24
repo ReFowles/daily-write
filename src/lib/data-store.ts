@@ -57,7 +57,15 @@ function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
     totalWordTarget,
     mode,
     casual: data.casual === true,
+    excludedDays: toStringArray(data.excludedDays),
+    cheatDaysAllowed: typeof data.cheatDaysAllowed === "number" ? data.cheatDaysAllowed : 0,
+    cheatDaysUsed: toStringArray(data.cheatDaysUsed),
+    cheatDaysReduceTotal: data.cheatDaysReduceTotal === true,
   };
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
 function toWritingSession(data: FirebaseFirestore.DocumentData): WritingSession {
@@ -150,6 +158,38 @@ export async function updateGoal(
 export async function deleteGoal(goalId: string): Promise<void> {
   const goalRef = await requireGoalOwnership(goalId);
   await goalRef.delete();
+}
+
+/**
+ * Toggles a cheat day on/off for the given date, enforcing the goal's cheat-day
+ * allowance server-side. Returns the updated list of spent cheat days.
+ */
+export async function toggleCheatDay(goalId: string, date: string): Promise<string[]> {
+  const goalRef = await requireGoalOwnership(goalId);
+  const snapshot = await goalRef.get();
+  const data = snapshot.data()!;
+
+  const allowed = typeof data.cheatDaysAllowed === "number" ? data.cheatDaysAllowed : 0;
+  const used: string[] = Array.isArray(data.cheatDaysUsed)
+    ? data.cheatDaysUsed.filter((d: unknown): d is string => typeof d === "string")
+    : [];
+
+  let next: string[];
+  if (used.includes(date)) {
+    next = used.filter((d) => d !== date);
+  } else {
+    if (used.length >= allowed) {
+      throw new Error("No cheat days remaining");
+    }
+    next = [...used, date].sort();
+  }
+
+  await goalRef.update({
+    cheatDaysUsed: next,
+    updatedAt: Timestamp.now(),
+  });
+
+  return next;
 }
 
 export async function getCurrentGoal(userId: string): Promise<Goal | null> {

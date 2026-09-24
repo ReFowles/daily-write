@@ -62,6 +62,7 @@ import {
   getWritingSessionsInRange,
   getWritingStats,
   removeFavoriteDoc,
+  toggleCheatDay,
   updateGoal,
 } from "./data-store";
 
@@ -251,6 +252,68 @@ describe("data-store", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it("defaults rest/cheat fields for legacy goals missing them", async () => {
+      getMock.mockResolvedValueOnce(
+        snapshotFrom<Partial<Goal>>([
+          {
+            id: "legacy",
+            userId: "u1",
+            startDate: "2026-01-01",
+            endDate: "2026-01-31",
+            dailyWordTarget: 500,
+          },
+        ])
+      );
+      const [goal] = await getAllGoals("u1");
+      expect(goal.excludedDays).toEqual([]);
+      expect(goal.cheatDaysUsed).toEqual([]);
+      expect(goal.cheatDaysAllowed).toBe(0);
+    });
+
+    it("toggleCheatDay spends a cheat day when under the allowance", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          cheatDaysAllowed: 2,
+          cheatDaysUsed: [],
+        })
+      );
+      const result = await toggleCheatDay("g1", "2026-06-05");
+      expect(result).toEqual(["2026-06-05"]);
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ cheatDaysUsed: ["2026-06-05"] })
+      );
+    });
+
+    it("toggleCheatDay removes a cheat day that was already spent", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          cheatDaysAllowed: 2,
+          cheatDaysUsed: ["2026-06-05"],
+        })
+      );
+      const result = await toggleCheatDay("g1", "2026-06-05");
+      expect(result).toEqual([]);
+    });
+
+    it("toggleCheatDay throws when the allowance is exhausted", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          cheatDaysAllowed: 1,
+          cheatDaysUsed: ["2026-06-05"],
+        })
+      );
+      await expect(toggleCheatDay("g1", "2026-06-06")).rejects.toThrow(
+        "No cheat days remaining"
+      );
+      expect(updateMock).not.toHaveBeenCalled();
     });
   });
 

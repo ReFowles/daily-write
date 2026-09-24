@@ -15,7 +15,7 @@ import { MonthlyCalendar } from "./MonthlyCalendar";
 import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
 import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
-import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb } from "@/lib/data-store";
+import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb, toggleCheatDay } from "@/lib/data-store";
 
 interface GoalsPageClientProps {
   userId: string;
@@ -118,6 +118,17 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
     }
   };
 
+  const handleToggleCheatDay = async (goalId: string, date: string) => {
+    try {
+      const cheatDaysUsed = await toggleCheatDay(goalId, date);
+      setGoals((prev) =>
+        prev.map((goal) => (goal.id === goalId ? { ...goal, cheatDaysUsed } : goal))
+      );
+      invalidateCurrentGoalCache(userId);
+    } catch (error) {
+      console.error("Error toggling cheat day:", error);
+    }
+  };
   if (isLoading) {
     return (
       <main className={cn("min-h-screen", themeClasses.background.page)}>
@@ -169,7 +180,11 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
         {/* Monthly Calendar */}
         {goals.length > 0 && (
           <div className="mb-8">
-            <MonthlyCalendar goals={goals} writingSessions={writingSessions} />
+            <MonthlyCalendar
+              goals={goals}
+              writingSessions={writingSessions}
+              onToggleCheatDay={handleToggleCheatDay}
+            />
           </div>
         )}
 

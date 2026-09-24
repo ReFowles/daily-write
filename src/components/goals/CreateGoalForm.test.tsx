@@ -33,6 +33,10 @@ describe("CreateGoalForm", () => {
       totalWordTarget: 13500,
       mode: "static",
       casual: false,
+      excludedDays: [],
+      cheatDaysAllowed: 0,
+      cheatDaysUsed: [],
+      cheatDaysReduceTotal: false,
     });
   });
 
@@ -43,6 +47,7 @@ describe("CreateGoalForm", () => {
     fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-06-01" } });
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: "2026-06-30" } });
     fireEvent.change(screen.getByLabelText(/daily target/i), { target: { value: "450" } });
+    fireEvent.click(screen.getByRole("button", { name: /options/i }));
     fireEvent.click(screen.getByRole("checkbox", { name: /casual/i }));
     fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
 

@@ -23,10 +23,73 @@ export function daysBetweenInclusive(startDateString: string, endDateString: str
 }
 
 /**
+ * Whether a goal treats a given date as a planned rest (exclusion) day.
+ */
+export function isExcludedDay(goal: Goal, dateString: string): boolean {
+  return (goal.excludedDays ?? []).includes(dateString);
+}
+
+/**
+ * Whether the writer has spent a cheat day on a given date.
+ */
+export function isCheatDay(goal: Goal, dateString: string): boolean {
+  return (goal.cheatDaysUsed ?? []).includes(dateString);
+}
+
+/**
+ * A day that expects no writing: either a planned exclusion day or a spent
+ * cheat day. These never count toward pacing math or totals.
+ */
+export function isNonWritingDay(goal: Goal, dateString: string): boolean {
+  return isExcludedDay(goal, dateString) || isCheatDay(goal, dateString);
+}
+
+/**
+ * Inclusive count of the writing days in [fromDateString, toDateString] for a
+ * goal — i.e. days that are neither excluded nor spent as cheat days.
+ */
+export function countGoalWritingDays(
+  goal: Goal,
+  fromDateString: string,
+  toDateString: string
+): number {
+  const from = parseLocalDate(fromDateString);
+  const to = parseLocalDate(toDateString);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) return 0;
+
+  const skip = new Set<string>([...(goal.excludedDays ?? []), ...(goal.cheatDaysUsed ?? [])]);
+
+  let count = 0;
+  for (
+    let cursor = new Date(from);
+    cursor.getTime() <= to.getTime();
+    cursor.setDate(cursor.getDate() + 1)
+  ) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(
+      cursor.getDate()
+    ).padStart(2, "0")}`;
+    if (!skip.has(key)) count++;
+  }
+  return count;
+}
+
+/**
+ * The goal's effective total word target. When cheatDaysReduceTotal is on,
+ * each spent cheat day lowers the target by one daily target's worth so those
+ * words don't have to be made up.
+ */
+export function getEffectiveTotalTarget(goal: Goal): number {
+  if (!goal.cheatDaysReduceTotal) return goal.totalWordTarget;
+  const used = (goal.cheatDaysUsed ?? []).length;
+  return Math.max(0, goal.totalWordTarget - used * goal.dailyWordTarget);
+}
+
+/**
  * Effective daily target for a given goal on a given day. For "static" goals
  * this is just the stored daily target. For "live" goals it recomputes as
- * ceil(remainingWords / remainingDaysIncludingToday) so the user always has
- * a fresh number that would land them on the total by the end date.
+ * ceil(remainingWords / remainingWritingDays) so the user always has
+ * a fresh number that would land them on the total by the end date. Excluded
+ * and cheat days are dropped from the remaining-days denominator.
  */
 export function getEffectiveDailyTarget(
   goal: Goal,
@@ -44,11 +107,8 @@ export function getEffectiveDailyTarget(
   // the header stat isn't misleadingly high.
   if (today < start) return goal.dailyWordTarget;
 
-  const remainingWords = Math.max(0, goal.totalWordTarget - wordsWrittenBeforeToday);
-  const remainingDays = Math.max(
-    1,
-    Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  );
+  const remainingWords = Math.max(0, getEffectiveTotalTarget(goal) - wordsWrittenBeforeToday);
+  const remainingDays = Math.max(1, countGoalWritingDays(goal, todayDateString, goal.endDate));
   return Math.ceil(remainingWords / remainingDays);
 }
 
@@ -70,8 +130,14 @@ export function getEffectiveDailyTargetForDate(
   if (goal.mode === "static") return goal.dailyWordTarget;
 
   const referenceDate = dateString < todayDateString ? dateString : todayDateString;
+  const cheatDays = new Set(goal.cheatDaysUsed ?? []);
   const wordsWrittenBeforeDate = writingSessions
-    .filter((session) => session.date >= goal.startDate && session.date < referenceDate)
+    .filter(
+      (session) =>
+        session.date >= goal.startDate &&
+        session.date < referenceDate &&
+        !cheatDays.has(session.date)
+    )
     .reduce((sum, session) => sum + session.wordCount, 0);
 
   return getEffectiveDailyTarget(goal, referenceDate, wordsWrittenBeforeDate);
@@ -102,12 +168,22 @@ export function generateWeekWindow(
     
     // Find goal for this specific date
     const goal = goals.find(g => isDateInRange(date, g.startDate, g.endDate));
-    
+
+    const excluded = goal ? isExcludedDay(goal, dateString) : false;
+    const cheatDay = goal ? isCheatDay(goal, dateString) : false;
+    const cheatRemaining = goal
+      ? (goal.cheatDaysAllowed ?? 0) - (goal.cheatDaysUsed ?? []).length
+      : 0;
+
     days.push({
       date,
       wordsWritten: sessionMap.get(dateString) || 0,
       goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions, todayDateString) : null,
       casual: goal?.casual ?? false,
+      goalId: goal?.id ?? null,
+      excluded,
+      cheatDay,
+      canToggleCheat: !!goal && (cheatDay || cheatRemaining > 0),
     });
   }
   

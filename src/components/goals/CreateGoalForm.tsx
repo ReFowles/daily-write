@@ -2,13 +2,14 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { LuInfo } from "react-icons/lu";
+import { LuChevronDown, LuInfo, LuX } from "react-icons/lu";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
-import { daysBetweenInclusive, parseLocalDate, toDateString } from "@/lib/date-utils";
+import { useToggle } from "@/lib/use-toggle";
+import { daysBetweenInclusive, formatDate, parseLocalDate, toDateString } from "@/lib/date-utils";
 import type { Goal, GoalMode, WritingSession } from "@/lib/types";
 
 interface CreateGoalFormProps {
@@ -29,9 +30,17 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
   const [lastEdited, setLastEdited] = useState<LastEdited>("daily");
   const [mode, setMode] = useState<GoalMode>("static");
   const [casual, setCasual] = useState(false);
+  const [excludedDays, setExcludedDays] = useState<string[]>([]);
+  const [excludeInput, setExcludeInput] = useState("");
+  const [cheatDaysValue, setCheatDaysValue] = useState("");
+  const [cheatDaysReduceTotal, setCheatDaysReduceTotal] = useState(false);
   const [error, setError] = useState("");
+  const { isOpen: showOptions, toggle: toggleOptions } = useToggle(false);
 
   const days = daysBetweenInclusive(startDate, endDate);
+  // Rest days don't count toward the goal, so pacing math is spread over the
+  // remaining writing days only.
+  const writingDays = Math.max(0, days - excludedDays.length);
 
   // Smart placeholder for the daily target, based on the last completed goal.
   const suggestedDaily = useMemo(() => {
@@ -62,41 +71,62 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
     return Math.round((avgPerDay + 20) / 5) * 5;
   }, [goals, writingSessions]);
 
-  const suggestedTotal = days > 0 ? suggestedDaily * days : suggestedDaily * 30;
+  const suggestedTotal = writingDays > 0 ? suggestedDaily * writingDays : suggestedDaily * 30;
 
-  const handleStartDateChange = (value: string) => {
-    setStartDate(value);
-    reconcileFromDates(value, endDate);
-  };
-
-  const handleEndDateChange = (value: string) => {
-    setEndDate(value);
-    reconcileFromDates(startDate, value);
-  };
-
-  function reconcileFromDates(nextStart: string, nextEnd: string) {
-    const nextDays = daysBetweenInclusive(nextStart, nextEnd);
-    if (nextDays <= 0) return;
-
+  // Re-derives the linked field (daily or total) whenever the number of writing
+  // days changes — from date edits or rest-day changes.
+  const relinkTargets = (nextWritingDays: number) => {
+    if (nextWritingDays <= 0) return;
     if (lastEdited === "daily") {
       const daily = parseInt(dailyValue, 10);
       if (Number.isFinite(daily) && daily > 0) {
-        setTotalValue(String(daily * nextDays));
+        setTotalValue(String(daily * nextWritingDays));
       }
     } else {
       const total = parseInt(totalValue, 10);
       if (Number.isFinite(total) && total > 0) {
-        setDailyValue(String(Math.ceil(total / nextDays)));
+        setDailyValue(String(Math.ceil(total / nextWritingDays)));
       }
     }
-  }
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    const nextExcluded = excludedDays.filter((d) => (!value || d >= value) && (!endDate || d <= endDate));
+    setExcludedDays(nextExcluded);
+    relinkTargets(Math.max(0, daysBetweenInclusive(value, endDate) - nextExcluded.length));
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    const nextExcluded = excludedDays.filter((d) => (!startDate || d >= startDate) && (!value || d <= value));
+    setExcludedDays(nextExcluded);
+    relinkTargets(Math.max(0, daysBetweenInclusive(startDate, value) - nextExcluded.length));
+  };
+
+  const addExcludedDay = (value: string) => {
+    if (!value) return;
+    if (startDate && value < startDate) return;
+    if (endDate && value > endDate) return;
+    if (excludedDays.includes(value)) return;
+    const next = [...excludedDays, value].sort();
+    setExcludedDays(next);
+    setExcludeInput("");
+    relinkTargets(Math.max(0, daysBetweenInclusive(startDate, endDate) - next.length));
+  };
+
+  const removeExcludedDay = (value: string) => {
+    const next = excludedDays.filter((d) => d !== value);
+    setExcludedDays(next);
+    relinkTargets(Math.max(0, daysBetweenInclusive(startDate, endDate) - next.length));
+  };
 
   const handleDailyChange = (value: string) => {
     setDailyValue(value);
     setLastEdited("daily");
     const daily = parseInt(value, 10);
-    if (days > 0 && Number.isFinite(daily) && daily > 0) {
-      setTotalValue(String(daily * days));
+    if (writingDays > 0 && Number.isFinite(daily) && daily > 0) {
+      setTotalValue(String(daily * writingDays));
     } else if (value === "") {
       setTotalValue("");
     }
@@ -106,8 +136,8 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
     setTotalValue(value);
     setLastEdited("total");
     const total = parseInt(value, 10);
-    if (days > 0 && Number.isFinite(total) && total > 0) {
-      setDailyValue(String(Math.ceil(total / days)));
+    if (writingDays > 0 && Number.isFinite(total) && total > 0) {
+      setDailyValue(String(Math.ceil(total / writingDays)));
     } else if (value === "") {
       setDailyValue("");
     }
@@ -124,6 +154,10 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
       return;
     }
 
+    const parsedCheatDays = parseInt(cheatDaysValue, 10);
+    const cheatDaysAllowed =
+      Number.isFinite(parsedCheatDays) && parsedCheatDays > 0 ? parsedCheatDays : 0;
+
     onSubmit(
       {
         startDate,
@@ -132,6 +166,10 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         totalWordTarget: total,
         mode,
         casual,
+        excludedDays,
+        cheatDaysAllowed,
+        cheatDaysUsed: [],
+        cheatDaysReduceTotal,
       },
       (errorMessage: string) => {
         setError(errorMessage);
@@ -213,7 +251,9 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
 
         <p className={cn("-mt-2 text-sm", themeClasses.text.muted)}>
           {days > 0
-            ? `${days} day${days === 1 ? "" : "s"} — editing one field updates the other.`
+            ? `${days} day${days === 1 ? "" : "s"}${
+                excludedDays.length > 0 ? ` (${writingDays} writing)` : ""
+              } — editing one field updates the other.`
             : "Pick an end date to link the daily and total targets."}
         </p>
 
@@ -239,19 +279,143 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
           </div>
         </fieldset>
 
-        <label className={cn("flex items-center gap-2 text-base", themeClasses.text.primary)}>
-          <input
-            type="checkbox"
-            checked={casual}
-            onChange={(e) => setCasual(e.target.checked)}
-            className="themed-checkbox"
-          />
-          <span className="font-bold">Casual</span>
-          <InfoPopover label="About Casual goals">
-            Days with no writing show up neutral gray instead of red, so a missed
-            day doesn&apos;t look like a failure.
-          </InfoPopover>
-        </label>
+        <div className={cn("border-t pt-4", themeClasses.border.divider)}>
+          <button
+            type="button"
+            onClick={toggleOptions}
+            aria-expanded={showOptions}
+            className={cn(
+              "flex w-full items-center justify-between text-base font-medium transition-opacity hover:opacity-70",
+              themeClasses.text.primary
+            )}
+          >
+            <span>Options</span>
+            <LuChevronDown className={cn("h-4 w-4 transition-transform", showOptions && "rotate-180")} />
+          </button>
+
+          {showOptions && (
+            <div className="mt-4 space-y-4">
+              <label className={cn("flex items-center gap-2 text-base", themeClasses.text.primary)}>
+                <input
+                  type="checkbox"
+                  checked={casual}
+                  onChange={(e) => setCasual(e.target.checked)}
+                  className="themed-checkbox"
+                />
+                <span className="font-medium">Casual</span>
+                <InfoPopover label="About Casual goals">
+                  Days with no writing show up neutral gray instead of red, so a missed
+                  day doesn&apos;t look like a failure.
+                </InfoPopover>
+              </label>
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <label
+                  htmlFor="cheatDaysAllowed"
+                  className={cn("flex items-center gap-2 text-base font-medium", themeClasses.text.label)}
+                >
+                  <span>Cheat Days</span>
+                  <InfoPopover label="About Cheat Days">
+                    A pool of skip days you can spend later from the calendar. A spent
+                    cheat day turns gray and never counts, whether you wrote that day
+                    or not.
+                  </InfoPopover>
+                </label>
+                <Input
+                  type="number"
+                  id="cheatDaysAllowed"
+                  value={cheatDaysValue}
+                  onChange={(e) => setCheatDaysValue(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  className="max-w-24"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={cheatDaysReduceTotal}
+                    aria-label="Cheat days deduct from goal total"
+                    onClick={() => setCheatDaysReduceTotal((v) => !v)}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
+                      cheatDaysReduceTotal ? "bg-accent" : "bg-line-strong"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                        cheatDaysReduceTotal ? "translate-x-5.5" : "translate-x-0.5"
+                      )}
+                    />
+                  </button>
+                  <span className={cn("text-sm font-medium", themeClasses.text.label)}>
+                    Deduct from total
+                  </span>
+                  <InfoPopover label="About deducting cheat days from the total">
+                    On: each spent cheat day lowers the goal total by one day&apos;s target,
+                    so you don&apos;t make those words up. Off: the total stays put and the
+                    remaining words spread across your other writing days.
+                  </InfoPopover>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className={cn("flex items-center gap-2 text-base font-medium", themeClasses.text.label)}>
+                  <span>Rest Days</span>
+                  <InfoPopover label="About Rest Days">
+                    Days you know you won&apos;t write. They&apos;re dropped from the
+                    target math, stay gray on the calendar, and only show up in a
+                    goal&apos;s logged days if you end up writing anyway.
+                  </InfoPopover>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={excludeInput}
+                    onChange={(e) => setExcludeInput(e.target.value)}
+                    min={startDate || undefined}
+                    max={endDate || undefined}
+                    aria-label="Rest day date"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => addExcludedDay(excludeInput)}
+                    disabled={!excludeInput || !endDate}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {excludedDays.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {excludedDays.map((date) => (
+                      <span
+                        key={date}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm",
+                          "bg-surface-sunken",
+                          themeClasses.text.secondary
+                        )}
+                      >
+                        {formatDate(date)}
+                        <button
+                          type="button"
+                          onClick={() => removeExcludedDay(date)}
+                          aria-label={`Remove rest day ${formatDate(date)}`}
+                          className="transition-colors hover:text-red-600 dark:hover:text-red-400"
+                        >
+                          <LuX className="h-4 w-4" aria-hidden />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-2 pt-2">
           <Button type="submit" variant="primary" className="flex-1">

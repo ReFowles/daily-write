@@ -15,7 +15,7 @@ import { cn } from "@/lib/class-utils";
 import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
-import { deleteGoal as deleteGoalFromDb } from "@/lib/data-store";
+import { deleteGoal as deleteGoalFromDb, toggleCheatDay } from "@/lib/data-store";
 import {
   booleanFromLocalStorage,
   useLocalStorageState,
@@ -53,6 +53,18 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
       invalidateCurrentGoalCache();
     } catch (error) {
       console.error("Error deleting goal:", error);
+    }
+  };
+
+  const handleToggleCheatDay = async (goalId: string, date: string) => {
+    try {
+      const cheatDaysUsed = await toggleCheatDay(goalId, date);
+      setLocalGoals((prev) =>
+        prev.map((g) => (g.id === goalId ? { ...g, cheatDaysUsed } : g))
+      );
+      invalidateCurrentGoalCache();
+    } catch (error) {
+      console.error("Error toggling cheat day:", error);
     }
   };
 
@@ -114,7 +126,11 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
   cards.push({
     id: "weekly",
     content: (
-      <WeeklyCalendar goals={localGoals} writingSessions={writingSessions} />
+      <WeeklyCalendar
+        goals={localGoals}
+        writingSessions={writingSessions}
+        onToggleCheatDay={handleToggleCheatDay}
+      />
     ),
   });
 

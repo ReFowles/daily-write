@@ -114,8 +114,11 @@ export function useCurrentGoal(): CurrentGoalData {
             dateString
           );
           if (!mounted) return;
-          const total = sessions.reduce((sum, s) => sum + s.wordCount, 0);
-          nextWordsBefore = Math.max(0, total - nextProgress);
+          // Cheat days never count toward the running total.
+          const cheatDays = new Set(nextGoal.cheatDaysUsed ?? []);
+          nextWordsBefore = sessions
+            .filter((s) => s.date < dateString && !cheatDays.has(s.date))
+            .reduce((sum, s) => sum + s.wordCount, 0);
         }
 
         cache.set(userEmail, {
