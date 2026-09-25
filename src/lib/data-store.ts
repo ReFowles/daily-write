@@ -11,7 +11,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "./firebase-admin";
 import { auth } from "./auth";
 import { daysBetweenInclusive, toDateString } from "./date-utils";
-import type { Goal, GoalMode, WritingSession } from "./types";
+import type { Goal, GoalKind, GoalMode, WritingSession } from "./types";
 
 const GOALS_COLLECTION = "goals";
 const SESSIONS_COLLECTION = "writingSessions";
@@ -48,6 +48,8 @@ function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
       ? data.totalWordTarget
       : dailyWordTarget * daysBetweenInclusive(data.startDate, data.endDate);
 
+  const kind: GoalKind = data.kind === "manual" ? "manual" : "writing";
+
   return {
     id,
     userId: data.userId,
@@ -56,6 +58,13 @@ function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
     dailyWordTarget,
     totalWordTarget,
     mode,
+    kind,
+    ...(kind === "manual"
+      ? {
+          unitLabel: typeof data.unitLabel === "string" ? data.unitLabel : "",
+          completedUnits: typeof data.completedUnits === "number" ? data.completedUnits : 0,
+        }
+      : {}),
     casual: data.casual === true,
     excludedDays: toStringArray(data.excludedDays),
     cheatDaysAllowed: typeof data.cheatDaysAllowed === "number" ? data.cheatDaysAllowed : 0,
@@ -160,6 +169,32 @@ export async function updateGoal(
 export async function deleteGoal(goalId: string): Promise<void> {
   const goalRef = await requireGoalOwnership(goalId);
   await goalRef.delete();
+}
+
+/**
+ * Adjusts a manual goal's completion counter by `delta`, clamping the result to
+ * [0, totalWordTarget] server-side so the count can never go negative or exceed
+ * the target. Returns the new completed count.
+ */
+export async function adjustManualProgress(goalId: string, delta: number): Promise<number> {
+  const goalRef = await requireGoalOwnership(goalId);
+  const snapshot = await goalRef.get();
+  const data = snapshot.data()!;
+
+  if (data.kind !== "manual") {
+    throw new Error("Not a manual goal");
+  }
+
+  const total = typeof data.totalWordTarget === "number" ? data.totalWordTarget : 0;
+  const current = typeof data.completedUnits === "number" ? data.completedUnits : 0;
+  const next = Math.max(0, Math.min(total, current + delta));
+
+  await goalRef.update({
+    completedUnits: next,
+    updatedAt: Timestamp.now(),
+  });
+
+  return next;
 }
 
 /**

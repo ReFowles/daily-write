@@ -37,6 +37,13 @@ export function isCheatDay(goal: Goal, dateString: string): boolean {
 }
 
 /**
+ * Whether a goal tracks manual unit completion rather than words written.
+ */
+export function isManualGoal(goal: Goal): boolean {
+  return goal.kind === "manual";
+}
+
+/**
  * A day that expects no writing: either a planned exclusion day or a spent
  * cheat day. These never count toward pacing math or totals.
  */
@@ -252,6 +259,13 @@ export function getEffectiveDailyTargetForDate(
   if (goal.mode === "static") return goal.dailyWordTarget;
 
   const referenceDate = dateString < todayDateString ? dateString : todayDateString;
+
+  // Manual goals have no per-day sessions, so live pacing recalculates from the
+  // running completion counter instead of summed word sessions.
+  if (goal.kind === "manual") {
+    return getEffectiveDailyTarget(goal, referenceDate, goal.completedUnits ?? 0);
+  }
+
   const cheatDays = new Set(goal.cheatDaysUsed ?? []);
   const wordsWrittenBeforeDate = writingSessions
     .filter(
@@ -315,6 +329,7 @@ export function generateWeekWindow(
       goal: goal ? getEffectiveDailyTargetForDate(goal, dateString, writingSessions, todayDateString) : null,
       casual: goal?.casual ?? false,
       goalId: goal?.id ?? null,
+      unitLabel: goal?.kind === "manual" ? goal.unitLabel ?? "" : null,
       excluded,
       cheatDay,
       canToggleCheat: !!goal && (cheatDay || cheatRemaining > 0),

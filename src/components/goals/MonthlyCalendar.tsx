@@ -179,6 +179,7 @@ export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay, onTo
                           isToday={day.isToday}
                           isFuture={day.isFuture}
                           casual={goal?.casual ?? false}
+                          unitLabel={goal?.kind === "manual" ? goal.unitLabel ?? "" : undefined}
                           excludedDay={excluded}
                           cheatDay={cheatDay}
                           canToggleCheat={canToggleCheat}

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const useSessionMock = vi.fn();
@@ -73,24 +73,84 @@ describe("PageHeader", () => {
     expect(screen.getByRole("button", { name: /new goal/i })).toBeInTheDocument();
   });
 
-  it("renders `…` placeholders in goal-derived stat cards while isLoading", () => {
+  it("renders a manual goal's completion counter with working +/- controls", () => {
+    const onIncrement = vi.fn();
+    const onDecrement = vi.fn();
     render(
       <PageHeader
         title="Write"
         description="desc"
-        dailyGoal={500}
         daysLeft={7}
-        writtenToday={0}
         goalStartDate="2026-06-01"
         goalEndDate="2026-06-30"
-        isLoading
+        manualGoal={{
+          label: "chapter",
+          completed: 3,
+          total: 12,
+          dailyTarget: 2,
+          onIncrement,
+          onDecrement,
+        }}
       />
     );
 
-    // Goal, Current, Days Left should all be placeholders while loading.
-    expect(screen.getAllByText("\u2026")).toHaveLength(3);
-    // The real goal value should not be rendered.
-    expect(screen.queryByText("500")).not.toBeInTheDocument();
-    expect(screen.queryByText("7")).not.toBeInTheDocument();
+    // Word-count cards are replaced by the unit counter (completed / daily) and
+    // a Total card for the whole-goal target.
+    expect(screen.queryByText("Today")).not.toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText(/\/\s*2/)).toBeInTheDocument();
+    expect(screen.getByText("Total")).toBeInTheDocument();
+    expect(screen.getByText(/12 chapters/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /increase chapter count/i }));
+    expect(onIncrement).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /decrease chapter count/i }));
+    expect(onDecrement).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables the manual counter controls at their bounds", () => {
+    render(
+      <PageHeader
+        title="Write"
+        description="desc"
+        daysLeft={7}
+        goalStartDate="2026-06-01"
+        goalEndDate="2026-06-30"
+        manualGoal={{
+          label: "act",
+          completed: 0,
+          total: 3,
+          dailyTarget: 1,
+          onIncrement: vi.fn(),
+          onDecrement: vi.fn(),
+        }}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: /decrease act count/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /increase act count/i })).not.toBeDisabled();
+  });
+
+  it("pluralizes the counter card's label off the daily target, not the completed count", () => {
+    render(
+      <PageHeader
+        title="Write"
+        description="desc"
+        daysLeft={7}
+        goalStartDate="2026-06-01"
+        goalEndDate="2026-06-30"
+        manualGoal={{
+          label: "chapter",
+          completed: 3,
+          total: 12,
+          dailyTarget: 1,
+          onIncrement: vi.fn(),
+          onDecrement: vi.fn(),
+        }}
+      />
+    );
+
+    expect(screen.getByText(/^chapter$/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^chapters$/i)).not.toBeInTheDocument();
   });
 });

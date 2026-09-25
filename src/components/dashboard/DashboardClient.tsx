@@ -33,7 +33,7 @@ interface DashboardClientProps {
 }
 
 export function DashboardClient({ goals, writingSessions, stats }: DashboardClientProps) {
-  const { todayGoal, todayProgress, daysLeft, currentGoal, isLoading } = useCurrentGoal();
+  const { todayGoal, todayProgress, daysLeft, currentGoal, manualGoal, isLoading } = useCurrentGoal();
   const [localGoals, setLocalGoals] = useState<Goal[]>(goals);
   const [rearrangeLocked, setRearrangeLocked] = useLocalStorageState<boolean>(
     "dashboard-rearrange-locked",
@@ -147,23 +147,27 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
     ),
   });
 
-  cards.push({
-    id: "progress",
-    content: (
-      <ProgressCard
-        title="Today's Progress"
-        current={todayProgress}
-        goal={todayGoal}
-        message={
-          todayGoal - todayProgress > 0
-            ? `${formatWordCount(
-                todayGoal - todayProgress
-              )} words remaining to reach your goal`
-            : "Goal achieved! 🎉"
-        }
-      />
-    ),
-  });
+  // Manual goals track completion via the header counter, not per-day words, so
+  // the word-based "Today's Progress" card doesn't apply to them.
+  if (activeGoal?.kind !== "manual") {
+    cards.push({
+      id: "progress",
+      content: (
+        <ProgressCard
+          title="Today's Progress"
+          current={todayProgress}
+          goal={todayGoal}
+          message={
+            todayGoal - todayProgress > 0
+              ? `${formatWordCount(
+                  todayGoal - todayProgress
+                )} words remaining to reach your goal`
+              : "Goal achieved! 🎉"
+          }
+        />
+      ),
+    });
+  }
 
   cards.push({
     id: "stats",
@@ -210,6 +214,7 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
           writtenToday={todayProgress}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
+          manualGoal={manualGoal}
           isLoading={isLoading}
         />
 

@@ -11,7 +11,7 @@ import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import { useToggle } from "@/lib/use-toggle";
 import { daysBetweenInclusive, formatDate, parseLocalDate, toDateString } from "@/lib/date-utils";
-import type { Goal, GoalMode, WritingSession } from "@/lib/types";
+import type { Goal, GoalKind, GoalMode, WritingSession } from "@/lib/types";
 
 interface CreateGoalFormProps {
   onSubmit: (goal: Omit<Goal, "id" | "userId">, onError: (message: string) => void) => void;
@@ -22,7 +22,12 @@ interface CreateGoalFormProps {
 
 type LastEdited = "daily" | "total";
 
-export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions = [] }: CreateGoalFormProps) {
+export function CreateGoalForm({
+  onSubmit,
+  onCancel,
+  goals = [],
+  writingSessions = [],
+}: CreateGoalFormProps) {
   const today = new Date();
   const [startDate, setStartDate] = useState(toDateString(today));
   const [endDate, setEndDate] = useState("");
@@ -30,6 +35,8 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
   const [totalValue, setTotalValue] = useState("");
   const [lastEdited, setLastEdited] = useState<LastEdited>("daily");
   const [mode, setMode] = useState<GoalMode>("static");
+  const [kind, setKind] = useState<GoalKind>("writing");
+  const [unitLabel, setUnitLabel] = useState("");
   const [casual, setCasual] = useState(false);
   const [rollover, setRollover] = useState(false);
   const [excludedDays, setExcludedDays] = useState<string[]>([]);
@@ -43,6 +50,9 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
   // Rest days don't count toward the goal, so pacing math is spread over the
   // remaining writing days only.
   const writingDays = Math.max(0, days - excludedDays.length);
+
+  const isManual = kind === "manual";
+  const unitName = unitLabel.trim() || "unit";
 
   // Smart placeholder for the daily target, based on the last completed goal.
   const suggestedDaily = useMemo(() => {
@@ -94,14 +104,18 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
 
   const handleStartDateChange = (value: string) => {
     setStartDate(value);
-    const nextExcluded = excludedDays.filter((d) => (!value || d >= value) && (!endDate || d <= endDate));
+    const nextExcluded = excludedDays.filter(
+      (d) => (!value || d >= value) && (!endDate || d <= endDate)
+    );
     setExcludedDays(nextExcluded);
     relinkTargets(Math.max(0, daysBetweenInclusive(value, endDate) - nextExcluded.length));
   };
 
   const handleEndDateChange = (value: string) => {
     setEndDate(value);
-    const nextExcluded = excludedDays.filter((d) => (!startDate || d >= startDate) && (!value || d <= value));
+    const nextExcluded = excludedDays.filter(
+      (d) => (!startDate || d >= startDate) && (!value || d <= value)
+    );
     setExcludedDays(nextExcluded);
     relinkTargets(Math.max(0, daysBetweenInclusive(startDate, value) - nextExcluded.length));
   };
@@ -152,7 +166,49 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
     const daily = parseInt(dailyValue, 10);
     const total = parseInt(totalValue, 10);
     if (!Number.isFinite(daily) || daily <= 0 || !Number.isFinite(total) || total <= 0) {
-      setError("Enter a daily or total word target.");
+      setError(
+        kind === "manual"
+          ? "Enter a daily or total target for your unit."
+          : "Enter a daily or total word target."
+      );
+      return;
+    }
+
+    if (kind === "manual") {
+      const trimmedLabel = unitLabel.trim();
+      if (!trimmedLabel) {
+        setError("Enter a label for what you're counting (e.g. chapter).");
+        return;
+      }
+
+      const parsedManualCheatDays = parseInt(cheatDaysValue, 10);
+      const manualCheatDaysAllowed =
+        Number.isFinite(parsedManualCheatDays) && parsedManualCheatDays > 0
+          ? parsedManualCheatDays
+          : 0;
+
+      onSubmit(
+        {
+          startDate,
+          endDate,
+          dailyWordTarget: daily,
+          totalWordTarget: total,
+          mode,
+          kind: "manual",
+          unitLabel: trimmedLabel,
+          completedUnits: 0,
+          casual,
+          excludedDays,
+          cheatDaysAllowed: manualCheatDaysAllowed,
+          cheatDaysUsed: [],
+          cheatDaysReduceTotal,
+          rollover,
+          rolloverDays: [],
+        },
+        (errorMessage: string) => {
+          setError(errorMessage);
+        }
+      );
       return;
     }
 
@@ -167,6 +223,7 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         dailyWordTarget: daily,
         totalWordTarget: total,
         mode,
+        kind: "writing",
         casual,
         excludedDays,
         cheatDaysAllowed,
@@ -192,9 +249,32 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         </div>
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
+        <fieldset>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <legend className={cn("text-base font-bold", themeClasses.text.label)}>Track:</legend>
+            <KindRadio
+              value="writing"
+              label="Words"
+              checked={kind === "writing"}
+              onChange={setKind}
+              info="Log words written each day and pace toward a word-count goal."
+            />
+            <KindRadio
+              value="manual"
+              label="Manual"
+              checked={kind === "manual"}
+              onChange={setKind}
+              info="Count your own units (chapters, acts, scenes…) and tick them off by hand as you finish them."
+            />
+          </div>
+        </fieldset>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="startDate" className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}>
+            <label
+              htmlFor="startDate"
+              className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}
+            >
               Start Date
             </label>
             <Input
@@ -207,7 +287,10 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
           </div>
 
           <div>
-            <label htmlFor="endDate" className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}>
+            <label
+              htmlFor="endDate"
+              className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}
+            >
               End Date
             </label>
             <Input
@@ -221,9 +304,31 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
           </div>
         </div>
 
+        {isManual && (
+          <div>
+            <label
+              htmlFor="unitLabel"
+              className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}
+            >
+              Unit Label
+            </label>
+            <Input
+              type="text"
+              id="unitLabel"
+              value={unitLabel}
+              onChange={(e) => setUnitLabel(e.target.value)}
+              placeholder="chapter, act, scene…"
+              required
+            />
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="dailyWordTarget" className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}>
+            <label
+              htmlFor="dailyWordTarget"
+              className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}
+            >
               Daily Target
             </label>
             <Input
@@ -231,14 +336,17 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
               id="dailyWordTarget"
               value={dailyValue}
               onChange={(e) => handleDailyChange(e.target.value)}
-              placeholder={suggestedDaily.toLocaleString("en-US")}
+              placeholder={isManual ? "1" : suggestedDaily.toLocaleString("en-US")}
               min="1"
               formatWithCommas
             />
           </div>
 
           <div>
-            <label htmlFor="totalWordTarget" className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}>
+            <label
+              htmlFor="totalWordTarget"
+              className={cn("mb-1 block text-base font-medium", themeClasses.text.label)}
+            >
               Total Target
             </label>
             <Input
@@ -246,7 +354,13 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
               id="totalWordTarget"
               value={totalValue}
               onChange={(e) => handleTotalChange(e.target.value)}
-              placeholder={suggestedTotal.toLocaleString("en-US")}
+              placeholder={
+                isManual
+                  ? writingDays > 0
+                    ? String(writingDays)
+                    : "12"
+                  : suggestedTotal.toLocaleString("en-US")
+              }
               min="1"
               formatWithCommas
             />
@@ -257,15 +371,13 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
           {days > 0
             ? `${days} day${days === 1 ? "" : "s"}${
                 excludedDays.length > 0 ? ` (${writingDays} writing)` : ""
-              } — editing one field updates the other.`
+              } — ${isManual ? `counting ${unitName}s; ` : ""}editing one field updates the other.`
             : "Pick an end date to link the daily and total targets."}
         </p>
 
         <fieldset>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <legend className={cn("text-base font-bold", themeClasses.text.label)}>
-              Type:
-            </legend>
+            <legend className={cn("text-base font-bold", themeClasses.text.label)}>Type:</legend>
             <ModeRadio
               value="static"
               label="Static"
@@ -278,7 +390,11 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
               label="Live"
               checked={mode === "live"}
               onChange={setMode}
-              info="Recalculates today's daily target every day using the words you've already written, so you always see the pace you need to hit the total by the end date."
+              info={
+                isManual
+                  ? `Recalculates today's target every day from the ${unitName}s you've already completed, so you always see the pace you need to hit the total by the end date.`
+                  : "Recalculates today's daily target every day using the words you've already written, so you always see the pace you need to hit the total by the end date."
+              }
             />
           </div>
         </fieldset>
@@ -294,36 +410,33 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
             )}
           >
             <span>Options</span>
-            <LuChevronDown className={cn("h-4 w-4 transition-transform", showOptions && "rotate-180")} />
+            <LuChevronDown
+              className={cn("h-4 w-4 transition-transform", showOptions && "rotate-180")}
+            />
           </button>
 
           {showOptions && (
             <div className="mt-4 space-y-4">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={casual}
-                    onChange={setCasual}
-                    aria-label="Casual goal"
-                  />
-                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>Casual</span>
+                  <Switch checked={casual} onChange={setCasual} aria-label="Casual goal" />
+                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>
+                    Casual
+                  </span>
                   <InfoPopover label="About Casual goals">
-                    Days with no writing show up neutral gray instead of red, so a missed
-                    day doesn&apos;t look like a failure.
+                    Days with no writing show up neutral gray instead of red, so a missed day
+                    doesn&apos;t look like a failure.
                   </InfoPopover>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={rollover}
-                    onChange={setRollover}
-                    aria-label="Rollover"
-                  />
-                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>Rollover</span>
+                  <Switch checked={rollover} onChange={setRollover} aria-label="Rollover" />
+                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>
+                    Rollover
+                  </span>
                   <InfoPopover label="About Rollover">
-                    Lets you reuse a day&apos;s extra words. Tap a red day on the
-                    calendar to pull excess from any surplus day in the goal and
-                    turn it green.
+                    Lets you reuse a day&apos;s extra words. Tap a red day on the calendar to pull
+                    excess from any surplus day in the goal and turn it green.
                   </InfoPopover>
                 </div>
               </div>
@@ -331,13 +444,15 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <label
                   htmlFor="cheatDaysAllowed"
-                  className={cn("flex items-center gap-2 text-base font-medium", themeClasses.text.label)}
+                  className={cn(
+                    "flex items-center gap-2 text-base font-medium",
+                    themeClasses.text.label
+                  )}
                 >
                   <span>Cheat Days</span>
                   <InfoPopover label="About Cheat Days">
-                    A pool of skip days you can spend later from the calendar. A spent
-                    cheat day turns gray and never counts, whether you wrote that day
-                    or not.
+                    A pool of skip days you can spend later from the calendar. A spent cheat day
+                    turns gray and never counts, whether you wrote that day or not.
                   </InfoPopover>
                 </label>
                 <Input
@@ -359,20 +474,25 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
                     Deduct from total
                   </span>
                   <InfoPopover label="About deducting cheat days from the total">
-                    On: each spent cheat day lowers the goal total by one day&apos;s target,
-                    so you don&apos;t make those words up. Off: the total stays put and the
-                    remaining words spread across your other writing days.
+                    On: each spent cheat day lowers the goal total by one day&apos;s target, so you
+                    don&apos;t make those words up. Off: the total stays put and the remaining words
+                    spread across your other writing days.
                   </InfoPopover>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <div className={cn("flex items-center gap-2 text-base font-medium", themeClasses.text.label)}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2 text-base font-medium",
+                    themeClasses.text.label
+                  )}
+                >
                   <span>Rest Days</span>
                   <InfoPopover label="About Rest Days">
-                    Days you know you won&apos;t write. They&apos;re dropped from the
-                    target math, stay gray on the calendar, and only show up in a
-                    goal&apos;s logged days if you end up writing anyway.
+                    Days you know you won&apos;t write. They&apos;re dropped from the target math,
+                    stay gray on the calendar, and only show up in a goal&apos;s logged days if you
+                    end up writing anyway.
                   </InfoPopover>
                 </div>
                 <div className="flex items-center gap-2">
@@ -457,6 +577,31 @@ function ModeRadio({ value, label, checked, onChange, info }: ModeRadioProps) {
       />
       <span>{label}</span>
       <InfoPopover label={`About ${label} mode`}>{info}</InfoPopover>
+    </label>
+  );
+}
+
+interface KindRadioProps {
+  value: GoalKind;
+  label: string;
+  checked: boolean;
+  onChange: (value: GoalKind) => void;
+  info: ReactNode;
+}
+
+function KindRadio({ value, label, checked, onChange, info }: KindRadioProps) {
+  return (
+    <label className={cn("flex items-center gap-2 text-base", themeClasses.text.primary)}>
+      <input
+        type="radio"
+        name="goalKind"
+        value={value}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="themed-radio"
+      />
+      <span>{label}</span>
+      <InfoPopover label={`About ${label} goals`}>{info}</InfoPopover>
     </label>
   );
 }
@@ -550,7 +695,12 @@ function InfoPopover({ label, children }: InfoPopoverProps) {
             aria-label={label}
             style={
               position
-                ? { position: "fixed", top: position.top, left: position.left, width: position.width }
+                ? {
+                    position: "fixed",
+                    top: position.top,
+                    left: position.left,
+                    width: position.width,
+                  }
                 : { position: "fixed", visibility: "hidden" }
             }
             className={cn(

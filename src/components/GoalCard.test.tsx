@@ -25,6 +25,20 @@ const pastGoal: Goal = {
   casual: false,
 };
 
+const manualGoal: Goal = {
+  id: "m1",
+  userId: "u1",
+  startDate: "2026-06-01",
+  endDate: "2026-06-30",
+  dailyWordTarget: 1,
+  totalWordTarget: 12,
+  mode: "static",
+  casual: false,
+  kind: "manual",
+  unitLabel: "chapter",
+  completedUnits: 3,
+};
+
 describe("GoalCard", () => {
   it("renders progress toward the goal", () => {
     const sessions: WritingSession[] = [
@@ -35,6 +49,14 @@ describe("GoalCard", () => {
     // Words written / target total (500/day * 30 days = 15000).
     expect(screen.getByText(/1,000\s*\/\s*15,000/)).toBeInTheDocument();
     expect(screen.getByText(/500 words\/day for 30 days/)).toBeInTheDocument();
+  });
+
+  it("renders a manual goal's unit progress instead of word counts", () => {
+    render(<GoalCard goal={manualGoal} writingSessions={[]} onDelete={vi.fn()} />);
+    expect(screen.getByText(/3\s*\/\s*12 chapters/)).toBeInTheDocument();
+    expect(screen.getByText(/1 chapter\/day for 30 days/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/manual goal/i)).toBeInTheDocument();
+    expect(screen.queryByText(/words\/day/i)).not.toBeInTheDocument();
   });
 
   it("calls onDelete with the goal id when the delete button is clicked", () => {

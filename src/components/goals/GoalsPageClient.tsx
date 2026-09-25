@@ -37,7 +37,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
   const [isLoading, setIsLoading] = useState(true);
   const { isOpen: showCompletedGoals, toggle: toggleCompletedGoals } = useToggle(true);
   const { isOpen: showUpcomingGoals, toggle: toggleUpcomingGoals } = useToggle(true);
-  const { todayGoal, todayProgress, daysLeft, currentGoal, isLoading: isGoalLoading } = useCurrentGoal();
+  const { todayGoal, todayProgress, daysLeft, currentGoal, manualGoal, isLoading: isGoalLoading } = useCurrentGoal();
 
   // Fetch goals and writing sessions on mount
   useEffect(() => {
@@ -174,6 +174,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
           writtenToday={todayProgress}
           goalStartDate={currentGoal?.startDate}
           goalEndDate={currentGoal?.endDate}
+          manualGoal={manualGoal}
           isLoading={isGoalLoading}
         />
 

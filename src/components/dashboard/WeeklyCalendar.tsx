@@ -31,6 +31,7 @@ export function WeeklyCalendar({ goals, writingSessions, onToggleCheatDay, onTog
             isToday={isToday(day.date)}
             isFuture={isFuture(day.date)}
             casual={day.casual}
+            unitLabel={day.unitLabel ?? undefined}
             excludedDay={day.excluded}
             cheatDay={day.cheatDay}
             canToggleCheat={day.canToggleCheat && !!onToggleCheatDay}

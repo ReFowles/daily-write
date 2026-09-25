@@ -7,7 +7,14 @@ describe("DayCard", () => {
 
   it("renders an empty compact placeholder when date is null", () => {
     const { container } = render(
-      <DayCard variant="compact" date={null} wordsWritten={0} goal={null} isToday={false} isFuture={false} />
+      <DayCard
+        variant="compact"
+        date={null}
+        wordsWritten={0}
+        goal={null}
+        isToday={false}
+        isFuture={false}
+      />
     );
     expect(container.firstChild).toHaveClass("min-h-12", "sm:min-h-15");
   });
@@ -20,33 +27,58 @@ describe("DayCard", () => {
   });
 
   it("shows words vs. goal for a past day", () => {
-    render(
-      <DayCard date={day} wordsWritten={250} goal={500} isToday={false} isFuture={false} />
-    );
+    render(<DayCard date={day} wordsWritten={250} goal={500} isToday={false} isFuture={false} />);
     const cell = screen.getByRole("gridcell");
     expect(cell.getAttribute("aria-label")).toContain("written: 250 words");
     expect(cell.getAttribute("aria-label")).toContain("goal: 500 words");
     expect(cell.textContent).toMatch(/250\s*\/\s*500/);
   });
 
-  it("shows a positive difference when the goal is exceeded", () => {
-    render(
-      <DayCard date={day} wordsWritten={600} goal={500} isToday={false} isFuture={false} />
+  it('uses the singular "word" in the aria-label when a count is exactly one', () => {
+    render(<DayCard date={day} wordsWritten={1} goal={1} isToday={false} isFuture={false} />);
+    const cell = screen.getByRole("gridcell");
+    expect(cell.getAttribute("aria-label")).toContain("written: 1 word");
+    expect(cell.getAttribute("aria-label")).toContain("goal: 1 word,");
+  });
+
+  it("pluralizes the manual-goal unit denominator based on the daily target", () => {
+    const { rerender } = render(
+      <DayCard
+        date={day}
+        wordsWritten={0}
+        goal={1}
+        unitLabel="chapter"
+        isToday={false}
+        isFuture={false}
+      />
     );
+    expect(screen.getByText(/\/\s*1 chapter\b/)).toBeInTheDocument();
+
+    rerender(
+      <DayCard
+        date={day}
+        wordsWritten={0}
+        goal={3}
+        unitLabel="chapter"
+        isToday={false}
+        isFuture={false}
+      />
+    );
+    expect(screen.getByText(/\/\s*3 chapters/)).toBeInTheDocument();
+  });
+
+  it("shows a positive difference when the goal is exceeded", () => {
+    render(<DayCard date={day} wordsWritten={600} goal={500} isToday={false} isFuture={false} />);
     expect(screen.getByText("+100")).toBeInTheDocument();
   });
 
   it("shows a negative difference when the goal is not met", () => {
-    render(
-      <DayCard date={day} wordsWritten={300} goal={500} isToday={false} isFuture={false} />
-    );
+    render(<DayCard date={day} wordsWritten={300} goal={500} isToday={false} isFuture={false} />);
     expect(screen.getByText("-200")).toBeInTheDocument();
   });
 
   it("hides written words for a future day, keeps the goal target", () => {
-    render(
-      <DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={true} />
-    );
+    render(<DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={true} />);
     const cell = screen.getByRole("gridcell");
     expect(cell.getAttribute("aria-label")).not.toContain("written");
     expect(cell.getAttribute("aria-label")).toContain("goal: 500 words");
@@ -54,18 +86,14 @@ describe("DayCard", () => {
   });
 
   it("renders raw word count when there is no goal", () => {
-    render(
-      <DayCard date={day} wordsWritten={120} goal={null} isToday={false} isFuture={false} />
-    );
+    render(<DayCard date={day} wordsWritten={120} goal={null} isToday={false} isFuture={false} />);
     expect(screen.getByText("120")).toBeInTheDocument();
     const cell = screen.getByRole("gridcell");
     expect(cell.getAttribute("aria-label")).not.toContain("goal:");
   });
 
   it("marks a zero-word past miss red for a non-casual goal", () => {
-    render(
-      <DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={false} />
-    );
+    render(<DayCard date={day} wordsWritten={0} goal={500} isToday={false} isFuture={false} />);
     const header = screen.getByRole("gridcell").firstChild;
     expect(header).toHaveClass("bg-red-500/70");
   });

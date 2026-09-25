@@ -1,14 +1,33 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { calculateDaysLeft, getEffectiveDailyTarget, toDateString } from "./date-utils";
-import { getCurrentGoal, getWritingSessionByDate, getWritingSessionsInRange } from "./data-store";
+import {
+  adjustManualProgress as adjustManualProgressInDb,
+  getCurrentGoal,
+  getWritingSessionByDate,
+  getWritingSessionsInRange,
+} from "./data-store";
 import type { Goal } from "./types";
+
+/**
+ * Header-ready view of an active manual goal's completion counter. Present only
+ * when the current goal is manual.
+ */
+export interface ManualHeaderInfo {
+  label: string;
+  completed: number;
+  total: number;
+  dailyTarget: number;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}
 
 export interface CurrentGoalData {
   todayGoal: number;
   todayProgress: number;
   daysLeft: number;
   currentGoal: Goal | undefined;
+  manualGoal?: ManualHeaderInfo;
   isLoading: boolean;
 }
 
@@ -16,6 +35,7 @@ interface CacheEntry {
   currentGoal: Goal | undefined;
   todayProgress: number;
   wordsWrittenBeforeToday: number;
+  manualCompleted: number;
   dateString: string;
 }
 
@@ -59,6 +79,9 @@ export function useCurrentGoal(): CurrentGoalData {
   const [wordsWrittenBeforeToday, setWordsWrittenBeforeToday] = useState<number>(
     initialFresh ? initialCached!.wordsWrittenBeforeToday : 0
   );
+  const [manualCompleted, setManualCompleted] = useState<number>(
+    initialFresh ? initialCached!.manualCompleted : 0
+  );
   const [isLoading, setIsLoading] = useState<boolean>(!initialFresh && !!userEmail);
   const [refreshIndex, setRefreshIndex] = useState(0);
 
@@ -89,6 +112,7 @@ export function useCurrentGoal(): CurrentGoalData {
       setCurrentGoal(cached!.currentGoal);
       setTodayProgress(cached!.todayProgress);
       setWordsWrittenBeforeToday(cached!.wordsWrittenBeforeToday);
+      setManualCompleted(cached!.manualCompleted);
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -125,11 +149,13 @@ export function useCurrentGoal(): CurrentGoalData {
           currentGoal: nextGoal,
           todayProgress: nextProgress,
           wordsWrittenBeforeToday: nextWordsBefore,
+          manualCompleted: nextGoal?.completedUnits ?? 0,
           dateString,
         });
         setCurrentGoal(nextGoal);
         setTodayProgress(nextProgress);
         setWordsWrittenBeforeToday(nextWordsBefore);
+        setManualCompleted(nextGoal?.completedUnits ?? 0);
       } catch (error) {
         console.error("Error fetching current goal data:", error);
       } finally {
@@ -142,16 +168,73 @@ export function useCurrentGoal(): CurrentGoalData {
     };
   }, [userEmail, refreshIndex]);
 
+  // Manual goals pace against the completion counter; word goals against words
+  // logged before today.
+  const beforeToday =
+    currentGoal?.kind === "manual" ? manualCompleted : wordsWrittenBeforeToday;
   const todayGoal = currentGoal
-    ? getEffectiveDailyTarget(currentGoal, todayDateString(), wordsWrittenBeforeToday)
+    ? getEffectiveDailyTarget(currentGoal, todayDateString(), beforeToday)
     : 0;
   const daysLeft = currentGoal ? calculateDaysLeft(currentGoal.endDate) : 0;
+
+  const adjustManualProgress = useCallback(
+    (delta: number) => {
+      if (!userEmail || !currentGoal || currentGoal.kind !== "manual") return;
+
+      const goalId = currentGoal.id;
+      const total = currentGoal.totalWordTarget;
+
+      // Optimistically clamp and reflect the change immediately.
+      const applyLocal = (value: number) => {
+        const clamped = Math.max(0, Math.min(total, value));
+        setManualCompleted(clamped);
+        const cached = cache.get(userEmail);
+        if (cached) {
+          cache.set(userEmail, {
+            ...cached,
+            manualCompleted: clamped,
+            currentGoal: cached.currentGoal
+              ? { ...cached.currentGoal, completedUnits: clamped }
+              : cached.currentGoal,
+          });
+        }
+        return clamped;
+      };
+
+      applyLocal(manualCompleted + delta);
+
+      (async () => {
+        try {
+          const next = await adjustManualProgressInDb(goalId, delta);
+          applyLocal(next);
+          listeners.forEach((listener) => listener());
+        } catch (error) {
+          console.error("Error updating manual progress:", error);
+          invalidateCurrentGoalCache(userEmail);
+        }
+      })();
+    },
+    [userEmail, currentGoal, manualCompleted]
+  );
+
+  const manualGoal: ManualHeaderInfo | undefined =
+    currentGoal && currentGoal.kind === "manual"
+      ? {
+          label: currentGoal.unitLabel ?? "",
+          completed: manualCompleted,
+          total: currentGoal.totalWordTarget,
+          dailyTarget: todayGoal,
+          onIncrement: () => adjustManualProgress(1),
+          onDecrement: () => adjustManualProgress(-1),
+        }
+      : undefined;
 
   return {
     todayGoal,
     todayProgress,
     daysLeft,
     currentGoal,
+    manualGoal,
     isLoading,
   };
 }

@@ -65,7 +65,7 @@ export default function WritePageClient() {
   const urlDocId = searchParams.get("doc");
   const urlTabId = searchParams.get("tab");
   const { data: session, status } = useSession();
-  const { todayGoal, daysLeft, currentGoal, isLoading: isGoalLoading } = useCurrentGoal();
+  const { todayGoal, daysLeft, currentGoal, manualGoal, isLoading: isGoalLoading } = useCurrentGoal();
   const [selectedDoc, setSelectedDoc] = useState<GoogleDoc | null>(null);
   const [selectedTab, setSelectedTab] = useState<DocumentTab | null>(null);
   const [showPicker, setShowPicker] = useState(true);
@@ -721,6 +721,7 @@ export default function WritePageClient() {
             goalStartDate={currentGoal?.startDate}
             goalEndDate={currentGoal?.endDate}
             hideStats={focusMode}
+            manualGoal={manualGoal}
             isLoading={isGoalLoading}
           />
         )}

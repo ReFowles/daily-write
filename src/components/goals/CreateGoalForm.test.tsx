@@ -32,6 +32,7 @@ describe("CreateGoalForm", () => {
       dailyWordTarget: 450,
       totalWordTarget: 13500,
       mode: "static",
+      kind: "writing",
       casual: false,
       excludedDays: [],
       cheatDaysAllowed: 0,
@@ -90,6 +91,44 @@ describe("CreateGoalForm", () => {
     const dailyInput = screen.getByLabelText(/daily target/i) as HTMLInputElement;
     // 1000 / 10 days = 100/day.
     expect(dailyInput.value).toBe("100");
+  });
+
+  it("submits a manual goal with its unit label and zero completed units", () => {
+    const onSubmit = vi.fn();
+    render(<CreateGoalForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /manual/i }));
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: "2026-06-30" } });
+    fireEvent.change(screen.getByLabelText(/unit label/i), { target: { value: "chapter" } });
+    fireEvent.change(screen.getByLabelText(/total target/i), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const [payload] = onSubmit.mock.calls[0];
+    expect(payload).toMatchObject({
+      kind: "manual",
+      unitLabel: "chapter",
+      totalWordTarget: 12,
+      completedUnits: 0,
+      mode: "static",
+    });
+  });
+
+  it("requires a unit label for manual goals", () => {
+    const onSubmit = vi.fn();
+    render(<CreateGoalForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: /manual/i }));
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: "2026-06-30" } });
+    // Whitespace satisfies the native `required` but must fail our trim check.
+    fireEvent.change(screen.getByLabelText(/unit label/i), { target: { value: "   " } });
+    fireEvent.change(screen.getByLabelText(/total target/i), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText(/label for what you're counting/i)).toBeInTheDocument();
   });
 
   it("saves the selected mode when the Live radio is chosen", () => {

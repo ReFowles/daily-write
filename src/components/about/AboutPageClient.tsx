@@ -28,7 +28,7 @@ interface AboutPageClientProps {
 }
 
 export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps) {
-  const { todayGoal, todayProgress, daysLeft, currentGoal, isLoading } = useCurrentGoal();
+  const { todayGoal, todayProgress, daysLeft, currentGoal, manualGoal, isLoading } = useCurrentGoal();
 
   return (
     <main className={cn("min-h-screen", themeClasses.background.page)}>
@@ -42,6 +42,7 @@ export function AboutPageClient({ isSignedIn, signInSlot }: AboutPageClientProps
             writtenToday={todayProgress}
             goalStartDate={currentGoal?.startDate}
             goalEndDate={currentGoal?.endDate}
+            manualGoal={manualGoal}
             isLoading={isLoading}
           />
         )}

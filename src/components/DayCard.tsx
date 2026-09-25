@@ -1,7 +1,7 @@
 import { LuSnowflake, LuArrowDownToLine } from "react-icons/lu";
 import { cn } from "@/lib/class-utils";
 import { formatDayOfWeek, formatMonthDay } from "@/lib/date-utils";
-import { formatWordCount } from "@/lib/format-utils";
+import { formatWordCount, pluralizeUnit } from "@/lib/format-utils";
 
 interface DayCardProps {
   variant?: "compact" | "expanded";
@@ -11,6 +11,9 @@ interface DayCardProps {
   isToday: boolean;
   isFuture: boolean;
   casual?: boolean;
+  // For manual goals: the unit shown in the denominator (e.g. "chapter"). When
+  // set, the cell shows only the daily unit target and skips per-day pass/fail.
+  unitLabel?: string;
   // A planned rest day: renders gray when below the goal instead of red.
   excludedDay?: boolean;
   // A spent cheat day: renders gray and never counts, regardless of words.
@@ -42,6 +45,7 @@ export function DayCard({
   isToday,
   isFuture,
   casual = false,
+  unitLabel,
   excludedDay = false,
   cheatDay = false,
   canToggleCheat = false,
@@ -57,13 +61,18 @@ export function DayCard({
   }
 
   const hasGoal = goal !== null;
-  const meetsGoal = hasGoal && wordsWritten >= goal;
+  const isUnitGoal = !!unitLabel;
+  const meetsGoal = hasGoal && !isUnitGoal && wordsWritten >= goal;
   const difference = goal !== null ? wordsWritten - goal : 0;
   const isCompact = variant === "compact";
 
   let tone: DayTone;
   if (isFuture) {
     tone = "future";
+  } else if (isUnitGoal) {
+    // Manual goals track a single running counter, not per-day words, so a day
+    // cell just shows the unit target — never a red/green pass or fail.
+    tone = "neutral";
   } else if (cheatDay) {
     // Cheat days are gray no matter how many words were written.
     tone = "neutral";
@@ -85,7 +94,8 @@ export function DayCard({
     tone = "neutral";
   }
 
-  const showDifference = !isFuture && hasGoal && !cheatDay && !excludedDay && !rescued;
+  const showDifference =
+    !isFuture && hasGoal && !cheatDay && !excludedDay && !rescued && !isUnitGoal;
   const showLent = (tone === "met" || tone === "today-met") && excessLent > 0;
   const lightText = tone === "today-met" || tone === "met" || tone === "rescued" || tone === "red";
 
@@ -160,7 +170,7 @@ export function DayCard({
     <div
       className={containerClasses}
       role="gridcell"
-      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${goal ? `, goal: ${formatWordCount(goal)} words` : ""}${!isFuture ? `, written: ${formatWordCount(wordsWritten)} words` : ""}${cheatDay ? ", cheat day" : ""}${excludedDay ? ", rest day" : ""}${rescued ? `, rescued with ${formatWordCount(rolloverIn)} rolled-over words` : ""}${showLent ? `, ${formatWordCount(excessLent)} words rolled forward` : ""}`}
+      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${isUnitGoal && goal !== null ? `, target: ${formatWordCount(goal)} ${pluralizeUnit(unitLabel, goal)}` : goal ? `, goal: ${formatWordCount(goal)} ${pluralizeUnit("word", goal)}` : ""}${!isUnitGoal && !isFuture ? `, written: ${formatWordCount(wordsWritten)} ${pluralizeUnit("word", wordsWritten)}` : ""}${cheatDay ? ", cheat day" : ""}${excludedDay ? ", rest day" : ""}${rescued ? `, rescued with ${formatWordCount(rolloverIn)} rolled-over ${pluralizeUnit("word", rolloverIn)}` : ""}${showLent ? `, ${formatWordCount(excessLent)} ${pluralizeUnit("word", excessLent)} rolled forward` : ""}`}
     >
       {canToggleCheat && onToggleCheat && (
         <button
@@ -176,11 +186,14 @@ export function DayCard({
             isCompact ? "p-0.5 sm:p-1" : "p-1",
             cheatDay
               ? "bg-sky-600 text-white ring-sky-700 opacity-100"
-              // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
-              : "bg-white text-sky-600 ring-sky-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+              : // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
+                "bg-white text-sky-600 ring-sky-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
           )}
         >
-          <LuSnowflake className={isCompact ? "h-2.5 w-2.5 sm:h-3 sm:w-3" : "h-4 w-4"} aria-hidden />
+          <LuSnowflake
+            className={isCompact ? "h-2.5 w-2.5 sm:h-3 sm:w-3" : "h-4 w-4"}
+            aria-hidden
+          />
         </button>
       )}
       {(canRollover || rescued) && onToggleRollover && (
@@ -197,8 +210,8 @@ export function DayCard({
             isCompact ? "p-0.5 sm:p-1" : "p-1",
             rescued
               ? "bg-green-600 text-white ring-green-700 opacity-100"
-              // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
-              : "bg-white text-green-600 ring-green-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+              : // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
+                "bg-white text-green-600 ring-green-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
           )}
         >
           <LuArrowDownToLine className={isCompact ? "h-3 w-3" : "h-4 w-4"} aria-hidden />
@@ -206,11 +219,7 @@ export function DayCard({
       )}
       <div className={headerBackgroundClasses}>
         <div className="text-center">
-          {!isCompact && (
-            <div className={secondaryHeaderTextClasses}>
-              {formatDayOfWeek(date)}
-            </div>
-          )}
+          {!isCompact && <div className={secondaryHeaderTextClasses}>{formatDayOfWeek(date)}</div>}
           <div className={headerTextClasses}>
             {isCompact ? date.getDate() : formatMonthDay(date)}
           </div>
@@ -227,24 +236,18 @@ export function DayCard({
         )}
       >
         <div className={wordCountClasses}>
-          {isFuture && hasGoal ? (
-            <span
-              className={cn(
-                "text-fg-subtle",
-                isCompact ? "text-xs" : "text-sm sm:text-lg"
-              )}
-            >
+          {isUnitGoal && hasGoal ? (
+            <span className={cn("text-fg-subtle", isCompact ? "text-xs" : "text-sm sm:text-lg")}>
+              / {formatWordCount(goal)} {pluralizeUnit(unitLabel, goal)}
+            </span>
+          ) : isFuture && hasGoal ? (
+            <span className={cn("text-fg-subtle", isCompact ? "text-xs" : "text-sm sm:text-lg")}>
               / {formatWordCount(goal)}
             </span>
           ) : !isFuture && hasGoal ? (
             <>
               {formatWordCount(wordsWritten)}{" "}
-              <span
-                className={cn(
-                  "text-fg-subtle",
-                  isCompact ? "text-xs" : "text-sm sm:text-lg"
-                )}
-              >
+              <span className={cn("text-fg-subtle", isCompact ? "text-xs" : "text-sm sm:text-lg")}>
                 / {formatWordCount(goal)}
               </span>
             </>
@@ -276,8 +279,8 @@ export function DayCard({
               isCompact ? "text-xs" : "text-sm"
             )}
           >
-            <LuArrowDownToLine className={isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
-            +{formatWordCount(rolloverIn)}
+            <LuArrowDownToLine className={isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />+
+            {formatWordCount(rolloverIn)}
           </div>
         )}
       </div>

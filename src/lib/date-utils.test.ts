@@ -329,6 +329,20 @@ describe("date-utils", () => {
       const staticGoal: Goal = { ...live, mode: "static" };
       expect(getEffectiveDailyTargetForDate(staticGoal, "2026-06-04", [], "2026-06-02")).toBe(50);
     });
+
+    it("recomputes a live manual goal from its completion counter, not sessions", () => {
+      const manualLive: Goal = {
+        ...live,
+        kind: "manual",
+        unitLabel: "chapter",
+        totalWordTarget: 12,
+        completedUnits: 4,
+      };
+      // Word sessions must be ignored; pacing uses completedUnits (4 of 12).
+      const sessions: WritingSession[] = [{ userId: "u", date: "2026-06-01", wordCount: 999 }];
+      // "today" is 06-02, so 3 writing days remain (06-02..06-04): ceil((12 - 4) / 3) = 3.
+      expect(getEffectiveDailyTargetForDate(manualLive, "2026-06-02", sessions, "2026-06-02")).toBe(3);
+    });
   });
 
   describe("month helpers", () => {

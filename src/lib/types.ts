@@ -11,6 +11,13 @@ export type { RolloverDayInfo } from "./date-utils";
  */
 export type GoalMode = "live" | "static";
 
+/**
+ * "writing" goals track words written per day. "manual" goals track completion
+ * of a user-defined unit (chapter, act, scene, …) via a hand-updated counter;
+ * for them `dailyWordTarget`/`totalWordTarget` hold the daily/total unit counts.
+ */
+export type GoalKind = "writing" | "manual";
+
 export interface Goal {
   id: string;
   userId: string;
@@ -19,6 +26,12 @@ export interface Goal {
   dailyWordTarget: number;
   totalWordTarget: number;
   mode: GoalMode;
+  // What the goal tracks. Absent/legacy docs are treated as "writing".
+  kind?: GoalKind;
+  // Manual goals only: the unit the writer counts (e.g. "chapter").
+  unitLabel?: string;
+  // Manual goals only: how many units the writer has marked complete.
+  completedUnits?: number;
   // Casual goals don't flag zero-word days red in the calendars.
   casual: boolean;
   // Planned rest days (YYYY-MM-DD) chosen at creation. They expect no writing,
@@ -51,6 +64,9 @@ export interface DayData {
   goal: number | null;
   casual: boolean;
   goalId: string | null;
+  // Set for days governed by a manual goal; names the unit shown in the
+  // calendar denominator (e.g. "chapter"). Null for writing-goal days.
+  unitLabel: string | null;
   excluded: boolean;
   cheatDay: boolean;
   canToggleCheat: boolean;

@@ -62,6 +62,7 @@ import {
   getWritingSessionsInRange,
   getWritingStats,
   removeFavoriteDoc,
+  adjustManualProgress,
   toggleCheatDay,
   toggleRolloverDay,
   updateGoal,
@@ -358,6 +359,72 @@ describe("data-store", () => {
       await expect(toggleRolloverDay("g1", "2026-06-05")).rejects.toThrow(
         "Rollover is not enabled"
       );
+      expect(updateMock).not.toHaveBeenCalled();
+    });
+
+    it("toGoal reads manual goal fields", async () => {
+      docGetMock.mockResolvedValueOnce(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "m1",
+          userId: "u1",
+          startDate: "2026-06-01",
+          endDate: "2026-06-30",
+          dailyWordTarget: 1,
+          totalWordTarget: 12,
+          mode: "static",
+          kind: "manual",
+          unitLabel: "chapter",
+          completedUnits: 3,
+        })
+      );
+      const goal = await getGoalById("m1");
+      expect(goal).toMatchObject({ kind: "manual", unitLabel: "chapter", completedUnits: 3 });
+    });
+
+    it("adjustManualProgress increments and clamps to the total", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "m1",
+          userId: "u1",
+          kind: "manual",
+          totalWordTarget: 12,
+          completedUnits: 11,
+        })
+      );
+      const result = await adjustManualProgress("m1", 5);
+      expect(result).toBe(12);
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ completedUnits: 12 })
+      );
+    });
+
+    it("adjustManualProgress never goes below zero", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "m1",
+          userId: "u1",
+          kind: "manual",
+          totalWordTarget: 12,
+          completedUnits: 1,
+        })
+      );
+      const result = await adjustManualProgress("m1", -5);
+      expect(result).toBe(0);
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ completedUnits: 0 })
+      );
+    });
+
+    it("adjustManualProgress rejects non-manual goals", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          kind: "writing",
+          totalWordTarget: 12000,
+        })
+      );
+      await expect(adjustManualProgress("g1", 1)).rejects.toThrow("Not a manual goal");
       expect(updateMock).not.toHaveBeenCalled();
     });
   });

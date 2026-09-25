@@ -6,3 +6,12 @@
 export function formatWordCount(count: number): string {
   return count.toLocaleString("en-US");
 }
+
+/**
+ * Pluralizes a unit label for display (e.g. "word"/"words", "chapter"/"chapters").
+ * Falls back to "unit" for a blank label so manual goals never render an empty noun.
+ */
+export function pluralizeUnit(label: string, count: number): string {
+  const trimmed = label.trim() || "unit";
+  return count === 1 ? trimmed : `${trimmed}s`;
+}
