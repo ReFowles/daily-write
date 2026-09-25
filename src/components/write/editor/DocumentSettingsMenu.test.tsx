@@ -53,7 +53,7 @@ describe("DocumentSettingsMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
 
     openMenu();
-    fireEvent.click(screen.getByRole("menuitem", { name: /google docs defaults/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /apply default formatting/i }));
     expect(props.onRestoreDefaultFormat).toHaveBeenCalledTimes(1);
   });
 
@@ -65,7 +65,7 @@ describe("DocumentSettingsMenu", () => {
       name: /apply smf/i,
     });
     const restoreButton = screen.getByRole("menuitem", {
-      name: /google docs defaults/i,
+      name: /apply default formatting/i,
     });
     expect(applyButton).toBeDisabled();
     expect(restoreButton).toBeDisabled();
