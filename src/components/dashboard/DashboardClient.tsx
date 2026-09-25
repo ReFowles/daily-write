@@ -15,7 +15,7 @@ import { cn } from "@/lib/class-utils";
 import { formatWordCount } from "@/lib/format-utils";
 import type { Goal, WritingSession } from "@/lib/types";
 import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
-import { deleteGoal as deleteGoalFromDb, toggleCheatDay } from "@/lib/data-store";
+import { deleteGoal as deleteGoalFromDb, toggleCheatDay, toggleRolloverDay } from "@/lib/data-store";
 import {
   booleanFromLocalStorage,
   useLocalStorageState,
@@ -65,6 +65,18 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
       invalidateCurrentGoalCache();
     } catch (error) {
       console.error("Error toggling cheat day:", error);
+    }
+  };
+
+  const handleToggleRolloverDay = async (goalId: string, date: string) => {
+    try {
+      const rolloverDays = await toggleRolloverDay(goalId, date);
+      setLocalGoals((prev) =>
+        prev.map((g) => (g.id === goalId ? { ...g, rolloverDays } : g))
+      );
+      invalidateCurrentGoalCache();
+    } catch (error) {
+      console.error("Error toggling rollover day:", error);
     }
   };
 
@@ -130,6 +142,7 @@ export function DashboardClient({ goals, writingSessions, stats }: DashboardClie
         goals={localGoals}
         writingSessions={writingSessions}
         onToggleCheatDay={handleToggleCheatDay}
+        onToggleRolloverDay={handleToggleRolloverDay}
       />
     ),
   });

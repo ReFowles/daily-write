@@ -126,6 +126,7 @@ pnpm lint         # Run ESLint
   - Make a more blatant explanation that DailyWrite is good for writing but not editing—leave that to Google Docs
   - No images, sorry!
   - The app can't count what you write in Google Docs directly, only what you write through the app itself.
+  - More emphasis on being a supplement, not a replacement. Use DailyWrite to track habits and _write_, use Google Docs to edit.
 - ~~Can't delete tables.~~ Tables are now locked chips — intentionally not deletable/editable in the app; manage them in Google Docs.
 - `i` icons probably need more contrast. An entire a11y pass for the themes would probably be good.
 - Editor settings menu needs an info bar explaining everything in there doesn't affect the actual doc, just the DailyWrite app.
@@ -134,6 +135,8 @@ pnpm lint         # Run ESLint
 - ~~Fix page break bug weirdness?~~ Addressed alongside the image placeholders above.
 - Days Left says 2, but I'd include today as one of the days left. Should read 3.
 - "Logged Days" seems to show the current day. We don't really want that, we only want fully completed days.
+- Goal Card needs updating when Cheat Days are used.
+- Too many tooltips on New Goals?
 
 ## License
 

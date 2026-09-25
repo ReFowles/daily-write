@@ -63,6 +63,7 @@ import {
   getWritingStats,
   removeFavoriteDoc,
   toggleCheatDay,
+  toggleRolloverDay,
   updateGoal,
 } from "./data-store";
 
@@ -312,6 +313,50 @@ describe("data-store", () => {
       );
       await expect(toggleCheatDay("g1", "2026-06-06")).rejects.toThrow(
         "No cheat days remaining"
+      );
+      expect(updateMock).not.toHaveBeenCalled();
+    });
+
+    it("toggleRolloverDay flags a deficit day when rollover is enabled", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          rollover: true,
+          rolloverDays: [],
+        })
+      );
+      const result = await toggleRolloverDay("g1", "2026-06-05");
+      expect(result).toEqual(["2026-06-05"]);
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ rolloverDays: ["2026-06-05"] })
+      );
+    });
+
+    it("toggleRolloverDay un-flags a day that was already rescued", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          rollover: true,
+          rolloverDays: ["2026-06-05"],
+        })
+      );
+      const result = await toggleRolloverDay("g1", "2026-06-05");
+      expect(result).toEqual([]);
+    });
+
+    it("toggleRolloverDay throws when rollover is not enabled", async () => {
+      docGetMock.mockResolvedValue(
+        docSnapshotFrom<Partial<Goal>>({
+          id: "g1",
+          userId: "u1",
+          rollover: false,
+          rolloverDays: [],
+        })
+      );
+      await expect(toggleRolloverDay("g1", "2026-06-05")).rejects.toThrow(
+        "Rollover is not enabled"
       );
       expect(updateMock).not.toHaveBeenCalled();
     });

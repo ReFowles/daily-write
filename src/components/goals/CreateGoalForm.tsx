@@ -6,6 +6,7 @@ import { LuChevronDown, LuInfo, LuX } from "react-icons/lu";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
 import { themeClasses } from "@/lib/theme-utils";
 import { cn } from "@/lib/class-utils";
 import { useToggle } from "@/lib/use-toggle";
@@ -30,6 +31,7 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
   const [lastEdited, setLastEdited] = useState<LastEdited>("daily");
   const [mode, setMode] = useState<GoalMode>("static");
   const [casual, setCasual] = useState(false);
+  const [rollover, setRollover] = useState(false);
   const [excludedDays, setExcludedDays] = useState<string[]>([]);
   const [excludeInput, setExcludeInput] = useState("");
   const [cheatDaysValue, setCheatDaysValue] = useState("");
@@ -170,6 +172,8 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
         cheatDaysAllowed,
         cheatDaysUsed: [],
         cheatDaysReduceTotal,
+        rollover,
+        rolloverDays: [],
       },
       (errorMessage: string) => {
         setError(errorMessage);
@@ -295,19 +299,34 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
 
           {showOptions && (
             <div className="mt-4 space-y-4">
-              <label className={cn("flex items-center gap-2 text-base", themeClasses.text.primary)}>
-                <input
-                  type="checkbox"
-                  checked={casual}
-                  onChange={(e) => setCasual(e.target.checked)}
-                  className="themed-checkbox"
-                />
-                <span className="font-medium">Casual</span>
-                <InfoPopover label="About Casual goals">
-                  Days with no writing show up neutral gray instead of red, so a missed
-                  day doesn&apos;t look like a failure.
-                </InfoPopover>
-              </label>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={casual}
+                    onChange={setCasual}
+                    aria-label="Casual goal"
+                  />
+                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>Casual</span>
+                  <InfoPopover label="About Casual goals">
+                    Days with no writing show up neutral gray instead of red, so a missed
+                    day doesn&apos;t look like a failure.
+                  </InfoPopover>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={rollover}
+                    onChange={setRollover}
+                    aria-label="Rollover"
+                  />
+                  <span className={cn("text-base font-medium", themeClasses.text.primary)}>Rollover</span>
+                  <InfoPopover label="About Rollover">
+                    Lets you reuse a day&apos;s extra words. Tap a red day on the
+                    calendar to pull excess from any surplus day in the goal and
+                    turn it green.
+                  </InfoPopover>
+                </div>
+              </div>
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                 <label
@@ -331,24 +350,11 @@ export function CreateGoalForm({ onSubmit, onCancel, goals = [], writingSessions
                   className="max-w-24"
                 />
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={cheatDaysReduceTotal}
+                  <Switch
+                    checked={cheatDaysReduceTotal}
+                    onChange={setCheatDaysReduceTotal}
                     aria-label="Cheat days deduct from goal total"
-                    onClick={() => setCheatDaysReduceTotal((v) => !v)}
-                    className={cn(
-                      "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors",
-                      cheatDaysReduceTotal ? "bg-accent" : "bg-line-strong"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                        cheatDaysReduceTotal ? "translate-x-5.5" : "translate-x-0.5"
-                      )}
-                    />
-                  </button>
+                  />
                   <span className={cn("text-sm font-medium", themeClasses.text.label)}>
                     Deduct from total
                   </span>

@@ -45,6 +45,128 @@ export function isNonWritingDay(goal: Goal, dateString: string): boolean {
 }
 
 /**
+ * Whether the writer has chosen to rescue this deficit day with rolled-over
+ * excess from another day in the goal.
+ */
+export function isRolloverDay(goal: Goal, dateString: string): boolean {
+  return (goal.rolloverDays ?? []).includes(dateString);
+}
+
+/**
+ * Per-day result of the rollover computation for a single goal.
+ * - `rescued`: this deficit day was fully covered by rolled-over excess (renders green).
+ * - `rolloverIn`: words pulled into a rescued day to close its gap.
+ * - `excessLent`: how much of this surplus day's excess was consumed by a
+ *   rescued day (the "counted down" amount).
+ * - `canRescue`: this red day isn't rescued yet but enough unspent excess
+ *   remains elsewhere in the goal to rescue it right now.
+ */
+export interface RolloverDayInfo {
+  rescued: boolean;
+  rolloverIn: number;
+  excessLent: number;
+  canRescue: boolean;
+}
+
+/**
+ * Pools the excess from every surplus day in a goal and spends it to rescue the
+ * deficit days the writer flagged. Excess can flow in either direction in time:
+ * a later surplus day may rescue an earlier red day, which matters for live
+ * goals where a slow start is made up later yet the early day still reads red.
+ * The writer's chosen rescues are committed first (oldest deficit first, drawing
+ * from the oldest excess first); a deficit is only rescued when enough unspent
+ * excess exists to fully cover its gap.
+ *
+ * Returns a map keyed by YYYY-MM-DD for every evaluated day. Days not present in
+ * the map (future days, rest/cheat days, days with no goal) have no rollover state.
+ */
+export function computeGoalRollover(
+  goal: Goal,
+  writingSessions: WritingSession[],
+  todayDateString: string
+): Map<string, RolloverDayInfo> {
+  const result = new Map<string, RolloverDayInfo>();
+  if (!goal.rollover) return result;
+
+  const sessionMap = new Map<string, number>();
+  writingSessions.forEach((session) => sessionMap.set(session.date, session.wordCount));
+
+  const rescuedSet = new Set(goal.rolloverDays ?? []);
+  const skipSet = new Set<string>([...(goal.excludedDays ?? []), ...(goal.cheatDaysUsed ?? [])]);
+
+  const start = parseLocalDate(goal.startDate);
+  const end = parseLocalDate(goal.endDate);
+  const today = parseLocalDate(todayDateString);
+  // Future days have no words to judge yet, so stop at the earlier of end/today.
+  const lastDate = end < today ? end : today;
+
+  // Every surplus day's unspent excess, oldest first, plus the deficit days.
+  const pool: { date: string; remaining: number }[] = [];
+  const deficits: { date: string; need: number }[] = [];
+
+  for (
+    let cursor = new Date(start);
+    cursor.getTime() <= lastDate.getTime();
+    cursor.setDate(cursor.getDate() + 1)
+  ) {
+    const dateString = toDateString(cursor);
+    if (skipSet.has(dateString)) continue;
+
+    const target = getEffectiveDailyTargetForDate(goal, dateString, writingSessions, todayDateString);
+    if (target <= 0) continue;
+
+    result.set(dateString, { rescued: false, rolloverIn: 0, excessLent: 0, canRescue: false });
+
+    const words = sessionMap.get(dateString) ?? 0;
+    const diff = words - target;
+    if (diff > 0) {
+      pool.push({ date: dateString, remaining: diff });
+    } else if (diff < 0) {
+      deficits.push({ date: dateString, need: -diff });
+    }
+  }
+
+  const poolTotal = () => pool.reduce((sum, source) => sum + source.remaining, 0);
+
+  const drawFromPool = (dateString: string, need: number) => {
+    let toCover = need;
+    for (const source of pool) {
+      if (toCover <= 0) break;
+      if (source.remaining <= 0) continue;
+      const take = Math.min(source.remaining, toCover);
+      source.remaining -= take;
+      toCover -= take;
+      const sourceInfo = result.get(source.date);
+      if (sourceInfo) sourceInfo.excessLent += take;
+    }
+    const info = result.get(dateString);
+    if (info) {
+      info.rescued = true;
+      info.rolloverIn = need;
+    }
+  };
+
+  // Commit the writer's chosen rescues first, then flag which remaining red days
+  // still have enough leftover excess to be rescued.
+  for (const deficit of deficits) {
+    if (rescuedSet.has(deficit.date) && poolTotal() >= deficit.need) {
+      drawFromPool(deficit.date, deficit.need);
+    }
+  }
+
+  for (const deficit of deficits) {
+    if (rescuedSet.has(deficit.date)) continue;
+    if (deficit.date === todayDateString) continue;
+    const info = result.get(deficit.date);
+    if (info && poolTotal() >= deficit.need) {
+      info.canRescue = true;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Inclusive count of the writing days in [fromDateString, toDateString] for a
  * goal — i.e. days that are neither excluded nor spent as cheat days.
  */
@@ -161,6 +283,17 @@ export function generateWeekWindow(
   
   const days: DayData[] = [];
   const todayDateString = toDateString(today);
+  // Rollover maps are per-goal and span the whole goal, so compute once and reuse.
+  const rolloverByGoal = new Map<string, Map<string, RolloverDayInfo>>();
+  const getRolloverInfo = (goal: Goal, dateString: string): RolloverDayInfo | undefined => {
+    if (!goal.rollover) return undefined;
+    let map = rolloverByGoal.get(goal.id);
+    if (!map) {
+      map = computeGoalRollover(goal, writingSessions, todayDateString);
+      rolloverByGoal.set(goal.id, map);
+    }
+    return map.get(dateString);
+  };
   for (let i = -2; i <= 2; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
@@ -174,6 +307,7 @@ export function generateWeekWindow(
     const cheatRemaining = goal
       ? (goal.cheatDaysAllowed ?? 0) - (goal.cheatDaysUsed ?? []).length
       : 0;
+    const rollover = goal ? getRolloverInfo(goal, dateString) : undefined;
 
     days.push({
       date,
@@ -184,6 +318,11 @@ export function generateWeekWindow(
       excluded,
       cheatDay,
       canToggleCheat: !!goal && (cheatDay || cheatRemaining > 0),
+      rolloverEnabled: goal?.rollover ?? false,
+      rescued: rollover?.rescued ?? false,
+      rolloverIn: rollover?.rolloverIn ?? 0,
+      excessLent: rollover?.excessLent ?? 0,
+      canRollover: rollover?.canRescue ?? false,
     });
   }
   

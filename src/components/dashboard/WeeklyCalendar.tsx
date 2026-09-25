@@ -9,9 +9,10 @@ interface WeeklyCalendarProps {
   goals: Goal[];
   writingSessions: WritingSession[];
   onToggleCheatDay?: (goalId: string, date: string) => void;
+  onToggleRolloverDay?: (goalId: string, date: string) => void;
 }
 
-export function WeeklyCalendar({ goals, writingSessions, onToggleCheatDay }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ goals, writingSessions, onToggleCheatDay, onToggleRolloverDay }: WeeklyCalendarProps) {
   const days = generateWeekWindow(goals, writingSessions);
 
   return (
@@ -36,6 +37,15 @@ export function WeeklyCalendar({ goals, writingSessions, onToggleCheatDay }: Wee
             onToggleCheat={
               day.goalId && onToggleCheatDay
                 ? () => onToggleCheatDay(day.goalId!, toDateString(day.date))
+                : undefined
+            }
+            rescued={day.rescued}
+            rolloverIn={day.rolloverIn}
+            excessLent={day.excessLent}
+            canRollover={day.canRollover && !!onToggleRolloverDay}
+            onToggleRollover={
+              day.goalId && day.rolloverEnabled && onToggleRolloverDay
+                ? () => onToggleRolloverDay(day.goalId!, toDateString(day.date))
                 : undefined
             }
           />

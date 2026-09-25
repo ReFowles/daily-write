@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   calculateDaysLeft,
   calculateWordCount,
+  computeGoalRollover,
   countGoalWritingDays,
   daysBetweenInclusive,
   formatDate,
@@ -516,6 +517,110 @@ describe("date-utils", () => {
       const grid = generateMonthGrid(2026, 5, sessions);
       const today = grid.flat().find((d) => d.date?.getDate() === 15);
       expect(today?.wordsWritten).toBe(420);
+    });
+  });
+
+  describe("computeGoalRollover", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 5, 15, 10, 0, 0));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const rolloverGoal: Goal = {
+      id: "g1",
+      userId: "u1",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      dailyWordTarget: 500,
+      totalWordTarget: 15000,
+      mode: "static",
+      casual: false,
+      rollover: true,
+    };
+
+    it("returns an empty map when rollover is disabled", () => {
+      const goal: Goal = { ...rolloverGoal, rollover: false };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 900 },
+        { userId: "u1", date: "2026-06-02", wordCount: 100 },
+      ];
+      expect(computeGoalRollover(goal, sessions, "2026-06-15").size).toBe(0);
+    });
+
+    it("marks a flagged deficit day rescued and counts down the source's excess", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: ["2026-06-02"] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 900 }, // +400 excess
+        { userId: "u1", date: "2026-06-02", wordCount: 100 }, // -400 deficit
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-02")?.rescued).toBe(true);
+      expect(map.get("2026-06-02")?.rolloverIn).toBe(400);
+      expect(map.get("2026-06-01")?.excessLent).toBe(400);
+    });
+
+    it("offers canRescue on an unflagged deficit day with enough banked excess", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: [] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 900 }, // +400 excess
+        { userId: "u1", date: "2026-06-02", wordCount: 300 }, // -200 deficit
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-02")?.canRescue).toBe(true);
+      expect(map.get("2026-06-02")?.rescued).toBe(false);
+    });
+
+    it("does not rescue when banked excess is insufficient", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: ["2026-06-02"] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 600 }, // +100 excess
+        { userId: "u1", date: "2026-06-02", wordCount: 100 }, // -400 deficit
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-02")?.rescued).toBe(false);
+      expect(map.get("2026-06-02")?.canRescue).toBe(false);
+      // Untouched excess stays available on the source day.
+      expect(map.get("2026-06-01")?.excessLent).toBe(0);
+    });
+
+    it("rescues an earlier red day using a later surplus day (live-goal case)", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: ["2026-06-01"] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 100 }, // -400 deficit
+        { userId: "u1", date: "2026-06-02", wordCount: 900 }, // +400 excess (after)
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-01")?.rescued).toBe(true);
+      expect(map.get("2026-06-01")?.rolloverIn).toBe(400);
+      expect(map.get("2026-06-02")?.excessLent).toBe(400);
+    });
+
+    it("offers canRescue on an unflagged red day covered by a later surplus", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: [] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 300 }, // -200 deficit
+        { userId: "u1", date: "2026-06-02", wordCount: 900 }, // +400 excess (after)
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-01")?.canRescue).toBe(true);
+      expect(map.get("2026-06-01")?.rescued).toBe(false);
+    });
+
+    it("pulls from multiple surplus days oldest-first", () => {
+      const goal: Goal = { ...rolloverGoal, rolloverDays: ["2026-06-03"] };
+      const sessions: WritingSession[] = [
+        { userId: "u1", date: "2026-06-01", wordCount: 700 }, // +200
+        { userId: "u1", date: "2026-06-02", wordCount: 800 }, // +300
+        { userId: "u1", date: "2026-06-03", wordCount: 100 }, // -400 deficit
+      ];
+      const map = computeGoalRollover(goal, sessions, "2026-06-15");
+      expect(map.get("2026-06-03")?.rescued).toBe(true);
+      expect(map.get("2026-06-01")?.excessLent).toBe(200); // fully drained first
+      expect(map.get("2026-06-02")?.excessLent).toBe(200); // remainder from next
     });
   });
 });

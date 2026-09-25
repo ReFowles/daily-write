@@ -37,7 +37,25 @@ describe("CreateGoalForm", () => {
       cheatDaysAllowed: 0,
       cheatDaysUsed: [],
       cheatDaysReduceTotal: false,
+      rollover: false,
+      rolloverDays: [],
     });
+  });
+
+  it("submits rollover: true when the Rollover toggle is checked", () => {
+    const onSubmit = vi.fn();
+    render(<CreateGoalForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: "2026-06-01" } });
+    fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: "2026-06-30" } });
+    fireEvent.change(screen.getByLabelText(/daily target/i), { target: { value: "450" } });
+    fireEvent.click(screen.getByRole("button", { name: /options/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /rollover/i }));
+    fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const [payload] = onSubmit.mock.calls[0];
+    expect(payload).toMatchObject({ rollover: true });
   });
 
   it("submits casual: true when the Casual toggle is checked", () => {
@@ -48,7 +66,7 @@ describe("CreateGoalForm", () => {
     fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: "2026-06-30" } });
     fireEvent.change(screen.getByLabelText(/daily target/i), { target: { value: "450" } });
     fireEvent.click(screen.getByRole("button", { name: /options/i }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /casual/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /casual goal/i }));
     fireEvent.click(screen.getByRole("button", { name: /create goal/i }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);

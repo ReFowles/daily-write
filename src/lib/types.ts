@@ -3,6 +3,7 @@
  */
 
 export type { DocumentContent } from "./document-content";
+export type { RolloverDayInfo } from "./date-utils";
 
 /**
  * "static" locks the daily target chosen at creation time. "live" recomputes
@@ -30,6 +31,12 @@ export interface Goal {
   // When true, each spent cheat day lowers the goal total by one daily target
   // so the writer doesn't have to make those words up elsewhere.
   cheatDaysReduceTotal?: boolean;
+  // When true, excess words from earlier surplus days can be "rolled" forward
+  // to cover a later day's shortfall, turning a red day green.
+  rollover?: boolean;
+  // Deficit days (YYYY-MM-DD) the writer chose to rescue with rolled-over
+  // excess from earlier days.
+  rolloverDays?: string[];
 }
 
 export interface WritingSession {
@@ -47,6 +54,13 @@ export interface DayData {
   excluded: boolean;
   cheatDay: boolean;
   canToggleCheat: boolean;
+  // Rollover state (see computeGoalRollover). rolloverEnabled mirrors the goal
+  // flag; the rest describe this specific day.
+  rolloverEnabled: boolean;
+  rescued: boolean;
+  rolloverIn: number;
+  excessLent: number;
+  canRollover: boolean;
 }
 
 export interface CalendarDay {

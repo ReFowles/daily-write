@@ -1,4 +1,4 @@
-import { LuSnowflake } from "react-icons/lu";
+import { LuSnowflake, LuArrowDownToLine } from "react-icons/lu";
 import { cn } from "@/lib/class-utils";
 import { formatDayOfWeek, formatMonthDay } from "@/lib/date-utils";
 import { formatWordCount } from "@/lib/format-utils";
@@ -18,11 +18,21 @@ interface DayCardProps {
   // Whether the cheat-day toggle should be offered on this cell.
   canToggleCheat?: boolean;
   onToggleCheat?: () => void;
+  // A deficit day fully covered by rolled-over excess: renders green (dashed).
+  rescued?: boolean;
+  // Words pulled into a rescued day to close its gap.
+  rolloverIn?: number;
+  // How much of this surplus day's excess was lent forward to rescue later days.
+  excessLent?: number;
+  // Whether the rollover toggle should be offered on this cell.
+  canRollover?: boolean;
+  onToggleRollover?: () => void;
 }
 
 // Visual tone for a day cell. Excluded/cheat days collapse to "neutral" (gray)
-// so a planned or forgiven miss never reads as a red failure.
-type DayTone = "future" | "today-met" | "today-unmet" | "met" | "red" | "neutral";
+// so a planned or forgiven miss never reads as a red failure. "rescued" is a
+// green day whose shortfall was closed by rolled-over excess.
+type DayTone = "future" | "today-met" | "today-unmet" | "met" | "rescued" | "red" | "neutral";
 
 export function DayCard({
   variant = "expanded",
@@ -36,6 +46,11 @@ export function DayCard({
   cheatDay = false,
   canToggleCheat = false,
   onToggleCheat,
+  rescued = false,
+  rolloverIn = 0,
+  excessLent = 0,
+  canRollover = false,
+  onToggleRollover,
 }: DayCardProps) {
   if (!date) {
     return <div className={variant === "compact" ? "min-h-12 sm:min-h-15" : ""} />;
@@ -54,6 +69,9 @@ export function DayCard({
     tone = "neutral";
   } else if (meetsGoal) {
     tone = isToday ? "today-met" : "met";
+  } else if (rescued) {
+    // Shortfall closed by rolled-over excess: green, but visually distinct.
+    tone = "rescued";
   } else if (excludedDay) {
     // Planned rest day below target: neutral, not a red miss.
     tone = "neutral";
@@ -67,8 +85,9 @@ export function DayCard({
     tone = "neutral";
   }
 
-  const showDifference = !isFuture && hasGoal && !cheatDay && !excludedDay;
-  const lightText = tone === "today-met" || tone === "met" || tone === "red";
+  const showDifference = !isFuture && hasGoal && !cheatDay && !excludedDay && !rescued;
+  const showLent = (tone === "met" || tone === "today-met") && excessLent > 0;
+  const lightText = tone === "today-met" || tone === "met" || tone === "rescued" || tone === "red";
 
   const containerClasses = cn(
     "group relative flex flex-col overflow-hidden transition-all",
@@ -78,6 +97,8 @@ export function DayCard({
     tone === "today-met" && "border-2 border-green-500",
     tone === "today-unmet" && "border-2 border-line-strong",
     tone === "met" && "border-2 border-green-500/30",
+    // Dashed green border signals "green via rollover" rather than earned outright.
+    tone === "rescued" && "border-2 border-dashed border-green-500",
     tone === "red" && "border-2 border-red-500/30",
     tone === "neutral" && "border-2 border-line/50"
   );
@@ -88,6 +109,7 @@ export function DayCard({
     tone === "today-met" && "bg-green-500",
     tone === "today-unmet" && "bg-surface-sunken/50",
     tone === "met" && "bg-green-500/70",
+    tone === "rescued" && "bg-green-500/70",
     tone === "red" && "bg-red-500/70",
     tone === "neutral" && "bg-surface-sunken/50"
   );
@@ -107,8 +129,9 @@ export function DayCard({
   );
 
   const bodyBackgroundClasses = cn(
-    tone !== "met" && tone !== "red" && "bg-transparent",
+    tone !== "met" && tone !== "rescued" && tone !== "red" && "bg-transparent",
     tone === "met" && "bg-green-500/10",
+    tone === "rescued" && "bg-green-500/10",
     tone === "red" && "bg-red-500/10"
   );
 
@@ -118,6 +141,7 @@ export function DayCard({
     tone === "future" && "font-semibold text-fg-subtle",
     tone === "today-met" && "text-green-700",
     tone === "met" && "text-green-700/70",
+    tone === "rescued" && "text-green-700/70",
     tone === "red" && "text-red-700/70",
     (tone === "today-unmet" || tone === "neutral") && "text-fg"
   );
@@ -136,7 +160,7 @@ export function DayCard({
     <div
       className={containerClasses}
       role="gridcell"
-      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${goal ? `, goal: ${formatWordCount(goal)} words` : ""}${!isFuture ? `, written: ${formatWordCount(wordsWritten)} words` : ""}${cheatDay ? ", cheat day" : ""}${excludedDay ? ", rest day" : ""}`}
+      aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric" })}${goal ? `, goal: ${formatWordCount(goal)} words` : ""}${!isFuture ? `, written: ${formatWordCount(wordsWritten)} words` : ""}${cheatDay ? ", cheat day" : ""}${excludedDay ? ", rest day" : ""}${rescued ? `, rescued with ${formatWordCount(rolloverIn)} rolled-over words` : ""}${showLent ? `, ${formatWordCount(excessLent)} words rolled forward` : ""}`}
     >
       {canToggleCheat && onToggleCheat && (
         <button
@@ -148,13 +172,36 @@ export function DayCard({
           aria-label={cheatDay ? "Remove cheat day" : "Use a cheat day"}
           aria-pressed={cheatDay}
           className={cn(
-            "absolute right-0.5 top-0.5 z-10 inline-flex items-center justify-center rounded-full p-0.5 transition-opacity",
+            "absolute right-0.5 top-0.5 z-10 inline-flex items-center justify-center rounded-full shadow-sm ring-1 transition",
+            isCompact ? "p-0.5 sm:p-1" : "p-1",
             cheatDay
-              ? "text-sky-600 opacity-100"
-              : "text-fg-subtle opacity-0 hover:text-sky-600 focus-visible:opacity-100 group-hover:opacity-100"
+              ? "bg-sky-600 text-white ring-sky-700 opacity-100"
+              // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
+              : "bg-white text-sky-600 ring-sky-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
           )}
         >
-          <LuSnowflake className={isCompact ? "h-3 w-3" : "h-4 w-4"} aria-hidden />
+          <LuSnowflake className={isCompact ? "h-2.5 w-2.5 sm:h-3 sm:w-3" : "h-4 w-4"} aria-hidden />
+        </button>
+      )}
+      {(canRollover || rescued) && onToggleRollover && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleRollover();
+          }}
+          aria-label={rescued ? "Undo rollover" : "Roll over earlier excess to cover this day"}
+          aria-pressed={rescued}
+          className={cn(
+            "absolute left-0.5 top-0.5 z-10 inline-flex items-center justify-center rounded-full shadow-sm ring-1 transition",
+            isCompact ? "p-0.5 sm:p-1" : "p-1",
+            rescued
+              ? "bg-green-600 text-white ring-green-700 opacity-100"
+              // Dimmed-but-visible by default so touch devices (no :hover) can still see and tap it.
+              : "bg-white text-green-600 ring-green-600/40 opacity-40 hover:opacity-100 focus-visible:opacity-100 group-hover:opacity-100"
+          )}
+        >
+          <LuArrowDownToLine className={isCompact ? "h-3 w-3" : "h-4 w-4"} aria-hidden />
         </button>
       )}
       <div className={headerBackgroundClasses}>
@@ -209,6 +256,28 @@ export function DayCard({
           <div className={cn("mt-1", differenceClasses)}>
             {difference > 0 ? "+" : ""}
             {formatWordCount(difference)}
+          </div>
+        )}
+        {showLent && (
+          <div
+            className={cn(
+              "mt-0.5 inline-flex items-center gap-0.5 font-semibold text-green-700/70",
+              isCompact ? "text-[0.625rem]" : "text-xs"
+            )}
+          >
+            <LuArrowDownToLine className={isCompact ? "h-2.5 w-2.5" : "h-3 w-3"} aria-hidden />
+            {formatWordCount(excessLent)}
+          </div>
+        )}
+        {rescued && (
+          <div
+            className={cn(
+              "mt-1 inline-flex items-center gap-0.5 font-bold text-green-700/70",
+              isCompact ? "text-xs" : "text-sm"
+            )}
+          >
+            <LuArrowDownToLine className={isCompact ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden />
+            +{formatWordCount(rolloverIn)}
           </div>
         )}
       </div>

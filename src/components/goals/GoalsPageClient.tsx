@@ -15,7 +15,7 @@ import { MonthlyCalendar } from "./MonthlyCalendar";
 import { useCurrentGoal, invalidateCurrentGoalCache } from "@/lib/use-current-goal";
 import { parseLocalDate } from "@/lib/date-utils";
 import type { Goal, WritingSession } from "@/lib/types";
-import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb, toggleCheatDay } from "@/lib/data-store";
+import { getAllGoals, getAllWritingSessions, createGoal, deleteGoal as deleteGoalFromDb, toggleCheatDay, toggleRolloverDay } from "@/lib/data-store";
 
 interface GoalsPageClientProps {
   userId: string;
@@ -129,6 +129,18 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
       console.error("Error toggling cheat day:", error);
     }
   };
+
+  const handleToggleRolloverDay = async (goalId: string, date: string) => {
+    try {
+      const rolloverDays = await toggleRolloverDay(goalId, date);
+      setGoals((prev) =>
+        prev.map((goal) => (goal.id === goalId ? { ...goal, rolloverDays } : goal))
+      );
+      invalidateCurrentGoalCache(userId);
+    } catch (error) {
+      console.error("Error toggling rollover day:", error);
+    }
+  };
   if (isLoading) {
     return (
       <main className={cn("min-h-screen", themeClasses.background.page)}>
@@ -184,6 +196,7 @@ export function GoalsPageClient({ userId }: GoalsPageClientProps) {
               goals={goals}
               writingSessions={writingSessions}
               onToggleCheatDay={handleToggleCheatDay}
+              onToggleRolloverDay={handleToggleRolloverDay}
             />
           </div>
         )}

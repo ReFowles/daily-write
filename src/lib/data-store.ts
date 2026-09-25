@@ -61,6 +61,8 @@ function toGoal(id: string, data: FirebaseFirestore.DocumentData): Goal {
     cheatDaysAllowed: typeof data.cheatDaysAllowed === "number" ? data.cheatDaysAllowed : 0,
     cheatDaysUsed: toStringArray(data.cheatDaysUsed),
     cheatDaysReduceTotal: data.cheatDaysReduceTotal === true,
+    rollover: data.rollover === true,
+    rolloverDays: toStringArray(data.rolloverDays),
   };
 }
 
@@ -186,6 +188,36 @@ export async function toggleCheatDay(goalId: string, date: string): Promise<stri
 
   await goalRef.update({
     cheatDaysUsed: next,
+    updatedAt: Timestamp.now(),
+  });
+
+  return next;
+}
+
+/**
+ * Toggles whether a deficit day is rescued with rolled-over excess. Only the
+ * membership is stored here; whether enough earlier excess actually exists is
+ * derived client-side from the writing sessions. Returns the updated list.
+ */
+export async function toggleRolloverDay(goalId: string, date: string): Promise<string[]> {
+  const goalRef = await requireGoalOwnership(goalId);
+  const snapshot = await goalRef.get();
+  const data = snapshot.data()!;
+
+  if (data.rollover !== true) {
+    throw new Error("Rollover is not enabled for this goal");
+  }
+
+  const used: string[] = Array.isArray(data.rolloverDays)
+    ? data.rolloverDays.filter((d: unknown): d is string => typeof d === "string")
+    : [];
+
+  const next = used.includes(date)
+    ? used.filter((d) => d !== date)
+    : [...used, date].sort();
+
+  await goalRef.update({
+    rolloverDays: next,
     updatedAt: Timestamp.now(),
   });
 

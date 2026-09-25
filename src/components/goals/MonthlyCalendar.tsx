@@ -3,8 +3,9 @@
 import { Card } from "@/components/ui/Card";
 import { DayCard } from "@/components/DayCard";
 import { CalendarHeader } from "./CalendarHeader";
-import type { Goal, WritingSession } from "@/lib/types";
+import type { Goal, WritingSession, RolloverDayInfo } from "@/lib/types";
 import {
+  computeGoalRollover,
   generateMonthGrid,
   getEffectiveDailyTargetForDate,
   getMonthName,
@@ -18,14 +19,16 @@ import { cn } from "@/lib/class-utils";
 import { useCalendarNavigation } from "@/lib/use-calendar-navigation";
 import { useToggle } from "@/lib/use-toggle";
 import { themeClasses } from "@/lib/theme-utils";
+import { useMemo } from "react";
 
 interface MonthlyCalendarProps {
   goals: Goal[];
   writingSessions: WritingSession[];
   onToggleCheatDay?: (goalId: string, date: string) => void;
+  onToggleRolloverDay?: (goalId: string, date: string) => void;
 }
 
-export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay }: MonthlyCalendarProps) {
+export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay, onToggleRolloverDay }: MonthlyCalendarProps) {
   const { year: currentYear, month: currentMonth, goToPreviousMonth, goToNextMonth, goToToday } = useCalendarNavigation();
   const { isOpen: isExpanded, toggle: toggleExpanded } = useToggle(true);
 
@@ -43,6 +46,17 @@ export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay }: Mo
   };
 
   const todayDateString = toDateString(new Date());
+
+  // Rollover spans a goal's whole range, so compute each map once per render.
+  const rolloverByGoal = useMemo(() => {
+    const map = new Map<string, Map<string, RolloverDayInfo>>();
+    for (const goal of goals) {
+      if (goal.rollover) {
+        map.set(goal.id, computeGoalRollover(goal, writingSessions, todayDateString));
+      }
+    }
+    return map;
+  }, [goals, writingSessions, todayDateString]);
 
   const monthGrid = generateMonthGrid(currentYear, currentMonth, writingSessions);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -141,6 +155,10 @@ export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay }: Mo
                       : 0;
                     const canToggleCheat =
                       !!goal && !!dateString && !!onToggleCheatDay && (cheatDay || cheatRemaining > 0);
+                    const rollover =
+                      goal && goal.rollover && dateString
+                        ? rolloverByGoal.get(goal.id)?.get(dateString)
+                        : undefined;
 
                     return (
                       <div key={dayIndex} className="min-w-0 px-0.5 py-0.5 sm:px-2 sm:py-2 md:px-4 md:py-3">
@@ -167,6 +185,15 @@ export function MonthlyCalendar({ goals, writingSessions, onToggleCheatDay }: Mo
                           onToggleCheat={
                             goal && dateString && onToggleCheatDay
                               ? () => onToggleCheatDay(goal.id, dateString)
+                              : undefined
+                          }
+                          rescued={rollover?.rescued ?? false}
+                          rolloverIn={rollover?.rolloverIn ?? 0}
+                          excessLent={rollover?.excessLent ?? 0}
+                          canRollover={(rollover?.canRescue ?? false) && !!onToggleRolloverDay}
+                          onToggleRollover={
+                            goal && goal.rollover && dateString && onToggleRolloverDay
+                              ? () => onToggleRolloverDay(goal.id, dateString)
                               : undefined
                           }
                         />
